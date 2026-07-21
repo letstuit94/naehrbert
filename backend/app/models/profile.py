@@ -52,15 +52,32 @@ class Goal(str, Enum):
     BUILD_MUSCLE = "build_muscle"
 
 
+class DietaryStyle(str, Enum):
+    """How the user eats, for the recipe-recommendation feature — either
+    auto-inferred from purchase history (services/dietary_inference.py) or
+    corrected by the user in the recipe-preferences chat / Profile page."""
+
+    OMNIVORE = "omnivore"
+    PESCATARIAN = "pescatarian"
+    VEGETARIAN = "vegetarian"
+    VEGAN = "vegan"
+
+
 # Sane biometric bounds (Epic 1.1 "plausible numeric ranges").
 _HEIGHT_CM = Field(ge=100.0, le=250.0)
 _WEIGHT_KG = Field(ge=30.0, le=300.0)
 
 
 class ProfileCreate(BaseModel):
-    """The exactly-7-field onboarding form (Epic 1.1). Submitting this
-    creates or replaces the single profile row."""
+    """The core onboarding form (Epic 1.1) plus `name`. Submitting this
+    creates or replaces the single profile row.
 
+    `name` is the one field never used in any BMR/TDEE/macro calculation --
+    purely cosmetic, so the chat can address the user and the Profile page
+    can show it -- hence optional with no format constraint, unlike the 7
+    biometric/goal fields the Ideal Profile Engine actually depends on."""
+
+    name: Optional[str] = None
     sex: Sex
     date_of_birth: date
     height_cm: float = _HEIGHT_CM
@@ -71,10 +88,32 @@ class ProfileCreate(BaseModel):
 
 
 class Profile(ProfileCreate):
-    """Stored profile, as returned by the API."""
+    """Stored profile, as returned by the API.
+
+    `dietary_style`/`allergies`/`dislikes` are collected later, in the
+    recipe-preferences chat (or edited directly on the Profile page) —
+    never during onboarding — so they live only here, not on
+    `ProfileCreate`. `recipe_prefs_completed_at` gates whether that chat's
+    preference-gathering questions run again (None) or are skipped in
+    favor of generating straight from the saved profile (set)."""
 
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+    dietary_style: Optional[DietaryStyle] = None
+    allergies: List[str] = Field(default_factory=list)
+    dislikes: List[str] = Field(default_factory=list)
+    recipe_prefs_completed_at: Optional[datetime] = None
+
+
+class DietaryPreferencesUpdate(BaseModel):
+    """PATCH /profile/preferences payload — the recipe-preferences chat's
+    dietary-style confirmation + allergies + dislikes, saved as a group
+    (Profile page edits reuse the same endpoint)."""
+
+    dietary_style: DietaryStyle
+    allergies: List[str] = Field(default_factory=list)
+    dislikes: List[str] = Field(default_factory=list)
 
 
 class IdealProfile(BaseModel):

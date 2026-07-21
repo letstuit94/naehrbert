@@ -76,3 +76,43 @@ def test_non_food_keyword_filters_deposit_lines():
     assert "Apfel" in names
     assert not any("pfand" in n.lower() for n in names)
     assert parsed["non_food_items_ignored"]
+
+
+def test_product_name_ending_in_x_does_not_trigger_false_multiplier():
+    """Regression: _QTY_MULT_RE's "x N" multiplier pattern had no word
+    boundary before the "x", so it also matched the bare "x" inside a
+    product name ending in one ("Mix", "Fix", ...), misreading the pack
+    size as an "x400" multiplier and leaving it un-stripped from the name.
+    Found on a real receipt photo whose OCR turned "Mix" into "Hix", but
+    the same bug reproduces on the original, un-OCR'd "Mix" text too."""
+
+    text = "Bio Paprika Mix 400g 2,29 B\nAnderes Produkt 300g 1,49 B\nDrittes Produkt 200g 0,99 B\n"
+    parsed = parse_receipt_text_offline(text)
+    item = next(i for i in parsed["items"] if "paprika" in i["name"].lower())
+    assert item["name"] == "Bio Paprika Mix"
+    assert item["quantity"] == 400
+    assert item["unit"] == "g"
+
+
+def test_price_line_tolerates_trailing_period_after_tax_letter():
+    """Regression: a real WhatsApp-photo receipt OCR'd a stray period after
+    the tax-class letter ("2,29 B ."), which _PRICE_RE's trailing-cruft
+    class (letters/digits/pipe/bracket) didn't include, silently dropping
+    the whole line."""
+
+    text = "Bio Paprika Mix 400g 2,29 B .\nAnderes Produkt 300g 1,49 B .\n"
+    parsed = parse_receipt_text_offline(text)
+    assert parsed["items_count"] == 2
+    assert parsed["items"][0]["price"] == 2.29
+
+
+def test_kartenzuehlung_ocr_variant_is_filtered_like_kartenzahlung():
+    """Regression: the same a->u umlaut OCR substitution seen on "rabatt"
+    ("rabatt"/"räbatt") also hit "Kartenzahlung" on a real receipt photo
+    ("Kartenzühlung"), which the bare "zahlung" skip keyword didn't cover,
+    letting the payment-method line through as a fake product."""
+
+    text = "Apfel 0,99 A\nKartenzühlung EUR 13,36\n"
+    parsed = parse_receipt_text_offline(text)
+    names = [item["name"].lower() for item in parsed["items"]]
+    assert not any("kartenzühlung" in n for n in names)

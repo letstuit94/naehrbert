@@ -33,6 +33,17 @@ def upsert_profile(profile: dict) -> dict:
     return res.data[0]
 
 
+def update_dietary_preferences(fields: dict) -> dict:
+    """Partial update for the recipe-preferences chat / Profile page's
+    dietary_style/allergies/dislikes fields — a plain `.update()`, not an
+    upsert, so it doesn't require the full ProfileCreate shape the way
+    upsert_profile does."""
+
+    row = {**fields, "updated_at": datetime.now(timezone.utc).isoformat()}
+    res = get_client().table("profiles").update(row).eq("id", _PROFILE_ID).execute()
+    return res.data[0]
+
+
 # ── receipts ────────────────────────────────────────────────────────────
 
 def create_receipt(source: str, raw_text: Optional[str], store: Optional[str] = None,
@@ -95,6 +106,22 @@ def get_all_confirmed_receipt_items() -> List[dict]:
     return res.data or []
 
 
+def get_all_confirmed_receipt_items_with_receipt_info() -> List[dict]:
+    """Every receipt_item (food AND non-food) belonging to a confirmed
+    receipt, with its parent receipt's store/date embedded -- the Purchases
+    page's "everything you've uploaded" browser, as opposed to
+    get_all_confirmed_receipt_items()'s analysis-only (food-only) view."""
+
+    res = (
+        get_client()
+        .table("receipt_items")
+        .select("*, receipts!inner(status, store, purchased_at, created_at)")
+        .eq("receipts.status", "confirmed")
+        .execute()
+    )
+    return res.data or []
+
+
 # ── non_food_terms (services/non_food_terms.py) ──────────────────────────
 
 def get_all_non_food_keys() -> List[str]:
@@ -135,3 +162,31 @@ def upsert_verified_match(match_key: str, store: str, matched_name: Optional[str
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     get_client().table("verified_matches").upsert(row, on_conflict="match_key,store").execute()
+
+
+# ── user_feedback (NPS, recipe-recommendations feature) ──────────────────
+
+def insert_feedback(nps_score: int) -> dict:
+    res = get_client().table("user_feedback").insert(
+        {"profile_id": _PROFILE_ID, "nps_score": nps_score}
+    ).execute()
+    return res.data[0]
+
+
+# ── recipes (recipe-recommendations feature) ─────────────────────────────
+
+def insert_recipe(row: dict) -> dict:
+    res = get_client().table("recipes").insert({**row, "profile_id": _PROFILE_ID}).execute()
+    return res.data[0]
+
+
+def get_all_recipes() -> List[dict]:
+    res = (
+        get_client()
+        .table("recipes")
+        .select("*")
+        .eq("profile_id", _PROFILE_ID)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return res.data or []

@@ -104,3 +104,23 @@ def test_linsen_item_is_no_longer_dropped_or_replaced_with_garbage():
     # The two previously-fabricated fake items must not appear.
     assert not any("geg" in n for n in names)
     assert not any(n.startswith("sn ds") for n in names)
+
+
+# ── Regression: WhatsApp-forwarded photos were misclassified as "not a
+# photo" (local_extractor.extract_text's is_photo check used to also
+# require max(w, h) > 2500) since WhatsApp recompresses/downsizes to
+# ~1600px on the long side regardless of the original camera resolution.
+# That skipped the denoise/adaptive-threshold/rotation-retry pipeline meant
+# for phone photos, so a real receipt OCR'd to a single garbled non-item
+# ("Z EUR"). Forcing the photo pipeline recovers at least one real item.
+
+_STU_WHATSAPP_PHOTO = _REPO_ROOT / "receipts_stu" / "WhatsApp Image 2026-07-05 at 11.02.48.jpeg"
+
+
+@pytest.mark.skipif(not _STU_WHATSAPP_PHOTO.exists(), reason="fixture not present")
+def test_whatsapp_compressed_photo_gets_the_photo_pipeline_and_finds_an_item():
+    text = local_extractor.extract_text(_STU_WHATSAPP_PHOTO.read_bytes(), _STU_WHATSAPP_PHOTO.name)
+    parsed = receipt_text_parser.parse_receipt_text_offline(text)
+    names = [item["name"].lower() for item in parsed["items"]]
+    assert any("paprika" in n for n in names), f"expected a Paprika item, got: {parsed['items']}"
+    assert not any(n == "z eur" for n in names)

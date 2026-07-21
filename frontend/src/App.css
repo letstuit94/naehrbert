@@ -535,6 +535,89 @@
   font-size: 14px;
 }
 
+/* ── Unlock recipes (Results) ─────────────────────────────────────────── */
+
+.unlock-recipes {
+  margin: 28px 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+a.btn {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.progress-bar {
+  position: relative;
+  height: 12px;
+  background: var(--code-bg);
+  border-radius: 6px;
+  margin: 10px 0 6px;
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 6px;
+  transition: width 0.2s ease;
+}
+
+/* ── Chip list input (dislikes) ───────────────────────────────────────── */
+
+.chip-list-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.chip__remove {
+  font: inherit;
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.chip__remove:hover {
+  color: #d03b3b;
+}
+
+.chip-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.chat-choices-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 /* ── Chat onboarding ───────────────────────────────────────────────────── */
 
 .chat-card {
@@ -681,4 +764,112 @@
   border-radius: 6px;
   background: var(--bg);
   color: var(--text-h);
+}
+
+/* ── Purchases ─────────────────────────────────────────────────────────── */
+
+.purchase-group {
+  margin: 24px 0;
+}
+
+.purchase-group__header {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.purchase-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.purchase-row {
+  display: grid;
+  grid-template-columns: 2fr 100px 2fr;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.purchase-row--non-food {
+  opacity: 0.55;
+}
+
+.purchase-row__name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.purchase-row__name {
+  color: var(--text-h);
+}
+
+.purchase-row__qty {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.purchase-row__macros,
+.purchase-row__nonfood {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .purchase-row {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+
+  .purchase-row__macros,
+  .purchase-row__nonfood {
+    text-align: left;
+  }
+}
+
+/* ── Recipes ───────────────────────────────────────────────────────────── */
+
+.recipe-card {
+  margin: 20px 0;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.recipe-card__title {
+  margin-bottom: 4px;
+}
+
+.recipe-card__ingredients,
+.recipe-card__steps {
+  margin: 8px 0 16px;
+  padding-left: 20px;
+}
+
+.recipe-card__ingredients li,
+.recipe-card__steps li {
+  margin-bottom: 4px;
+}
+
+.recipe-card__macros {
+  font-weight: 600;
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+}
+
+.recipe-card__estimate-note {
+  margin-top: 4px;
+  font-size: 13px;
 }

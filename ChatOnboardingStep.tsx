@@ -292,12 +292,10 @@ const NAME_PROFILE_BULLETS: Record<Lang, string[]> = {
   en: [
     "🔥 Calories — your energy balance and body weight",
     "💪 Macros — to fuel performance, muscle, and metabolism",
-    "🥦 Micros — for your body's internal systems (coming soon)",
   ],
   de: [
     "🔥 Kalorien — deine Energiebalance und dein Körpergewicht",
     "💪 Makros — für Leistung, Muskeln und Stoffwechsel",
-    "🥦 Mikros — für die Gesundheit deiner Körperfunktionen (folgt bald)",
   ],
 };
 const NAME_BMR_INTRO = bi(

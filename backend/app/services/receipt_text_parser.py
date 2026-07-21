@@ -54,7 +54,9 @@ _SKIP_KEYWORDS = (
     "rewe", "edeka", "aldi", "lidl", "penny", "netto", "norma", "uid", "steuernr",
     # receipt-tail noise that OCR picks up (payment, TSE signature, loyalty).
     # The totals-block break below removes most of it, these catch stragglers.
-    "kreditkarte", "kartenzahlung", "girocard", "bezahlung", "zahlung",
+    # "zühlung" alongside "zahlung": the same a→ü OCR substitution seen on
+    # "räbatt" (real receipt: "Kartenzühlung" for "Kartenzahlung").
+    "kreditkarte", "kartenzahlung", "girocard", "bezahlung", "zahlung", "zühlung",
     "tse", "prüfwert", "pruefwert", "signatur", "seriennr", "transaktion",
     "terminal", "autorisierung", "genehmigung", "emv", "vu-nummer", "vu-nr",
     "payback", "punkte", "posten", "preisvorteil", "gespart", "servicenummer",
@@ -74,9 +76,12 @@ _CASH_GIVEN_RE = re.compile(r"\bgeg[.,]?\s+(bar|ec|kreditkarte|girocard|karte)\b
 # version only tolerated a single trailing letters-block; a batch of real
 # ALDI receipts append a stray OCR'd digit/pipe/bracket after the currency
 # symbol on every single item ("0,85 € 1", "1,39 € |"), which even the
-# widened letters-only version still didn't cover.
+# widened letters-only version still didn't cover. A real WhatsApp-photo
+# receipt OCR'd a tax letter followed by a stray period as its own token
+# ("2,29 B ."), which the letters/digits/pipe/bracket class didn't include
+# either, so a "." joins the same trailing-token class.
 _PRICE_RE = re.compile(
-    r"(-?\d{1,4}[.,]\d{2})\s*(?:€|eur)?(?:\s+[a-zäöü%0-9|\[\]]{1,4}){0,2}\s*$", re.IGNORECASE
+    r"(-?\d{1,4}[.,]\d{2})\s*(?:€|eur)?(?:\s+[a-zäöü%0-9|\[\].]{1,4}){0,2}\s*$", re.IGNORECASE
 )
 # A real product line has at most a quantity and one final price — never 3+
 # decimal amounts. The German "Steuer % Netto Steuer Brutto" tax-breakdown
@@ -91,8 +96,14 @@ _TAX_ROW_MIN_AMOUNTS = 3
 _TOTAL_RE = re.compile(r"\bsumme\b|zu\s*zahlen|gesamtbetrag|\bgesamt\b|zu\s*zahl", re.IGNORECASE)
 # a weight line that qualifies the PREVIOUS item ("1,182 kg x 1,99 EUR/kg").
 _WEIGHT_AFTER_RE = re.compile(r"(\d+[.,]\d+)\s*(kg|g|l|ml)\s*x", re.IGNORECASE)
-# an explicit "x N" multiplier ("... 4,59 x 2", "... 0,15 € x 5").
-_QTY_MULT_RE = re.compile(r"x\s*%?\s*(\d+)")
+# an explicit "x N" multiplier ("... 4,59 x 2", "... 0,15 € x 5"). The
+# leading \b matters: without it this matched the bare "x" inside a
+# product name ending in one ("Bio Paprika Mix 400g", "Nuss-Mix 250g"),
+# misreading the pack size as an "x400"/"x250" multiplier and leaving the
+# weight un-stripped from the item name. Found via a real receipt photo
+# whose OCR happened to turn "Mix" into "Hix" — but the same bug already
+# reproduced on the original, un-OCR'd "Mix" text once found.
+_QTY_MULT_RE = re.compile(r"\bx\s*%?\s*(\d+)")
 # quantity + unit anywhere: "500g", "1,0 kg", "1L", "10 Stk", "6 x"
 _QTY_RE = re.compile(
     r"(\d+(?:[.,]\d+)?)\s*(kg|gr|g|ml|ltr|l|stk|stück|stueck|st|x|pack|packung|dose|flasche|bund|cl)\b",
@@ -175,7 +186,12 @@ def _clean_name(name: str) -> str:
 
     name = re.sub(r"^[^0-9A-Za-zÄÖÜäöüß]+", "", name)      # leading punctuation/noise
     name = re.sub(r"\d+[.,]?\d*\s*%", "", name)            # stray percentages
-    return re.sub(r"\s{2,}", " ", name).strip(" -.,x|/_")
+    name = re.sub(r"\s{2,}", " ", name).strip(" -.,|/_")
+    # A trailing standalone "x" (its own token, qty-multiplier residue) is
+    # dropped, but not a bare "x" that's part of the last word -- "x" used
+    # to sit in the .strip() charset above, which also ate the last letter
+    # of any product name ending in one ("Mix" -> "Mi", "Nuss-Mix" -> "Nuss-Mi").
+    return re.sub(r"(?:^|\s)x$", "", name, flags=re.IGNORECASE).strip()
 
 
 def _parse_inline(text: str) -> dict:

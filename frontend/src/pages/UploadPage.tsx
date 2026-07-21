@@ -16,30 +16,9 @@ import {
   type Receipt,
   type ReceiptItem,
 } from '../lib/api'
+import { matchInfo } from '../lib/matchInfo'
 
 const UNIT_OPTIONS = ['g', 'kg', 'ml', 'l', 'piece'] as const
-
-function formatFallbackCategory(category: string): string {
-  return category
-    .split('_')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
-}
-
-// "Essentials" view of the resolver's match (Epic 3.2): what the item
-// actually got matched to, not just the parsed name -- so a bad match
-// can be caught before confirming. `fallback`/`none` are flagged as
-// low-confidence since they're a category-level estimate or no match at all.
-function matchInfo(item: ReceiptItem): { label: string; lowConfidence: boolean } | null {
-  if (item.is_non_food) return null
-  if (item.matched_name) {
-    return { label: item.matched_name, lowConfidence: false }
-  }
-  if (item.fallback_category) {
-    return { label: formatFallbackCategory(item.fallback_category), lowConfidence: true }
-  }
-  return { label: 'No match found', lowConfidence: true }
-}
 
 type Screen = 'upload' | 'review' | 'confirmed'
 
@@ -60,6 +39,23 @@ export function UploadPage() {
     setItems([])
     setConfirmResult(null)
     setPastedText('')
+    setError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // Escape hatch for a bad scan (US 3.4 follow-up): drops back to the paste-
+  // text tab, pre-filled with whatever raw text OCR did manage to read --
+  // even a badly garbled extraction usually has a few readable fragments,
+  // so starting from that beats a blank textarea. The abandoned receipt
+  // row is left unconfirmed in the DB (harmless: unconfirmed receipts are
+  // excluded from every analysis query) rather than added ceremony to delete it.
+  function switchToManualEntry() {
+    setScreen('upload')
+    setUploadMode('text')
+    setPastedText(receipt?.raw_text ?? '')
+    setReceipt(null)
+    setItems([])
+    setConfirmResult(null)
     setError(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -173,10 +169,31 @@ export function UploadPage() {
   }
 
   if (screen === 'review' && receipt) {
+    const scanLooksIncomplete = items.length <= 1
     return (
       <section>
         <h1>Review your receipt</h1>
         <p>Fix anything the scan got wrong, mark non-food items, then confirm.</p>
+
+        {scanLooksIncomplete ? (
+          <p className="callout callout--warning">
+            {items.length === 0
+              ? "We couldn't find any items on this scan."
+              : `We only found ${items.length} item on this scan.`}{' '}
+            If that doesn't look right, you can{' '}
+            <button type="button" className="btn-link" onClick={switchToManualEntry}>
+              switch to typing it in manually
+            </button>
+            .
+          </p>
+        ) : (
+          <p className="muted">
+            Scan doesn't look right?{' '}
+            <button type="button" className="btn-link" onClick={switchToManualEntry}>
+              Switch to manual entry
+            </button>
+          </p>
+        )}
 
         {error && (
           <p className="form-error" role="alert">

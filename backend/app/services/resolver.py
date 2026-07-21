@@ -45,7 +45,11 @@ _bridge_cache: Dict[str, Optional[dict]] = {}
 
 
 def _item_name(item: dict) -> str:
-    return (item.get("normalized_name") or item.get("name") or item.get("raw_name") or "").strip()
+    # receipt_items only ever has `name` (the already-cleaned product name)
+    # -- `normalized_name`/`raw_name` were ported fallbacks that no writer
+    # in this app has ever populated; keeping them here was misleadingly
+    # implying a raw-text path existed for Tier 0 that didn't.
+    return (item.get("name") or "").strip()
 
 
 def _tokens(name: str) -> List[str]:
@@ -251,7 +255,7 @@ def _category_fallback(item_name: str, category: Optional[str]) -> MatchedProduc
 def _learned(item: dict, name: str) -> Optional[MatchedProduct]:
     """Tier 0 (BR-MT0): verified-match store hit → conf 1.0. Inert until E5."""
 
-    hit = verified_matches.lookup_verified_match(item.get("raw_name") or name, item.get("store"))
+    hit = verified_matches.lookup_verified_match(name, item.get("store"))
     if not hit:
         return None
     nut = NutritionValues(**hit["nutrition"]) if hit.get("nutrition") else None

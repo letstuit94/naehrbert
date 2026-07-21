@@ -156,10 +156,18 @@ def extract_text(file_bytes: bytes, filename: str | None) -> str:
             return _pdf_text(file_bytes)
         if suffix in _IMAGE_SUFFIXES or suffix == "":
             img = Image.open(io.BytesIO(file_bytes))
-            w, h = img.size
-            # A large JPEG is almost certainly a phone photo → heavier pipeline;
-            # a small/flat PNG or app export is already clean.
-            is_photo = suffix in _PHOTO_SUFFIXES and max(w, h) > 2500
+            # A JPEG is almost certainly a phone photo → heavier pipeline; a
+            # PNG/app export is already clean. This used to also require
+            # max(w, h) > 2500, on the theory that a small JPEG is a clean
+            # digital export rather than a photo -- but a WhatsApp-forwarded
+            # photo is recompressed down to ~1600px on its longest side
+            # regardless of the original camera resolution, so that gate
+            # silently downgraded every forwarded receipt photo to the
+            # weaker (no denoise/threshold/rotation-retry) pipeline. Found
+            # via a real WhatsApp receipt photo (1200x1600) that OCR'd to a
+            # single garbled "item" — forcing the photo pipeline on it
+            # recovered legible item lines instead.
+            is_photo = suffix in _PHOTO_SUFFIXES
             return _ocr(img, photo=is_photo)
         raise UnreadableReceipt(f"Unsupported receipt file type: {suffix or 'unknown'}")
     except UnreadableReceipt:

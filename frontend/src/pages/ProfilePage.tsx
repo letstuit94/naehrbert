@@ -1,0 +1,420 @@
+import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  ApiError,
+  createProfile,
+  getProfile,
+  updateDietaryPreferences,
+  type DailyMovement,
+  type DietaryStyle,
+  type ExerciseFrequency,
+  type Goal,
+  type Profile,
+  type Sex,
+} from '../lib/api'
+import {
+  EXERCISE_OPTIONS,
+  GOAL_OPTIONS,
+  MOVEMENT_OPTIONS,
+  SEX_OPTIONS,
+} from '../lib/chatSteps'
+import { ALLERGEN_OPTIONS, DIETARY_STYLE_OPTIONS } from '../lib/recipePrefsSteps'
+import { ChipListInput } from '../components/ChipListInput'
+
+type LoadState =
+  | { status: 'loading' }
+  | { status: 'no-profile' }
+  | { status: 'error'; message: string }
+  | { status: 'ready' }
+
+type FormState = {
+  name: string
+  sex: Sex | ''
+  date_of_birth: string
+  height_cm: string
+  weight_kg: string
+  exercise_frequency: ExerciseFrequency | ''
+  daily_movement: DailyMovement | ''
+  goal: Goal | ''
+}
+
+const EMPTY_FORM: FormState = {
+  name: '',
+  sex: '',
+  date_of_birth: '',
+  height_cm: '',
+  weight_kg: '',
+  exercise_frequency: '',
+  daily_movement: '',
+  goal: '',
+}
+
+function toForm(profile: Profile): FormState {
+  return {
+    name: profile.name ?? '',
+    sex: profile.sex,
+    date_of_birth: profile.date_of_birth,
+    height_cm: String(profile.height_cm),
+    weight_kg: String(profile.weight_kg),
+    exercise_frequency: profile.exercise_frequency,
+    daily_movement: profile.daily_movement,
+    goal: profile.goal,
+  }
+}
+
+export function ProfilePage() {
+  const [state, setState] = useState<LoadState>({ status: 'loading' })
+  const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const [dietaryStyle, setDietaryStyle] = useState<DietaryStyle>('omnivore')
+  const [allergies, setAllergies] = useState<string[]>([])
+  const [allergyDraft, setAllergyDraft] = useState('')
+  const [dislikes, setDislikes] = useState<string[]>([])
+  const [prefsSaving, setPrefsSaving] = useState(false)
+  const [prefsSaved, setPrefsSaved] = useState(false)
+  const [prefsError, setPrefsError] = useState<string | null>(null)
+
+  useEffect(() => {
+    getProfile()
+      .then((profile) => {
+        setForm(toForm(profile))
+        setDietaryStyle(profile.dietary_style ?? 'omnivore')
+        setAllergies(profile.allergies ?? [])
+        setDislikes(profile.dislikes ?? [])
+        setState({ status: 'ready' })
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 404) {
+          setState({ status: 'no-profile' })
+        } else {
+          setState({
+            status: 'error',
+            message: 'Could not load your profile. Please try again.',
+          })
+        }
+      })
+  }, [])
+
+  function toggleAllergy(value: string) {
+    setAllergies((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
+    )
+    setPrefsSaved(false)
+  }
+
+  function addCustomAllergy() {
+    const trimmed = allergyDraft.trim()
+    if (!trimmed) return
+    setAllergies((prev) =>
+      prev.some((v) => v.toLowerCase() === trimmed.toLowerCase())
+        ? prev
+        : [...prev, trimmed],
+    )
+    setAllergyDraft('')
+    setPrefsSaved(false)
+  }
+
+  async function handlePrefsSubmit(e: FormEvent) {
+    e.preventDefault()
+    setPrefsSaving(true)
+    setPrefsError(null)
+    setPrefsSaved(false)
+    try {
+      await updateDietaryPreferences({ dietary_style: dietaryStyle, allergies, dislikes })
+      setPrefsSaved(true)
+    } catch (err) {
+      setPrefsError(
+        err instanceof ApiError ? err.message : 'Could not save your preferences.',
+      )
+    } finally {
+      setPrefsSaving(false)
+    }
+  }
+
+  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }))
+    setSaved(false)
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    setSaved(false)
+    try {
+      await createProfile({
+        name: form.name.trim() || null,
+        sex: form.sex as Sex,
+        date_of_birth: form.date_of_birth,
+        height_cm: Number(form.height_cm),
+        weight_kg: Number(form.weight_kg),
+        exercise_frequency: form.exercise_frequency as ExerciseFrequency,
+        daily_movement: form.daily_movement as DailyMovement,
+        goal: form.goal as Goal,
+      })
+      setSaved(true)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save your profile.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (state.status === 'loading') {
+    return (
+      <section>
+        <h1>Profile</h1>
+        <p>Loading…</p>
+      </section>
+    )
+  }
+
+  if (state.status === 'no-profile') {
+    return (
+      <section>
+        <h1>Profile</h1>
+        <p>
+          You haven't completed onboarding yet. <Link to="/">Start onboarding</Link> to
+          create your profile.
+        </p>
+      </section>
+    )
+  }
+
+  if (state.status === 'error') {
+    return (
+      <section>
+        <h1>Profile</h1>
+        <p className="form-error" role="alert">
+          {state.message}
+        </p>
+      </section>
+    )
+  }
+
+  return (
+    <section>
+      <h1>Profile</h1>
+      <p>
+        Adjust your details any time — your targets recalculate the next time you view
+        them.
+      </p>
+
+      <form className="form" onSubmit={handleSubmit}>
+        <div className="form-field">
+          <label htmlFor="profile-name">Name</label>
+          <input
+            id="profile-name"
+            type="text"
+            value={form.name}
+            onChange={(e) => update('name', e.target.value)}
+          />
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="profile-sex">Sex</label>
+          <select
+            id="profile-sex"
+            value={form.sex}
+            onChange={(e) => update('sex', e.target.value as Sex)}
+          >
+            {SEX_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="profile-dob">Date of birth</label>
+          <input
+            id="profile-dob"
+            type="date"
+            value={form.date_of_birth}
+            onChange={(e) => update('date_of_birth', e.target.value)}
+          />
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="profile-height">Height (cm)</label>
+          <input
+            id="profile-height"
+            type="number"
+            min={100}
+            max={250}
+            value={form.height_cm}
+            onChange={(e) => update('height_cm', e.target.value)}
+          />
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="profile-weight">Weight (kg)</label>
+          <input
+            id="profile-weight"
+            type="number"
+            min={30}
+            max={300}
+            value={form.weight_kg}
+            onChange={(e) => update('weight_kg', e.target.value)}
+          />
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="profile-exercise">Exercise frequency</label>
+          <select
+            id="profile-exercise"
+            value={form.exercise_frequency}
+            onChange={(e) =>
+              update('exercise_frequency', e.target.value as ExerciseFrequency)
+            }
+          >
+            {EXERCISE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="profile-movement">Daily movement</label>
+          <select
+            id="profile-movement"
+            value={form.daily_movement}
+            onChange={(e) => update('daily_movement', e.target.value as DailyMovement)}
+          >
+            {MOVEMENT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="profile-goal">Goal</label>
+          <select
+            id="profile-goal"
+            value={form.goal}
+            onChange={(e) => update('goal', e.target.value as Goal)}
+          >
+            {GOAL_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+        {saved && (
+          <p className="callout callout--success">
+            Saved. <Link to="/targets">See your updated targets →</Link>
+          </p>
+        )}
+
+        <button className="btn btn-primary" type="submit" disabled={saving}>
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
+      </form>
+
+      <h2>Dietary preferences</h2>
+      <p>
+        Used to generate your <Link to="/recipes">recipe recommendations</Link> -- never
+        included in your calorie/macro targets above.
+      </p>
+
+      <form className="form" onSubmit={handlePrefsSubmit}>
+        <div className="form-field">
+          <label htmlFor="profile-dietary-style">How do you eat?</label>
+          <select
+            id="profile-dietary-style"
+            value={dietaryStyle}
+            onChange={(e) => {
+              setDietaryStyle(e.target.value as DietaryStyle)
+              setPrefsSaved(false)
+            }}
+          >
+            {DIETARY_STYLE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-field">
+          <label>Allergies / intolerances</label>
+          <div className="chat-choices">
+            {ALLERGEN_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={
+                  allergies.includes(opt.value)
+                    ? 'chat-choice chat-choice--selected'
+                    : 'chat-choice'
+                }
+                onClick={() => toggleAllergy(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <div className="chip-input-row">
+            <input
+              type="text"
+              placeholder="Other (type and add)"
+              value={allergyDraft}
+              onChange={(e) => setAllergyDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  addCustomAllergy()
+                }
+              }}
+            />
+            <button type="button" className="btn-link" onClick={addCustomAllergy}>
+              Add
+            </button>
+          </div>
+          {allergies.length > 0 && (
+            <p className="muted">Selected: {allergies.join(', ')}</p>
+          )}
+        </div>
+
+        <div className="form-field">
+          <label>Foods you dislike</label>
+          <ChipListInput
+            value={dislikes}
+            onChange={(next) => {
+              setDislikes(next)
+              setPrefsSaved(false)
+            }}
+            placeholder="e.g. mushrooms"
+          />
+        </div>
+
+        {prefsError && (
+          <p className="form-error" role="alert">
+            {prefsError}
+          </p>
+        )}
+        {prefsSaved && <p className="callout callout--success">Saved.</p>}
+
+        <button className="btn btn-primary" type="submit" disabled={prefsSaving}>
+          {prefsSaving ? 'Saving…' : 'Save preferences'}
+        </button>
+      </form>
+    </section>
+  )
+}

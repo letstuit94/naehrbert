@@ -23,6 +23,8 @@ import re
 import unicodedata
 from typing import Optional
 
+from backend.app.services.receipt_text_parser import _STORE_PRIORITY
+
 _STORE_TOKENS = {"rewe", "edeka", "aldi", "netto", "norma", "lidl", "penny", "markt", "gmbh"}
 _UNIT_TOKENS = {"g", "gr", "gramm", "kg", "ml", "l", "ltr", "liter", "stk", "stück", "stueck",
                 "st", "x", "pack", "packung", "dose", "glas", "flasche", "bund", "cl"}
@@ -53,6 +55,30 @@ def normalize_match_key(raw_text: str) -> str:
     return " ".join(kept).strip()
 
 
+def normalize_store(store: Optional[str]) -> str:
+    """Canonicalize a store string to the same short chain name
+    receipt_text_parser._detect_store() produces ("Netto", "Lidl", "Aldi",
+    ...), so a verified match written under one spelling of a chain's name
+    is still found when a later receipt's own store detection produces a
+    different-looking string for the exact same chain.
+
+    Found via a real miss: an imported verified match keyed under store
+    "Netto Marken-Discount" was never found for a receipt this app itself
+    detected as store "Netto" -- record_verified_match/lookup_verified_match
+    previously compared `store` as an opaque exact string, so any spelling
+    difference (full legal name vs. short chain name, casing, a stray
+    trailing newline) silently missed. Checked against every store value
+    already in the verified_matches table: 151 of 191 rows used a spelling
+    that wouldn't have matched this app's own detector before this fix.
+    """
+
+    s = unicodedata.normalize("NFC", store or "").strip().lower()
+    for key, canonical in _STORE_PRIORITY:
+        if key in s:
+            return canonical
+    return s
+
+
 def record_verified_match(
     raw_text: str,
     store: Optional[str],
@@ -73,7 +99,7 @@ def record_verified_match(
 
     upsert_verified_match(
         match_key=key,
-        store=store or "",
+        store=normalize_store(store),
         matched_name=matched_name,
         off_id=off_id,
         bls_code=bls_code,
@@ -98,7 +124,9 @@ def lookup_verified_match(raw_text: str, store: Optional[str] = None) -> Optiona
     try:
         from backend.app.db.repo import get_verified_match
 
-        scopes = [s for s in dict.fromkeys((store or "", ""))]  # exact store first, then store-agnostic, deduped
+        scopes = [
+            s for s in dict.fromkeys((normalize_store(store), ""))
+        ]  # exact store first, then store-agnostic, deduped
         for scope_store in scopes:
             hit = get_verified_match(key, scope_store)
             if hit:

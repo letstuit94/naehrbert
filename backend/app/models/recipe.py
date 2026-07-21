@@ -28,13 +28,16 @@ class RecipeIngredient(BaseModel):
 
 
 class GeminiRecipeSuggestion(BaseModel):
-    """The exact shape Gemini is forced to return (response_schema)."""
+    """The exact shape Gemini is forced to return (response_schema) --
+    `servings` is required here so Gemini always states it, even when the
+    user didn't ask for a specific count."""
 
     title: str
     ingredients: List[RecipeIngredient]
     steps: List[str]
     prep_minutes: int = Field(ge=0)
     cook_minutes: int = Field(ge=0)
+    servings: int = Field(ge=1)
 
     # Gemini's own estimate for the whole recipe (not per-serving) — see
     # module docstring for why this isn't backend-recomputed.
@@ -46,10 +49,15 @@ class GeminiRecipeSuggestion(BaseModel):
 
 
 class Recipe(GeminiRecipeSuggestion):
-    """Stored/returned recipe, as persisted to the `recipes` table."""
+    """Stored/returned recipe, as persisted to the `recipes` table.
+    `servings` is overridden as optional here (unlike the required field on
+    GeminiRecipeSuggestion above) only because the `recipes.servings`
+    column was added after some real rows already existed -- those read
+    back with no value rather than needing a backfill."""
 
     id: str
     created_at: Optional[datetime] = None
+    servings: Optional[int] = Field(default=None, ge=1)
 
 
 class RecipeGenerateRequest(BaseModel):
@@ -60,3 +68,4 @@ class RecipeGenerateRequest(BaseModel):
 
     cuisine: Optional[str] = None
     max_time_minutes: Optional[int] = Field(default=None, ge=1)
+    servings: Optional[int] = Field(default=None, ge=1)

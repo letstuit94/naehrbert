@@ -1,7 +1,25 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ApiError, getPurchases, type PurchaseItem } from '../lib/api'
-import { matchInfo } from '../lib/matchInfo'
+import {
+  ApiError,
+  correctReceiptItem,
+  getPurchases,
+  updateReceiptItem,
+  type ItemCorrection,
+  type PurchaseItem,
+} from '../lib/api'
+import {
+  matchInfo,
+  matchCategory,
+  MATCH_CATEGORY_LABEL,
+  type MatchCategory,
+} from '../lib/matchInfo'
+import {
+  quantityBasis,
+  QUANTITY_BASIS_LABEL,
+  type QuantityBasis,
+} from '../lib/quantityBasis'
+import { MatchSearchPanel } from '../components/MatchSearchPanel'
 
 type LoadState =
   | { status: 'loading' }
@@ -14,6 +32,15 @@ type ReceiptGroup = {
   store: string | null
   purchasedAt: string | null
   items: PurchaseItem[]
+}
+
+const MATCH_CATEGORIES: MatchCategory[] = ['verified', 'fallback', 'none', 'non_food']
+const UNIT_OPTIONS = ['g', 'kg', 'ml', 'l', 'piece'] as const
+
+const QUANTITY_BASIS_ICON: Record<QuantityBasis, string> = {
+  weighed: '⚖',
+  piece: '≈',
+  unknown: '?',
 }
 
 function formatDate(iso: string | null): string {
@@ -55,9 +82,13 @@ function groupByReceipt(items: PurchaseItem[]): ReceiptGroup[] {
 
 export function PurchasesPage() {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
+  const [activeFilters, setActiveFilters] = useState<Set<MatchCategory>>(
+    new Set(MATCH_CATEGORIES),
+  )
+  const [actionError, setActionError] = useState<string | null>(null)
 
-  useEffect(() => {
-    getPurchases()
+  function load() {
+    return getPurchases()
       .then((result) => {
         setState(
           result.items.length === 0
@@ -72,7 +103,48 @@ export function PurchasesPage() {
             err instanceof ApiError ? err.message : 'Could not load your purchases.',
         })
       })
+  }
+
+  useEffect(() => {
+    void load()
   }, [])
+
+  function toggleFilter(category: MatchCategory) {
+    setActiveFilters((prev) => {
+      const next = new Set(prev)
+      if (next.has(category)) next.delete(category)
+      else next.add(category)
+      return next
+    })
+  }
+
+  // Quantity/unit/match corrections are written against the *stored*
+  // receipt_items row (per-100g values), but this page shows *actual*
+  // kcal/macros already scaled for the purchased quantity -- refetching
+  // after every change is simpler and more robust than duplicating the
+  // backend's grams_for() scaling logic here just to patch state locally.
+  async function handleQuantityUnitSave(
+    item: PurchaseItem,
+    fields: { quantity?: number; unit?: string },
+  ) {
+    setActionError(null)
+    try {
+      await updateReceiptItem(item.receipt_id, item.id, fields)
+      await load()
+    } catch {
+      setActionError('Could not save that change.')
+    }
+  }
+
+  async function handleCorrect(item: PurchaseItem, correction: ItemCorrection) {
+    setActionError(null)
+    try {
+      await correctReceiptItem(item.receipt_id, item.id, correction)
+      await load()
+    } catch {
+      setActionError('Could not save that match.')
+    }
+  }
 
   if (state.status === 'loading') {
     return (
@@ -106,12 +178,49 @@ export function PurchasesPage() {
     )
   }
 
-  const groups = groupByReceipt(state.items)
+  const counts = MATCH_CATEGORIES.reduce<Record<MatchCategory, number>>(
+    (acc, category) => ({ ...acc, [category]: 0 }),
+    { verified: 0, fallback: 0, none: 0, non_food: 0 },
+  )
+  for (const item of state.items) counts[matchCategory(item)] += 1
+
+  const visibleItems = state.items.filter((item) =>
+    activeFilters.has(matchCategory(item)),
+  )
+  const groups = groupByReceipt(visibleItems)
 
   return (
     <section>
       <h1>Purchases</h1>
       <p>Everything you've uploaded and confirmed, grouped by receipt.</p>
+
+      <div className="filter-bar" role="group" aria-label="Filter by match type">
+        {MATCH_CATEGORIES.map((category) => (
+          <button
+            key={category}
+            type="button"
+            className={
+              activeFilters.has(category)
+                ? 'filter-chip filter-chip--active'
+                : 'filter-chip'
+            }
+            onClick={() => toggleFilter(category)}
+          >
+            {MATCH_CATEGORY_LABEL[category]}
+            <span className="filter-chip__count">{counts[category]}</span>
+          </button>
+        ))}
+      </div>
+
+      {actionError && (
+        <p className="form-error" role="alert">
+          {actionError}
+        </p>
+      )}
+
+      {visibleItems.length === 0 && (
+        <p className="callout callout--muted">No purchases match the selected filters.</p>
+      )}
 
       {groups.map((group) => (
         <div key={group.receiptId} className="purchase-group">
@@ -121,7 +230,12 @@ export function PurchasesPage() {
           </h2>
           <ul className="purchase-list">
             {group.items.map((item) => (
-              <PurchaseRow key={item.id} item={item} />
+              <PurchaseRow
+                key={item.id}
+                item={item}
+                onQuantityUnitSave={(fields) => handleQuantityUnitSave(item, fields)}
+                onCorrect={(correction) => handleCorrect(item, correction)}
+              />
             ))}
           </ul>
         </div>
@@ -130,8 +244,24 @@ export function PurchasesPage() {
   )
 }
 
-function PurchaseRow({ item }: { item: PurchaseItem }) {
+function PurchaseRow({
+  item,
+  onQuantityUnitSave,
+  onCorrect,
+}: {
+  item: PurchaseItem
+  onQuantityUnitSave: (fields: { quantity?: number; unit?: string }) => void
+  onCorrect: (correction: ItemCorrection) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [searching, setSearching] = useState(false)
+  const [quantity, setQuantity] = useState(
+    item.quantity !== null ? String(item.quantity) : '',
+  )
+  const [unit, setUnit] = useState(item.unit ?? 'piece')
   const match = matchInfo(item)
+  const basis = quantityBasis(item)
+
   return (
     <li
       className={
@@ -152,9 +282,23 @@ function PurchaseRow({ item }: { item: PurchaseItem }) {
             {match.label}
           </span>
         )}
+        <button
+          type="button"
+          className="btn-link purchase-row__edit-toggle"
+          onClick={() => setEditing((e) => !e)}
+        >
+          {editing ? 'Close' : 'Edit'}
+        </button>
       </div>
       <span className="purchase-row__qty">
         {item.quantity ?? '—'} {item.unit ?? ''}
+        <span
+          className={`qty-basis qty-basis--${basis}`}
+          title={QUANTITY_BASIS_LABEL[basis]}
+          aria-label={QUANTITY_BASIS_LABEL[basis]}
+        >
+          {QUANTITY_BASIS_ICON[basis]}
+        </span>
       </span>
       {item.is_non_food ? (
         <span className="purchase-row__nonfood muted">Not food</span>
@@ -164,6 +308,58 @@ function PurchaseRow({ item }: { item: PurchaseItem }) {
           P {formatGrams(item.protein_g)} · F {formatGrams(item.fat_g)} · C{' '}
           {formatGrams(item.carbs_g)}
         </span>
+      )}
+
+      {editing && (
+        <div className="purchase-row__edit-panel">
+          <div className="chat-input-row">
+            <input
+              type="number"
+              min={0}
+              step="any"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              onBlur={() => {
+                const n = Number(quantity)
+                if (quantity.trim() && !Number.isNaN(n) && n !== item.quantity) {
+                  onQuantityUnitSave({ quantity: n })
+                }
+              }}
+              aria-label="Quantity"
+            />
+            <select
+              value={unit}
+              onChange={(e) => {
+                setUnit(e.target.value)
+                onQuantityUnitSave({ unit: e.target.value })
+              }}
+              aria-label="Unit"
+            >
+              {UNIT_OPTIONS.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
+            {!item.is_non_food && (
+              <button
+                type="button"
+                className="btn-link"
+                onClick={() => setSearching((s) => !s)}
+              >
+                {searching ? 'Cancel search' : 'Fix match'}
+              </button>
+            )}
+          </div>
+          {searching && (
+            <MatchSearchPanel
+              item={item}
+              receiptId={item.receipt_id}
+              onCorrect={onCorrect}
+              onClose={() => setSearching(false)}
+            />
+          )}
+        </div>
       )}
     </li>
   )

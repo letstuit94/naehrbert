@@ -30,13 +30,14 @@ _GAP = {
 }
 
 
-def _suggestion(*ingredient_names, prep_minutes=10, cook_minutes=15):
+def _suggestion(*ingredient_names, prep_minutes=10, cook_minutes=15, servings=2):
     return GeminiRecipeSuggestion(
         title="Test recipe",
         ingredients=[RecipeIngredient(name=n, quantity="100 g") for n in ingredient_names],
         steps=["Do the thing."],
         prep_minutes=prep_minutes,
         cook_minutes=cook_minutes,
+        servings=servings,
         calories_kcal=500,
         protein_g=30,
         fat_g=20,
@@ -106,6 +107,13 @@ def test_build_prompt_omits_cuisine_and_time_section_when_not_given():
     prompt = recipe_engine.build_prompt(_PROFILE, _GAP, [])
     assert "Cuisine style" not in prompt
     assert "Time budget" not in prompt
+    assert "Servings:" not in prompt
+
+
+def test_build_prompt_includes_servings_when_given():
+    prompt = recipe_engine.build_prompt(_PROFILE, _GAP, [], servings=4)
+    assert "Servings:" in prompt
+    assert "4 servings" in prompt
 
 
 def test_retries_once_when_suggestion_exceeds_time_budget(monkeypatch):

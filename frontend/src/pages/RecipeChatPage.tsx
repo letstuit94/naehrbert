@@ -19,8 +19,8 @@ import { ChipListInput } from '../components/ChipListInput'
 // feels like a review rather than starting over) -- this chat only ever
 // collects NPS feedback + dietary style/allergies/dislikes, it never
 // generates a recipe itself. Recipe generation is a separate, repeatable
-// action on the Recipes page (RecipesPage.tsx), which also takes
-// cuisine/time inputs.
+// action on the Results page (ResultsPage.tsx), which also takes
+// cuisine/time/servings inputs.
 
 type PhaseKey = 'nps' | 'diet' | 'allergies' | 'dislikes'
 const PHASE_ORDER: PhaseKey[] = ['nps', 'diet', 'allergies', 'dislikes']
@@ -208,7 +208,7 @@ export function RecipeChatPage() {
         allergies: finalAnswers.allergies,
         dislikes: finalAnswers.dislikes,
       })
-      navigate('/recipes')
+      navigate('/results')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not save your preferences.')
       setStage('error')

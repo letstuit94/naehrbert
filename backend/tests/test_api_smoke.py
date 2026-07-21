@@ -361,6 +361,7 @@ def test_generate_recipe_endpoint(monkeypatch):
         steps=["Simmer lentils."],
         prep_minutes=5,
         cook_minutes=20,
+        servings=2,
         calories_kcal=450,
         protein_g=25,
         fat_g=10,
@@ -369,9 +370,10 @@ def test_generate_recipe_endpoint(monkeypatch):
     )
     captured_kwargs = {}
 
-    def fake_generate(profile, gap, recs, cuisine=None, max_time_minutes=None):
+    def fake_generate(profile, gap, recs, cuisine=None, max_time_minutes=None, servings=None):
         captured_kwargs["cuisine"] = cuisine
         captured_kwargs["max_time_minutes"] = max_time_minutes
+        captured_kwargs["servings"] = servings
         return fake_suggestion
 
     monkeypatch.setattr(recipes_api, "generate_and_assemble_recipe", fake_generate)
@@ -381,18 +383,21 @@ def test_generate_recipe_endpoint(monkeypatch):
         lambda row: {**row, "id": "recipe-1", "created_at": "2026-07-21T00:00:00+00:00"},
     )
 
-    resp = client.post("/recipes/generate", json={"cuisine": "Thai", "max_time_minutes": 30})
+    resp = client.post(
+        "/recipes/generate",
+        json={"cuisine": "Thai", "max_time_minutes": 30, "servings": 4},
+    )
     assert resp.status_code == 200
     body = resp.json()
     assert body["title"] == "Lentil bowl"
     assert body["ingredients"] == [{"name": "lentils", "quantity": "200 g"}]
-    assert captured_kwargs == {"cuisine": "Thai", "max_time_minutes": 30}
+    assert captured_kwargs == {"cuisine": "Thai", "max_time_minutes": 30, "servings": 4}
 
 
 def test_generate_recipe_without_body_uses_no_cuisine_or_time_limit(monkeypatch):
     """POST /recipes/generate with an empty body (the common case) must
-    still work -- cuisine/max_time_minutes are optional per-generation
-    inputs, not required ones."""
+    still work -- cuisine/max_time_minutes/servings are optional
+    per-generation inputs, not required ones."""
 
     monkeypatch.setattr(recipes_api.repo, "get_profile", lambda: _RECIPE_PROFILE_ROW)
     monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda: [])
@@ -403,6 +408,7 @@ def test_generate_recipe_without_body_uses_no_cuisine_or_time_limit(monkeypatch)
         steps=["Cook rice."],
         prep_minutes=5,
         cook_minutes=15,
+        servings=2,
         calories_kcal=300,
         protein_g=6,
         fat_g=1,
@@ -411,9 +417,10 @@ def test_generate_recipe_without_body_uses_no_cuisine_or_time_limit(monkeypatch)
     )
     captured_kwargs = {}
 
-    def fake_generate(profile, gap, recs, cuisine=None, max_time_minutes=None):
+    def fake_generate(profile, gap, recs, cuisine=None, max_time_minutes=None, servings=None):
         captured_kwargs["cuisine"] = cuisine
         captured_kwargs["max_time_minutes"] = max_time_minutes
+        captured_kwargs["servings"] = servings
         return fake_suggestion
 
     monkeypatch.setattr(recipes_api, "generate_and_assemble_recipe", fake_generate)
@@ -425,7 +432,7 @@ def test_generate_recipe_without_body_uses_no_cuisine_or_time_limit(monkeypatch)
 
     resp = client.post("/recipes/generate")
     assert resp.status_code == 200
-    assert captured_kwargs == {"cuisine": None, "max_time_minutes": None}
+    assert captured_kwargs == {"cuisine": None, "max_time_minutes": None, "servings": None}
 
 
 def test_generate_recipe_404_without_profile(monkeypatch):
@@ -438,7 +445,7 @@ def test_generate_recipe_returns_503_when_gemini_not_configured(monkeypatch):
     monkeypatch.setattr(recipes_api.repo, "get_profile", lambda: _RECIPE_PROFILE_ROW)
     monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda: [])
 
-    def raise_not_configured(profile, gap, recs, cuisine=None, max_time_minutes=None):
+    def raise_not_configured(profile, gap, recs, cuisine=None, max_time_minutes=None, servings=None):
         raise GeminiNotConfigured("GEMINI_API_KEY is not set")
 
     monkeypatch.setattr(recipes_api, "generate_and_assemble_recipe", raise_not_configured)

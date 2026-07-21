@@ -51,9 +51,9 @@ def generate_recipe(payload: RecipeGenerateRequest = RecipeGenerateRequest()):
     """Triggered from the Recipes page only -- the recipe-preferences chat
     (recipes/new) just collects NPS feedback + dietary style/allergies/
     dislikes and never generates anything itself. `cuisine`/
-    `max_time_minutes` are the only per-generation inputs the user gives;
-    everything else (dietary style, allergies, dislikes, the nutrient gap)
-    comes from the saved profile/analysis data by design."""
+    `max_time_minutes`/`servings` are the only per-generation inputs the
+    user gives; everything else (dietary style, allergies, dislikes, the
+    nutrient gap) comes from the saved profile/analysis data by design."""
 
     stored = repo.get_profile()
     if not stored:
@@ -72,6 +72,7 @@ def generate_recipe(payload: RecipeGenerateRequest = RecipeGenerateRequest()):
             diversity.get("recommendations", []),
             cuisine=payload.cuisine,
             max_time_minutes=payload.max_time_minutes,
+            servings=payload.servings,
         )
     except GeminiNotConfigured as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

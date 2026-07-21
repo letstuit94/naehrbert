@@ -68,6 +68,7 @@ def build_prompt(
     diversity_recs: List[str],
     cuisine: Optional[str] = None,
     max_time_minutes: Optional[int] = None,
+    servings: Optional[int] = None,
 ) -> str:
     diet_style = profile.dietary_style or DietaryStyle.OMNIVORE
     restriction_lines = [_DIET_INSTRUCTIONS[diet_style]]
@@ -91,6 +92,11 @@ def build_prompt(
     if max_time_minutes is not None:
         request_lines.append(
             f"- Time budget: prep time + cook time COMBINED must not exceed {max_time_minutes} minutes."
+        )
+    if servings is not None:
+        request_lines.append(
+            f"- Servings: scale ingredient quantities (and the total calorie/macro estimate) "
+            f"for exactly {servings} servings/portions."
         )
     request_block = ("\n\nThe user also asked for this recipe specifically:\n" + "\n".join(request_lines)) if request_lines else ""
 
@@ -119,8 +125,8 @@ approximate to the point of being wrong.
 
 Return the recipe title, the full ingredient list (each with a name and
 a natural quantity like "200 g" or "1 tbsp" or "2 cloves"), numbered
-preparation steps, prep time and cook time in minutes, and the total
-calorie/macro estimate.
+preparation steps, prep time and cook time in minutes, how many servings/
+portions it makes, and the total calorie/macro estimate.
 """
 
 
@@ -155,9 +161,10 @@ def generate_and_assemble_recipe(
     diversity_recs: List[str],
     cuisine: Optional[str] = None,
     max_time_minutes: Optional[int] = None,
+    servings: Optional[int] = None,
 ) -> GeminiRecipeSuggestion:
     restricted_terms = [*profile.allergies, *profile.dislikes]
-    prompt = build_prompt(profile, gap, diversity_recs, cuisine, max_time_minutes)
+    prompt = build_prompt(profile, gap, diversity_recs, cuisine, max_time_minutes, servings)
 
     suggestion = generate_recipe_suggestion(prompt, temperature=_TEMPERATURE)
     violation = _find_violation(suggestion, restricted_terms, max_time_minutes)

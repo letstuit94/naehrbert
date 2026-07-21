@@ -5,11 +5,9 @@ import { NavLink } from 'react-router-dom'
 const NAV_LINKS = [
   { to: '/', label: 'Onboarding' },
   { to: '/profile', label: 'Profile' },
-  { to: '/targets', label: 'Targets' },
   { to: '/upload', label: 'Upload' },
   { to: '/purchases', label: 'Purchases' },
   { to: '/results', label: 'Results' },
-  { to: '/recipes', label: 'Recipes' },
 ]
 
 export function NavBar() {

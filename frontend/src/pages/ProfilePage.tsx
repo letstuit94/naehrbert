@@ -318,7 +318,7 @@ export function ProfilePage() {
         )}
         {saved && (
           <p className="callout callout--success">
-            Saved. <Link to="/targets">See your updated targets →</Link>
+            Saved. <Link to="/results">See your updated targets →</Link>
           </p>
         )}
 
@@ -329,7 +329,7 @@ export function ProfilePage() {
 
       <h2>Dietary preferences</h2>
       <p>
-        Used to generate your <Link to="/recipes">recipe recommendations</Link> -- never
+        Used to generate your <Link to="/results">recipe recommendations</Link> -- never
         included in your calorie/macro targets above.
       </p>
 

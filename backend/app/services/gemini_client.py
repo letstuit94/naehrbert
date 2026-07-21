@@ -45,6 +45,19 @@ def generate_recipe_suggestion(prompt: str, temperature: float = 0.6) -> GeminiR
             response_mime_type="application/json",
             response_schema=GeminiRecipeSuggestion,
             temperature=temperature,
+            # The SDK makes exactly ONE attempt by default (no retry_options
+            # -> tenacity.stop_after_attempt(1)) -- confirmed live against
+            # the real API that Gemini can return a transient 503 ("high
+            # demand... try again later") that a short retry would very
+            # likely clear on its own. Keep this bounded (short backoff,
+            # only a couple of retries) so a genuinely down model still
+            # fails within a few seconds rather than leaving the user
+            # waiting a long time before the chat can show an error.
+            http_options=types.HttpOptions(
+                retry_options=types.HttpRetryOptions(
+                    attempts=3, initial_delay=1.0, max_delay=6.0
+                )
+            ),
         ),
     )
     if not isinstance(response.parsed, GeminiRecipeSuggestion):

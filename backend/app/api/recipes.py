@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException
 from backend.app.api.analysis import get_diversity, get_target_comparison
 from backend.app.db import repo
 from backend.app.models.profile import Profile
-from backend.app.models.recipe import Recipe
+from backend.app.models.recipe import Recipe, RecipeGenerateRequest
 from backend.app.services.dietary_inference import infer_dietary_style
 from backend.app.services.gemini_client import GeminiNotConfigured
 from backend.app.services.recipe_engine import generate_and_assemble_recipe
@@ -47,7 +47,14 @@ def get_inferred_dietary_style():
 
 
 @router.post("/generate")
-def generate_recipe():
+def generate_recipe(payload: RecipeGenerateRequest = RecipeGenerateRequest()):
+    """Triggered from the Recipes page only -- the recipe-preferences chat
+    (recipes/new) just collects NPS feedback + dietary style/allergies/
+    dislikes and never generates anything itself. `cuisine`/
+    `max_time_minutes` are the only per-generation inputs the user gives;
+    everything else (dietary style, allergies, dislikes, the nutrient gap)
+    comes from the saved profile/analysis data by design."""
+
     stored = repo.get_profile()
     if not stored:
         raise HTTPException(status_code=404, detail="No profile yet")
@@ -60,7 +67,11 @@ def generate_recipe():
 
     try:
         suggestion = generate_and_assemble_recipe(
-            profile, gap, diversity.get("recommendations", [])
+            profile,
+            gap,
+            diversity.get("recommendations", []),
+            cuisine=payload.cuisine,
+            max_time_minutes=payload.max_time_minutes,
         )
     except GeminiNotConfigured as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

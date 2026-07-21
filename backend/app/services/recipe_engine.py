@@ -62,7 +62,13 @@ def _gap_lines(gap: dict) -> List[str]:
     return lines
 
 
-def build_prompt(profile: Profile, gap: dict, diversity_recs: List[str]) -> str:
+def build_prompt(
+    profile: Profile,
+    gap: dict,
+    diversity_recs: List[str],
+    cuisine: Optional[str] = None,
+    max_time_minutes: Optional[int] = None,
+) -> str:
     diet_style = profile.dietary_style or DietaryStyle.OMNIVORE
     restriction_lines = [_DIET_INSTRUCTIONS[diet_style]]
 
@@ -78,6 +84,15 @@ def build_prompt(profile: Profile, gap: dict, diversity_recs: List[str]) -> str:
 
     gap_lines = _gap_lines(gap) or ["No macro-gap data available yet -- suggest a balanced recipe."]
     diversity_lines = [f"- {rec}" for rec in diversity_recs]
+
+    request_lines = []
+    if cuisine:
+        request_lines.append(f"- Cuisine style: {cuisine}. The recipe should authentically fit this cuisine.")
+    if max_time_minutes is not None:
+        request_lines.append(
+            f"- Time budget: prep time + cook time COMBINED must not exceed {max_time_minutes} minutes."
+        )
+    request_block = ("\n\nThe user also asked for this recipe specifically:\n" + "\n".join(request_lines)) if request_lines else ""
 
     return f"""You are Nährbert, a nutrition assistant. Suggest ONE realistic, cookable
 recipe for a home cook, using ordinary, commonly available ingredients --
@@ -95,6 +110,7 @@ remaining day of eating. It does not need to single-handedly close the
 whole gap above -- just favor ingredients that move things in the right
 direction (more of what's under target, less emphasis on what's over).
 Do not sacrifice a realistic, tasty recipe just to hit an exact number.
+{request_block}
 
 Estimate calories and macros (protein/fat/carbs/fiber) for the WHOLE
 recipe as prepared (not per serving), using standard nutrition knowledge
@@ -108,11 +124,14 @@ calorie/macro estimate.
 """
 
 
-def _find_restriction_violation(
-    suggestion: GeminiRecipeSuggestion, restricted_terms: List[str]
+def _find_violation(
+    suggestion: GeminiRecipeSuggestion,
+    restricted_terms: List[str],
+    max_time_minutes: Optional[int],
 ) -> Optional[str]:
     """Case-insensitive substring check of every restricted term against
-    every ingredient name. Returns the first violating term, if any."""
+    every ingredient name, plus the requested time budget if one was
+    given. Returns a description of the first violation found, if any."""
 
     names = [ing.name.lower() for ing in suggestion.ingredients]
     for term in restricted_terms:
@@ -120,31 +139,43 @@ def _find_restriction_violation(
         if not term_lower:
             continue
         if any(term_lower in name for name in names):
-            return term
+            return f'ingredient "{term}"'
+
+    if max_time_minutes is not None:
+        total = suggestion.prep_minutes + suggestion.cook_minutes
+        if total > max_time_minutes:
+            return f"total time {total} min exceeds the {max_time_minutes} min budget"
+
     return None
 
 
-def generate_and_assemble_recipe(profile: Profile, gap: dict, diversity_recs: List[str]) -> GeminiRecipeSuggestion:
+def generate_and_assemble_recipe(
+    profile: Profile,
+    gap: dict,
+    diversity_recs: List[str],
+    cuisine: Optional[str] = None,
+    max_time_minutes: Optional[int] = None,
+) -> GeminiRecipeSuggestion:
     restricted_terms = [*profile.allergies, *profile.dislikes]
-    prompt = build_prompt(profile, gap, diversity_recs)
+    prompt = build_prompt(profile, gap, diversity_recs, cuisine, max_time_minutes)
 
     suggestion = generate_recipe_suggestion(prompt, temperature=_TEMPERATURE)
-    violation = _find_restriction_violation(suggestion, restricted_terms)
+    violation = _find_violation(suggestion, restricted_terms, max_time_minutes)
     if violation is not None:
         # One retry with a sharper, violation-specific instruction before
         # giving up -- a single miss shouldn't silently persist an unsafe
-        # recipe, but it also shouldn't be a hard-fail on the first try.
+        # or out-of-budget recipe, but it also shouldn't be a hard-fail on
+        # the first try.
         reinforced_prompt = (
-            f"{prompt}\n\nIMPORTANT: your previous suggestion included \"{violation}\", which "
-            "is on the user's allergy/dislike list above. Do not include it or anything "
-            "derived from it this time."
+            f"{prompt}\n\nIMPORTANT: your previous suggestion violated a hard constraint "
+            f"({violation}). Fix this in your next suggestion."
         )
         suggestion = generate_recipe_suggestion(reinforced_prompt, temperature=_TEMPERATURE)
-        violation = _find_restriction_violation(suggestion, restricted_terms)
+        violation = _find_violation(suggestion, restricted_terms, max_time_minutes)
         if violation is not None:
             raise ValueError(
-                f"Gemini kept suggesting a restricted ingredient ('{violation}') despite "
-                "explicit allergy/dislike instructions -- refusing to save this recipe."
+                f"Gemini kept violating a hard constraint ({violation}) despite explicit "
+                "instructions -- refusing to save this recipe."
             )
 
     return suggestion

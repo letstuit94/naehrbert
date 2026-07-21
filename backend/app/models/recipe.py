@@ -50,3 +50,13 @@ class Recipe(GeminiRecipeSuggestion):
 
     id: str
     created_at: Optional[datetime] = None
+
+
+class RecipeGenerateRequest(BaseModel):
+    """POST /recipes/generate body — the user-facing inputs on the Recipes
+    page. Everything else the prompt needs (dietary style, allergies,
+    dislikes, nutrient gap) comes from the saved profile/analysis data, not
+    from the user typing it in each time."""
+
+    cuisine: Optional[str] = None
+    max_time_minutes: Optional[int] = Field(default=None, ge=1)

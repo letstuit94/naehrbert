@@ -30,13 +30,13 @@ _GAP = {
 }
 
 
-def _suggestion(*ingredient_names):
+def _suggestion(*ingredient_names, prep_minutes=10, cook_minutes=15):
     return GeminiRecipeSuggestion(
         title="Test recipe",
         ingredients=[RecipeIngredient(name=n, quantity="100 g") for n in ingredient_names],
         steps=["Do the thing."],
-        prep_minutes=10,
-        cook_minutes=15,
+        prep_minutes=prep_minutes,
+        cook_minutes=cook_minutes,
         calories_kcal=500,
         protein_g=30,
         fat_g=20,
@@ -94,3 +94,42 @@ def test_dislike_is_also_enforced_not_just_allergies(monkeypatch):
     )
     with pytest.raises(ValueError):
         recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP, [])
+
+
+def test_build_prompt_includes_cuisine_and_time_budget_when_given():
+    prompt = recipe_engine.build_prompt(_PROFILE, _GAP, [], cuisine="Thai", max_time_minutes=30)
+    assert "Thai" in prompt
+    assert "30 minutes" in prompt
+
+
+def test_build_prompt_omits_cuisine_and_time_section_when_not_given():
+    prompt = recipe_engine.build_prompt(_PROFILE, _GAP, [])
+    assert "Cuisine style" not in prompt
+    assert "Time budget" not in prompt
+
+
+def test_retries_once_when_suggestion_exceeds_time_budget(monkeypatch):
+    calls = []
+
+    def fake_generate(prompt, temperature=0.6):
+        calls.append(prompt)
+        if len(calls) == 1:
+            return _suggestion("lentils", prep_minutes=20, cook_minutes=30)  # 50 min, over budget
+        return _suggestion("lentils", prep_minutes=10, cook_minutes=15)  # 25 min, within budget
+
+    monkeypatch.setattr(recipe_engine, "generate_recipe_suggestion", fake_generate)
+    result = recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP, [], max_time_minutes=30)
+
+    assert len(calls) == 2
+    assert "exceeds the 30 min budget" in calls[1]
+    assert result.prep_minutes + result.cook_minutes == 25
+
+
+def test_raises_when_time_budget_still_violated_after_retry(monkeypatch):
+    monkeypatch.setattr(
+        recipe_engine,
+        "generate_recipe_suggestion",
+        lambda prompt, temperature=0.6: _suggestion("lentils", prep_minutes=20, cook_minutes=30),
+    )
+    with pytest.raises(ValueError):
+        recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP, [], max_time_minutes=30)

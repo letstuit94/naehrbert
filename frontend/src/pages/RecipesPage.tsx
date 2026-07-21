@@ -1,23 +1,28 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { ApiError, getRecipes, type Recipe } from '../lib/api'
+import type { FormEvent } from 'react'
+import {
+  ApiError,
+  generateRecipe,
+  getRecipes,
+  type Recipe,
+  type RecipeGenerateInput,
+} from '../lib/api'
 
 type LoadState =
   | { status: 'loading' }
-  | { status: 'empty' }
   | { status: 'error'; message: string }
   | { status: 'ready'; recipes: Recipe[] }
 
 export function RecipesPage() {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
+  const [cuisine, setCuisine] = useState('')
+  const [maxTimeMinutes, setMaxTimeMinutes] = useState('')
+  const [generating, setGenerating] = useState(false)
+  const [generateError, setGenerateError] = useState<string | null>(null)
 
   useEffect(() => {
     getRecipes()
-      .then((recipes) => {
-        setState(
-          recipes.length === 0 ? { status: 'empty' } : { status: 'ready', recipes },
-        )
-      })
+      .then((recipes) => setState({ status: 'ready', recipes }))
       .catch((err) => {
         setState({
           status: 'error',
@@ -26,48 +31,90 @@ export function RecipesPage() {
       })
   }, [])
 
-  if (state.status === 'loading') {
-    return (
-      <section>
-        <h1>Recipes</h1>
-        <p>Loading…</p>
-      </section>
-    )
-  }
+  async function handleGenerate(e: FormEvent) {
+    e.preventDefault()
+    setGenerating(true)
+    setGenerateError(null)
+    try {
+      const input: RecipeGenerateInput = {}
+      const trimmedCuisine = cuisine.trim()
+      if (trimmedCuisine) input.cuisine = trimmedCuisine
+      const parsedTime = Number(maxTimeMinutes)
+      if (maxTimeMinutes.trim() && Number.isFinite(parsedTime) && parsedTime > 0) {
+        input.max_time_minutes = parsedTime
+      }
 
-  if (state.status === 'error') {
-    return (
-      <section>
-        <h1>Recipes</h1>
-        <p className="form-error" role="alert">
-          {state.message}
-        </p>
-      </section>
-    )
-  }
-
-  if (state.status === 'empty') {
-    return (
-      <section>
-        <h1>Recipes</h1>
-        <p>
-          No recipes yet. Once you've uploaded 50+ matched food items, head to your{' '}
-          <Link to="/results">Results</Link> to unlock recipe recommendations.
-        </p>
-      </section>
-    )
+      const recipe = await generateRecipe(input)
+      setState((prev) => ({
+        status: 'ready',
+        recipes: [recipe, ...(prev.status === 'ready' ? prev.recipes : [])],
+      }))
+      setCuisine('')
+      setMaxTimeMinutes('')
+    } catch (err) {
+      setGenerateError(
+        err instanceof ApiError ? err.message : 'Could not generate a recipe right now.',
+      )
+    } finally {
+      setGenerating(false)
+    }
   }
 
   return (
     <section>
       <h1>Recipes</h1>
-      <p>
-        Recipes Nährbert has suggested to help close your nutrient gaps, newest first.
-      </p>
 
-      {state.recipes.map((recipe) => (
-        <RecipeCard key={recipe.id} recipe={recipe} />
-      ))}
+      <form className="form" onSubmit={handleGenerate}>
+        <div className="form-field">
+          <label htmlFor="recipe-cuisine">Cuisine (optional)</label>
+          <input
+            id="recipe-cuisine"
+            type="text"
+            placeholder="e.g. Italian, Thai, Mexican..."
+            value={cuisine}
+            onChange={(e) => setCuisine(e.target.value)}
+          />
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="recipe-max-time">Max. total time in minutes (optional)</label>
+          <input
+            id="recipe-max-time"
+            type="number"
+            min={1}
+            placeholder="e.g. 30"
+            value={maxTimeMinutes}
+            onChange={(e) => setMaxTimeMinutes(e.target.value)}
+          />
+        </div>
+
+        {generateError && (
+          <p className="form-error" role="alert">
+            {generateError}
+          </p>
+        )}
+
+        <button className="btn btn-primary" type="submit" disabled={generating}>
+          {generating ? 'Generating…' : 'Generate recipe'}
+        </button>
+      </form>
+
+      {state.status === 'loading' && <p>Loading…</p>}
+
+      {state.status === 'error' && (
+        <p className="form-error" role="alert">
+          {state.message}
+        </p>
+      )}
+
+      {state.status === 'ready' && state.recipes.length === 0 && (
+        <p>
+          No recipes yet — fill in the form above (or leave it blank) and generate one.
+        </p>
+      )}
+
+      {state.status === 'ready' &&
+        state.recipes.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} />)}
     </section>
   )
 }

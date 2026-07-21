@@ -2,10 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ApiError,
-  generateRecipe,
   getInferredDietaryStyle,
   getProfile,
-  getUnlockStatus,
   submitFeedback,
   updateDietaryPreferences,
   type DietaryStyle,
@@ -16,15 +14,18 @@ import { ALLERGEN_OPTIONS, DIETARY_STYLE_OPTIONS } from '../lib/recipePrefsSteps
 import { ChipListInput } from '../components/ChipListInput'
 
 // The recipe-preferences chat (recipe recommendations feature): built on
-// the same chat engine as OnboardingPage.tsx. Runs the full NPS +
-// diet/allergy/dislike Q&A only the first time (prefs_completed == false);
-// every later visit skips straight to generating a new recipe from the
-// already-saved profile + latest nutrient gap.
+// the same chat engine as OnboardingPage.tsx. Runs every time the button
+// is tapped (pre-filled from whatever was saved last time, so revisiting
+// feels like a review rather than starting over) -- this chat only ever
+// collects NPS feedback + dietary style/allergies/dislikes, it never
+// generates a recipe itself. Recipe generation is a separate, repeatable
+// action on the Recipes page (RecipesPage.tsx), which also takes
+// cuisine/time inputs.
 
 type PhaseKey = 'nps' | 'diet' | 'allergies' | 'dislikes'
 const PHASE_ORDER: PhaseKey[] = ['nps', 'diet', 'allergies', 'dislikes']
 
-type Stage = 'loading' | 'chat' | 'saving' | 'generating' | 'done' | 'error'
+type Stage = 'loading' | 'chat' | 'saving' | 'error'
 
 interface Answers {
   npsScore: number | null
@@ -38,10 +39,13 @@ function styleNoun(style: DietaryStyle): string {
   return found ? found.label.replace(/^\S+\s/, '').toLowerCase() : style
 }
 
+type StyleSource = 'saved' | 'inferred' | null
+
 function askFor(
   phase: PhaseKey,
   name: string | null,
   inferredStyle: DietaryStyle | null,
+  styleSource: StyleSource,
 ): SeqItem[] {
   if (phase === 'nps') {
     return [
@@ -55,13 +59,21 @@ function askFor(
     ]
   }
   if (phase === 'diet') {
-    return inferredStyle
-      ? [
-          typedItem(
-            `Based on your purchases so far, it looks like you eat mostly ${styleNoun(inferredStyle)}. Does that sound right, or should I correct it?`,
-          ),
-        ]
-      : [typedItem('How would you describe how you eat?')]
+    if (styleSource === 'saved' && inferredStyle) {
+      return [
+        typedItem(
+          `Last time you told me you eat mostly ${styleNoun(inferredStyle)}. Still right, or would you like to change it?`,
+        ),
+      ]
+    }
+    if (styleSource === 'inferred' && inferredStyle) {
+      return [
+        typedItem(
+          `Based on your purchases so far, it looks like you eat mostly ${styleNoun(inferredStyle)}. Does that sound right, or should I correct it?`,
+        ),
+      ]
+    }
+    return [typedItem('How would you describe how you eat?')]
   }
   if (phase === 'allergies') {
     return [typedItem('Do you have any allergies or intolerances I should know about?')]
@@ -109,6 +121,7 @@ export function RecipeChatPage() {
 
   const [profileName, setProfileName] = useState<string | null>(null)
   const [inferredStyle, setInferredStyle] = useState<DietaryStyle | null>(null)
+  const [styleSource, setStyleSource] = useState<StyleSource>(null)
 
   const [phaseIndex, setPhaseIndex] = useState(0)
   const [answers, setAnswers] = useState<Answers>({
@@ -142,27 +155,36 @@ export function RecipeChatPage() {
 
     async function init() {
       try {
-        const [profile, unlock] = await Promise.all([getProfile(), getUnlockStatus()])
+        const profile = await getProfile()
         if (cancelled) return
         setProfileName(profile.name ?? null)
 
-        if (unlock.prefs_completed) {
-          setStage('generating')
-          runGenerate()
-          return
-        }
-
-        let inferred: DietaryStyle | null = null
-        try {
-          const res = await getInferredDietaryStyle()
-          inferred = res.dietary_style
-        } catch {
-          // no confirmed items to infer from yet -- fall back to asking plainly
+        // Runs every time the button is tapped -- this chat's only job is
+        // collecting NPS feedback and confirming/updating dietary
+        // preferences; recipe generation itself only happens on the
+        // Recipes page. Pre-fill from whatever was saved last time (if
+        // anything) so re-visiting feels like a review, not starting over.
+        let inferred: DietaryStyle | null = profile.dietary_style ?? null
+        let source: StyleSource = inferred ? 'saved' : null
+        if (!inferred) {
+          try {
+            const res = await getInferredDietaryStyle()
+            inferred = res.dietary_style
+            source = 'inferred'
+          } catch {
+            // no confirmed items to infer from yet -- fall back to asking plainly
+          }
         }
         if (cancelled) return
         setInferredStyle(inferred)
-        setAnswers((prev) => ({ ...prev, dietaryStyle: inferred }))
-        setLiveQueue(askFor('nps', profile.name ?? null, inferred))
+        setStyleSource(source)
+        setAnswers((prev) => ({
+          ...prev,
+          dietaryStyle: inferred,
+          allergies: profile.allergies ?? [],
+          dislikes: profile.dislikes ?? [],
+        }))
+        setLiveQueue(askFor('nps', profile.name ?? null, inferred, source))
         setLiveRevealed(0)
         setStage('chat')
       } catch (err) {
@@ -176,24 +198,9 @@ export function RecipeChatPage() {
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function runGenerate() {
-    setStage('generating')
-    try {
-      await generateRecipe()
-      setStage('done')
-      navigate('/recipes')
-    } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : 'Could not generate a recipe right now.',
-      )
-      setStage('error')
-    }
-  }
-
-  async function finishPrefsAndGenerate(finalAnswers: Answers) {
+  async function finishPrefs(finalAnswers: Answers) {
     setStage('saving')
     try {
       await updateDietaryPreferences({
@@ -201,7 +208,7 @@ export function RecipeChatPage() {
         allergies: finalAnswers.allergies,
         dislikes: finalAnswers.dislikes,
       })
-      await runGenerate()
+      navigate('/recipes')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not save your preferences.')
       setStage('error')
@@ -213,19 +220,19 @@ export function RecipeChatPage() {
       ...f,
       {
         phase: currentPhase,
-        ask: askFor(currentPhase, profileName, inferredStyle),
+        ask: askFor(currentPhase, profileName, inferredStyle, styleSource),
         answer: answerLabel(currentPhase, next),
       },
     ])
 
     if (phaseIndex >= PHASE_ORDER.length - 1) {
-      void finishPrefsAndGenerate(next)
+      void finishPrefs(next)
       return
     }
 
     const nextPhase = PHASE_ORDER[phaseIndex + 1]
     const reply = replyFor(currentPhase, next)
-    const ask = askFor(nextPhase, profileName, inferredStyle)
+    const ask = askFor(nextPhase, profileName, inferredStyle, styleSource)
     setLiveQueue([...reply, ...ask])
     setLiveRevealed(0)
     setPhaseIndex((i) => i + 1)
@@ -301,20 +308,14 @@ export function RecipeChatPage() {
     )
   }
 
-  if (stage === 'generating' || stage === 'saving' || stage === 'done') {
+  if (stage === 'saving') {
     return (
       <section>
         <h1>Recipe recommendations</h1>
         <div className="chat-card">
           <div className="chat-history">
             <ChatBubble from="bot">
-              <TypewriterText
-                text={
-                  stage === 'saving'
-                    ? 'Saving your preferences...'
-                    : "Great, let's get you a new recipe to help close your gaps..."
-                }
-              />
+              <TypewriterText text="Saving your preferences..." />
             </ChatBubble>
           </div>
         </div>

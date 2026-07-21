@@ -5,10 +5,12 @@ import {
   getDiversity,
   getSummary,
   getTargetComparison,
+  getUnlockStatus,
   type CompositionResult,
   type DiversityResult,
   type SummaryResult,
   type TargetComparisonResult,
+  type UnlockStatus,
 } from '../lib/api'
 
 type Slice<T> = { data: T | null; unavailable: boolean }
@@ -37,6 +39,10 @@ export function ResultsPage() {
     data: null,
     unavailable: false,
   })
+  const [unlockStatus, setUnlockStatus] = useState<Slice<UnlockStatus>>({
+    data: null,
+    unavailable: false,
+  })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -45,7 +51,8 @@ export function ResultsPage() {
       getComposition(),
       getTargetComparison(),
       getDiversity(),
-    ]).then(([s, c, t, d]) => {
+      getUnlockStatus(),
+    ]).then(([s, c, t, d, u]) => {
       setSummary(
         s.status === 'fulfilled'
           ? { data: s.value, unavailable: false }
@@ -64,6 +71,11 @@ export function ResultsPage() {
       setDiversity(
         d.status === 'fulfilled'
           ? { data: d.value, unavailable: false }
+          : { data: null, unavailable: true },
+      )
+      setUnlockStatus(
+        u.status === 'fulfilled'
+          ? { data: u.value, unavailable: false }
           : { data: null, unavailable: true },
       )
       setLoading(false)
@@ -124,7 +136,49 @@ export function ResultsPage() {
       {diversity.data && diversity.data.recommendations.length > 0 && (
         <DiversityCallouts diversity={diversity.data} />
       )}
+
+      {unlockStatus.data && <UnlockRecipesSection status={unlockStatus.data} />}
     </section>
+  )
+}
+
+function UnlockRecipesSection({ status }: { status: UnlockStatus }) {
+  const pct = Math.min(
+    100,
+    Math.round((status.matched_items_count / status.threshold) * 100),
+  )
+
+  return (
+    <div className="unlock-recipes">
+      <h2>Unlock recipes</h2>
+      {status.unlocked ? (
+        <>
+          <p className="callout callout--success">
+            You've uploaded {status.matched_items_count} matched food items -- recipe
+            recommendations are unlocked.
+          </p>
+          <Link to="/recipes/new" className="btn btn-primary">
+            Get recipe recommendations to close your gaps
+          </Link>
+        </>
+      ) : (
+        <>
+          <p>To unlock recipe recommendations upload 50+ food items.</p>
+          <div
+            className="progress-bar"
+            role="progressbar"
+            aria-valuenow={status.matched_items_count}
+            aria-valuemin={0}
+            aria-valuemax={status.threshold}
+          >
+            <div className="progress-bar__fill" style={{ width: `${pct}%` }} />
+          </div>
+          <p className="muted">
+            {status.matched_items_count} / {status.threshold} matched items
+          </p>
+        </>
+      )}
+    </div>
   )
 }
 

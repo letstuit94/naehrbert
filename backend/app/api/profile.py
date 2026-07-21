@@ -1,9 +1,11 @@
 """Epic 1 (onboarding) & Epic 2 (target calculation) endpoints."""
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, HTTPException
 
 from backend.app.db import repo
-from backend.app.models.profile import Profile, ProfileCreate
+from backend.app.models.profile import DietaryPreferencesUpdate, Profile, ProfileCreate
 from backend.app.services.ideal_profile import compute_ideal_profile, macro_percentages
 
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -43,3 +45,23 @@ def read_targets():
     if not stored:
         raise HTTPException(status_code=404, detail="No profile yet")
     return _targets_payload(Profile(**stored))
+
+
+@router.patch("/preferences")
+def update_dietary_preferences(payload: DietaryPreferencesUpdate):
+    """Recipe-preferences chat (or the Profile page) saves dietary style/
+    allergies/dislikes here -- separate from the biometric ProfileCreate
+    fields, so editing them never requires re-submitting height/weight/etc.
+    Stamps `recipe_prefs_completed_at` so the recipe chat skips straight to
+    generation on future visits (recipe-recommendations feature)."""
+
+    stored = repo.get_profile()
+    if not stored:
+        raise HTTPException(status_code=404, detail="No profile yet")
+
+    fields = {
+        **payload.model_dump(mode="json"),
+        "recipe_prefs_completed_at": datetime.now(timezone.utc).isoformat(),
+    }
+    updated = repo.update_dietary_preferences(fields)
+    return Profile(**updated)

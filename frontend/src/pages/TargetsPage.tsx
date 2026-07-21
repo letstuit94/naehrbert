@@ -152,7 +152,8 @@ export function TargetsPage() {
       </details>
 
       <p>
-        <Link to="/">Edit profile</Link> · <Link to="/upload">Upload a receipt →</Link>
+        <Link to="/profile">Edit profile</Link> ·{' '}
+        <Link to="/upload">Upload a receipt →</Link>
       </p>
     </section>
   )

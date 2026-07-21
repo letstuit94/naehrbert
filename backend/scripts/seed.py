@@ -68,7 +68,7 @@ def seed_receipt() -> None:
     for item in saved_items:
         if item.get("is_non_food"):
             continue
-        matched = resolve_item(item)
+        matched = resolve_item({**item, "store": receipt.get("store")})
         repo.update_receipt_item(item["id"], matched_product_to_row(matched))
 
     repo.set_receipt_status(receipt["id"], "confirmed")

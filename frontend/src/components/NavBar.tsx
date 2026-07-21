@@ -1,12 +1,15 @@
 import { NavLink } from 'react-router-dom'
 
-// Persistent nav across all 4 routes, incl. "Results" (Epic 7.3) so users
-// can get back to their latest analysis at any time without re-entering data.
+// Persistent nav across all routes, incl. "Results" (Epic 7.3) so users can
+// get back to their latest analysis at any time without re-entering data.
 const NAV_LINKS = [
   { to: '/', label: 'Onboarding' },
+  { to: '/profile', label: 'Profile' },
   { to: '/targets', label: 'Targets' },
   { to: '/upload', label: 'Upload' },
+  { to: '/purchases', label: 'Purchases' },
   { to: '/results', label: 'Results' },
+  { to: '/recipes', label: 'Recipes' },
 ]
 
 export function NavBar() {

@@ -46,3 +46,9 @@ pydantic-settings==2.14.2
 # the app runs from the committed cached JSON at runtime.
 # ==========================
 openpyxl==3.1.5
+
+# ==========================
+# Gemini (recipe recommendations feature) — the current unified SDK, NOT
+# the deprecated `google-generativeai` package.
+# ==========================
+google-genai==2.12.1

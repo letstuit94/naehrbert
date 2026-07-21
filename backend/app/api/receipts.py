@@ -70,8 +70,19 @@ def _persist_parsed(parsed: dict, source: str, raw_text: Optional[str]) -> dict:
     # insert rather than waiting for confirm_receipt's pass below. Editing
     # an item during review leaves its match stale until Confirm, which
     # unconditionally re-resolves every remaining item regardless.
+    #
+    # receipt_items has no `store` column (it lives on the parent receipt),
+    # so resolve_item's Tier-0 lookup (resolver._learned -> item.get("store"))
+    # was always seeing None here -- every verified-match lookup silently
+    # degraded to the store-agnostic scope only, missing every row recorded
+    # under a real store (i.e. nearly all of them). `store` must be merged
+    # onto the transient dict passed to resolve_item (not persisted onto
+    # the row itself -- matched_product_to_row never includes it).
     resolved_items = [
-        repo.update_receipt_item(item["id"], matched_product_to_row(resolve_item(item)))
+        repo.update_receipt_item(
+            item["id"],
+            matched_product_to_row(resolve_item({**item, "store": receipt.get("store")})),
+        )
         for item in saved_items
     ]
     return {"receipt": receipt, "items": resolved_items}
@@ -138,7 +149,7 @@ def confirm_receipt(receipt_id: str):
     for item in repo.get_receipt_items(receipt_id):
         if item.get("is_non_food"):
             continue
-        matched = resolve_item(item)
+        matched = resolve_item({**item, "store": receipt.get("store")})
         matched_products.append(matched)
         updated.append(repo.update_receipt_item(item["id"], matched_product_to_row(matched)))
 
@@ -228,8 +239,15 @@ def correct_item(receipt_id: str, item_id: str, payload: ItemCorrection):
     }
     updated = repo.update_receipt_item(item_id, row)
 
+    # Keyed on the already-cleaned `name`, not `original_text` -- the Tier-0
+    # read path (resolver._learned) only ever looks up by `name` (see its
+    # comment), so keying the write side on the untouched receipt line
+    # instead meant a correction could carry OCR/price/tax-letter cruft
+    # (e.g. "Bio Paprika Mix 400g 2,29 B") that normalize_match_key doesn't
+    # strip the same way it strips an already-cleaned name, silently
+    # writing a key the read path would never look up again.
     verified_matches.record_verified_match(
-        raw_text=item.get("original_text") or item["name"],
+        raw_text=item["name"],
         store=receipt.get("store"),
         off_id=payload.off_id,
         bls_code=payload.bls_code,

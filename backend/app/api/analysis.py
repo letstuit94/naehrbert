@@ -9,6 +9,7 @@ from backend.app.services.basket_composition import compute_basket_composition
 from backend.app.services.bucketing import compute_buckets
 from backend.app.services.diversity import compute_diversity
 from backend.app.services.ideal_profile import compute_ideal_profile, macro_percentages
+from backend.app.services.nutrition_profile import grams_for
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
@@ -42,6 +43,52 @@ def get_summary():
         "receipts_count": len({item["receipt_id"] for item in items}),
         "items_count": len(items),
     }
+
+
+@router.get("/purchases")
+def get_purchases():
+    """Purchases page — every item across every confirmed receipt (food AND
+    non-food, unlike the food-only aggregates below), with where it was
+    bought, the actual kcal/macros for the purchased quantity (not the
+    stored per-100g reference values -- see nutrition_profile.grams_for),
+    and how it was matched."""
+
+    rows = repo.get_all_confirmed_receipt_items_with_receipt_info()
+    items = []
+    for row in rows:
+        receipt = row.get("receipts") or {}
+        cal_per_100g = row.get("calories_kcal")
+        actual = {"calories_kcal": None, "protein_g": None, "fat_g": None, "carbs_g": None, "fiber_g": None}
+        if cal_per_100g is not None:
+            factor = (
+                grams_for(row.get("quantity"), row.get("unit"), row.get("category"), row.get("name")) / 100.0
+            )
+            actual = {
+                "calories_kcal": round(cal_per_100g * factor, 1),
+                "protein_g": round((row.get("protein_g") or 0.0) * factor, 1),
+                "fat_g": round((row.get("fat_g") or 0.0) * factor, 1),
+                "carbs_g": round((row.get("carbs_g") or 0.0) * factor, 1),
+                "fiber_g": round((row.get("fiber_g") or 0.0) * factor, 1),
+            }
+        items.append(
+            {
+                "id": row["id"],
+                "receipt_id": row["receipt_id"],
+                "name": row["name"],
+                "store": receipt.get("store"),
+                "purchased_at": receipt.get("purchased_at") or receipt.get("created_at"),
+                "quantity": row.get("quantity"),
+                "unit": row.get("unit"),
+                "is_non_food": row.get("is_non_food", False),
+                "match_type": row.get("match_type"),
+                "matched_name": row.get("matched_name"),
+                "fallback_category": row.get("fallback_category"),
+                "confidence": row.get("confidence"),
+                **actual,
+            }
+        )
+    items.sort(key=lambda i: i["purchased_at"] or "", reverse=True)
+    return {"items": items}
 
 
 @router.get("/composition")

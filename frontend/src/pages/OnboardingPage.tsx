@@ -30,6 +30,14 @@ import {
   type Answers,
   type StepDef,
 } from '../lib/chatSteps'
+import { ChatBubble, SequenceView, TypewriterText } from '../lib/chatEngine'
+import {
+  bulletList,
+  nodeItem,
+  renderStaticSequence,
+  typedItem,
+  type SeqItem,
+} from '../lib/chatSequence'
 
 // Chat-style onboarding (Epic 1.1) -- a warmer alternative to a plain form,
 // adapted from an earlier version of this app (see repo-root
@@ -38,23 +46,11 @@ import {
 // typed chat bubbles: the previous step's reply finishes typing before the
 // next step's question starts, and that question's input controls only
 // appear once the question itself has finished typing.
-
-type SeqItem = { kind: 'typed'; text: string } | { kind: 'node'; node: ReactNode }
-const typedItem = (text: string): SeqItem => ({ kind: 'typed', text })
-const nodeItem = (n: ReactNode): SeqItem => ({ kind: 'node', node: n })
-
-const TYPEWRITER_MS_PER_CHAR = 19
-const NODE_PAUSE_MS = 700
-
-function bulletList(items: string[]): ReactNode {
-  return (
-    <ul className="chat-bullets">
-      {items.map((item, i) => (
-        <li key={i}>{item}</li>
-      ))}
-    </ul>
-  )
-}
+//
+// The typewriter/bubble/sequencing machinery itself lives in
+// ../lib/chatEngine.tsx, shared with the recipe-preferences chat
+// (RecipeChatPage.tsx) -- everything below is onboarding-specific content
+// built on top of that shared engine.
 
 function bmrPreviewNode(bmr: number): ReactNode {
   return (
@@ -129,140 +125,6 @@ function macroListNode(ideal: IdealProfile): ReactNode {
           <strong>{ideal.fat_g}g</strong> fat
         </li>
       </ul>
-    </>
-  )
-}
-
-// ── Typing engine ─────────────────────────────────────────────────────────
-
-// Mounted exactly once per bubble (SequenceView swaps a "live" typing
-// bubble for plain static text once it's done -- see below), so `text`
-// never changes across this component's lifetime; the effect below is
-// correctly mount-once, not a reset-on-prop-change.
-function TypewriterText({ text, onDone }: { text: string; onDone?: () => void }) {
-  const [shown, setShown] = useState(0)
-  const onDoneRef = useRef(onDone)
-  const doneRef = useRef(false)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  useEffect(() => {
-    onDoneRef.current = onDone
-  }, [onDone])
-
-  useEffect(() => {
-    if (!text) {
-      doneRef.current = true
-      onDoneRef.current?.()
-      return
-    }
-    let i = 0
-    intervalRef.current = setInterval(() => {
-      i += 1
-      setShown(i)
-      if (i >= text.length) {
-        if (intervalRef.current) clearInterval(intervalRef.current)
-        doneRef.current = true
-        onDoneRef.current?.()
-      }
-    }, TYPEWRITER_MS_PER_CHAR)
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  function skip() {
-    if (doneRef.current) return
-    if (intervalRef.current) clearInterval(intervalRef.current)
-    setShown(text.length)
-    doneRef.current = true
-    onDoneRef.current?.()
-  }
-
-  return (
-    <span onClick={skip} className="chat-typing">
-      {text.slice(0, shown)}
-    </span>
-  )
-}
-
-function ChatBubble({ from, children }: { from: 'bot' | 'user'; children: ReactNode }) {
-  return (
-    <div
-      className={from === 'user' ? 'chat-row chat-row--user' : 'chat-row chat-row--bot'}
-    >
-      {from === 'bot' && (
-        <span className="chat-avatar" aria-hidden>
-          🌱
-        </span>
-      )}
-      <div
-        className={
-          from === 'user'
-            ? 'chat-bubble chat-bubble--user'
-            : 'chat-bubble chat-bubble--bot'
-        }
-      >
-        {children}
-      </div>
-    </div>
-  )
-}
-
-function renderStaticSequence(items: SeqItem[]): ReactNode {
-  return (
-    <>
-      {items.map((item, i) => (
-        <ChatBubble key={i} from="bot">
-          {item.kind === 'node' ? item.node : item.text}
-        </ChatBubble>
-      ))}
-    </>
-  )
-}
-
-function SequenceView({
-  items,
-  globalOffset,
-  turnRevealed,
-  onAdvance,
-}: {
-  items: SeqItem[]
-  globalOffset: number
-  turnRevealed: number
-  onAdvance: () => void
-}) {
-  const liveLocalIndex = turnRevealed - globalOffset
-  const liveItem =
-    liveLocalIndex >= 0 && liveLocalIndex < items.length
-      ? items[liveLocalIndex]
-      : undefined
-
-  useEffect(() => {
-    if (liveItem?.kind !== 'node') return
-    const t = setTimeout(onAdvance, NODE_PAUSE_MS)
-    return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [globalOffset, turnRevealed])
-
-  return (
-    <>
-      {items.map((item, localI) => {
-        const globalI = globalOffset + localI
-        if (globalI > turnRevealed) return null
-        const isLive = globalI === turnRevealed
-        return (
-          <ChatBubble key={globalI} from="bot">
-            {item.kind === 'node' ? (
-              item.node
-            ) : isLive ? (
-              <TypewriterText text={item.text} onDone={onAdvance} />
-            ) : (
-              item.text
-            )}
-          </ChatBubble>
-        )
-      })}
     </>
   )
 }
@@ -388,6 +250,7 @@ export function OnboardingPage() {
     setError(null)
     try {
       const payload: ProfileInput = {
+        name: finalAnswers.name.trim() || null,
         sex: finalAnswers.sex as Sex,
         date_of_birth: finalAnswers.date_of_birth,
         height_cm: Number(finalAnswers.height_cm),

@@ -1,0 +1,48 @@
+# ==========================
+# Web API
+# ==========================
+fastapi==0.139.0
+uvicorn==0.50.1
+python-multipart==0.0.32
+
+# ==========================
+# Environment variables
+# ==========================
+python-dotenv==1.2.2
+
+# ==========================
+# Supabase (backend is the only Supabase client — no auth, no client-side
+# Storage access, so storage3 isn't needed)
+# ==========================
+supabase==2.31.0
+postgrest==2.31.0
+
+# ==========================
+# Local receipt text extraction (Epic 3): on-device OCR + PDF text-layer
+# extraction, fully offline. pytesseract needs the system `tesseract`
+# binary + German model (tesseract-ocr, tesseract-ocr-deu) — see Dockerfile.
+# ==========================
+pymupdf==1.28.0
+pytesseract==0.3.13
+pillow==12.3.0
+opencv-python-headless==5.0.0.93
+numpy==2.4.6
+
+# ==========================
+# HTTP requests (OpenFoodFacts lookups)
+# ==========================
+requests==2.34.2
+httpx==0.28.1
+
+# ==========================
+# Data validation
+# ==========================
+pydantic==2.13.4
+pydantic-settings==2.14.2
+
+# ==========================
+# BLS 4.0 food-composition table (Epic 4). openpyxl parses the xlsx once
+# to build services/_bls_cache.json; only needed to (re)build that cache —
+# the app runs from the committed cached JSON at runtime.
+# ==========================
+openpyxl==3.1.5

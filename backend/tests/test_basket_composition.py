@@ -54,3 +54,43 @@ def test_compute_basket_composition_reports_fiber_as_a_density_not_a_pct():
     assert composition is not None
     # 10g fiber per 100g -> 50g fiber for the 500g purchased; 370kcal/100g -> 1850kcal total
     assert composition["fiber_per_1000kcal"] == round(50 / 1850 * 1000, 1)
+
+
+def test_unknown_macro_is_not_counted_as_zero():
+    """A None macro means 'unknown', not 0 g. Its calories still count
+    (kcal_total reflects the purchase) but they must NOT be attributed to a
+    macro -- so they surface as unaccounted / lowered macro coverage instead
+    of silently dragging the split down as a measured zero."""
+
+    # 100 kcal item, protein known (10 g), fat/carbs unknown.
+    items = [
+        {"name": "Mystery", "quantity": 100, "unit": "g",
+         "protein_g": 10.0, "fat_g": None, "carbs_g": None, "calories_kcal": 100,
+         "match_type": "exact"},
+    ]
+    comp = compute_basket_composition(items)
+    assert comp is not None
+    # 10 g protein * 4 kcal = 40 of 100 kcal -> 40% protein, fat/carb 0,
+    # and the remaining 60% shows as unaccounted rather than fake fat/carb.
+    assert comp["protein_pct"] == 40.0
+    assert comp["fat_pct"] == 0.0
+    assert comp["carb_pct"] == 0.0
+    assert comp["unaccounted_pct"] == 60.0
+    # Macros incomplete -> this item's calories are not fully macro-covered.
+    assert comp["macro_coverage_pct"] == 0.0
+
+
+def test_coverage_labels_reflect_match_confidence():
+    items = [
+        {"name": "Solid", "quantity": 100, "unit": "g",
+         "protein_g": 5.0, "fat_g": 5.0, "carbs_g": 5.0, "calories_kcal": 100,
+         "match_type": "exact"},
+        {"name": "Guess", "quantity": 100, "unit": "g",
+         "protein_g": 5.0, "fat_g": 5.0, "carbs_g": 5.0, "calories_kcal": 100,
+         "match_type": "fallback"},
+    ]
+    comp = compute_basket_composition(items)
+    assert comp is not None
+    # Both fully macro-covered; only one is a confident match.
+    assert comp["macro_coverage_pct"] == 100.0
+    assert comp["match_coverage_pct"] == 50.0

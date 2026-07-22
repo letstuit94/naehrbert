@@ -33,6 +33,13 @@ from typing import List, Optional
 from backend.app.services.ideal_profile import KCAL_PER_G
 from backend.app.services.nutrition_profile import grams_for
 
+# Match tiers we treat as "confidently identified" for the coverage label
+# (models/nutrition.py MatchType): a real product/BLS identity, as opposed
+# to the category-only `fallback` estimate or an unmatched `none`. Coverage
+# is reported so the UI can label low-confidence results honestly instead of
+# presenting an estimate as if it were measured.
+_CONFIDENT_MATCH_TYPES = {"learned", "exact", "fuzzy", "bls"}
+
 
 def _pct_split(protein_g: float, fat_g: float, carbs_g: float, kcal_total: float) -> Optional[dict]:
     if not kcal_total or kcal_total <= 0:
@@ -54,6 +61,7 @@ def compute_basket_composition(receipt_items: List[dict]) -> Optional[dict]:
     receipt items yet, or none carry matched nutrition."""
 
     protein_total = fat_total = carb_total = fiber_total = kcal_total = 0.0
+    kcal_macro_covered = kcal_confident = 0.0
     considered = 0
 
     for item in receipt_items:
@@ -62,11 +70,32 @@ def compute_basket_composition(receipt_items: List[dict]) -> Optional[dict]:
             continue
         grams = grams_for(item.get("quantity"), item.get("unit"), item.get("category"), item.get("name"))
         factor = grams / 100.0
-        protein_total += (item.get("protein_g") or 0.0) * factor
-        fat_total += (item.get("fat_g") or 0.0) * factor
-        carb_total += (item.get("carbs_g") or 0.0) * factor
-        fiber_total += (item.get("fiber_g") or 0.0) * factor
-        kcal_total += cal * factor
+        kcal_contrib = cal * factor
+
+        # A macro that is None means *unknown*, not zero -- adding it as 0.0
+        # (the old `or 0.0`) understates that macro's % and silently dilutes
+        # the split. Sum only known values; the calories of an item whose
+        # macros we don't know still count toward kcal_total, so the missing
+        # share surfaces as `unaccounted_pct` / lower macro coverage rather
+        # than being hidden inside a 0.
+        protein_g = item.get("protein_g")
+        fat_g = item.get("fat_g")
+        carbs_g = item.get("carbs_g")
+        fiber_g = item.get("fiber_g")
+        if protein_g is not None:
+            protein_total += protein_g * factor
+        if fat_g is not None:
+            fat_total += fat_g * factor
+        if carbs_g is not None:
+            carb_total += carbs_g * factor
+        if fiber_g is not None:
+            fiber_total += fiber_g * factor
+
+        kcal_total += kcal_contrib
+        if protein_g is not None and fat_g is not None and carbs_g is not None:
+            kcal_macro_covered += kcal_contrib
+        if (item.get("match_type") or "").lower() in _CONFIDENT_MATCH_TYPES:
+            kcal_confident += kcal_contrib
         considered += 1
 
     split = _pct_split(protein_total, fat_total, carb_total, kcal_total)
@@ -76,4 +105,15 @@ def compute_basket_composition(receipt_items: List[dict]) -> Optional[dict]:
     # FIBER_G_PER_1000KCAL) -- it's reported as the same density unit as its
     # target so the two are directly comparable.
     fiber_per_1000kcal = round(fiber_total / kcal_total * 1000, 1)
-    return {**split, "fiber_per_1000kcal": fiber_per_1000kcal, "items_considered": considered}
+    return {
+        **split,
+        "fiber_per_1000kcal": fiber_per_1000kcal,
+        "items_considered": considered,
+        # Honesty labels (never fake precision): the share of counted
+        # calories that came from a full macro breakdown, and from a
+        # confidently identified product (vs a category-only estimate / no
+        # match). The UI uses these to say results are based on *purchases*
+        # and how solid the underlying matching is.
+        "macro_coverage_pct": round(kcal_macro_covered / kcal_total * 100, 1),
+        "match_coverage_pct": round(kcal_confident / kcal_total * 100, 1),
+    }

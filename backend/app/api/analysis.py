@@ -26,7 +26,15 @@ _EMPTY_COMPOSITION = {
     "kcal_total": None,
     "fiber_per_1000kcal": None,
     "items_considered": 0,
+    "macro_coverage_pct": None,
+    "match_coverage_pct": None,
 }
+
+
+def _scaled_macro(value, factor):
+    """Scale a per-100g macro to the purchased quantity, preserving None
+    (unknown) instead of turning it into a measured 0 g."""
+    return round(value * factor, 1) if value is not None else None
 
 
 def _targets_or_404(profile_id: int) -> dict:
@@ -69,12 +77,15 @@ def get_purchases(profile_id: int = Depends(require_profile_id)):
             factor = (
                 grams_for(row.get("quantity"), row.get("unit"), row.get("category"), row.get("name")) / 100.0
             )
+            # A missing macro is *unknown*, not 0 g -- scaling `or 0.0`
+            # would show "0.0 g protein" for an item we never resolved,
+            # which reads as a measured zero. Keep it None so the UI shows "—".
             actual = {
                 "calories_kcal": round(cal_per_100g * factor, 1),
-                "protein_g": round((row.get("protein_g") or 0.0) * factor, 1),
-                "fat_g": round((row.get("fat_g") or 0.0) * factor, 1),
-                "carbs_g": round((row.get("carbs_g") or 0.0) * factor, 1),
-                "fiber_g": round((row.get("fiber_g") or 0.0) * factor, 1),
+                "protein_g": _scaled_macro(row.get("protein_g"), factor),
+                "fat_g": _scaled_macro(row.get("fat_g"), factor),
+                "carbs_g": _scaled_macro(row.get("carbs_g"), factor),
+                "fiber_g": _scaled_macro(row.get("fiber_g"), factor),
             }
         items.append(
             {

@@ -265,6 +265,13 @@ export interface CompositionResult {
    * density unit as its target instead. */
   fiber_per_1000kcal: number | null
   items_considered: number
+  /** Share of the counted calories that came from items with a full
+   * protein/fat/carb breakdown. Low = the split leans on incomplete data. */
+  macro_coverage_pct: number | null
+  /** Share of the counted calories from confidently identified products
+   * (vs a category-only estimate or no match). Drives the honesty label:
+   * these results describe what was *purchased*, not necessarily eaten. */
+  match_coverage_pct: number | null
 }
 
 export interface MacroDeltaMap {

@@ -104,10 +104,17 @@ export function ResultsPage() {
     <section>
       <h1>Your results</h1>
 
+      {!noReceiptsYet && composition.data && (
+        <p className="muted">
+          Based on what you've <strong>bought</strong> — not necessarily what you eat.
+          Purchases are a proxy for your diet, not a food log.
+        </p>
+      )}
+
       {noReceiptsYet && (
         <p className="callout">
           No confirmed receipts yet. <Link to="/upload">Upload one</Link> to see your
-          macro split.
+          purchase macro split.
         </p>
       )}
 
@@ -150,6 +157,17 @@ export function ResultsPage() {
           <p className="callout callout--muted">
             {composition.data.unaccounted_pct}% of your calories come from items with only
             a rough category estimate, so they don't count toward any one macro above.
+          </p>
+        )}
+
+      {!noReceiptsYet &&
+        composition.data &&
+        composition.data.match_coverage_pct !== null &&
+        composition.data.match_coverage_pct < 80 && (
+          <p className="callout callout--warning">
+            Only {composition.data.match_coverage_pct}% of these calories come from
+            confidently identified products; the rest are category estimates. Treat the
+            split as a rough guide, not an exact figure.
           </p>
         )}
 
@@ -388,7 +406,7 @@ function ClosenessScore({ score }: { score: number | null }) {
   const status = score >= 80 ? 'good' : score >= 50 ? 'warning' : 'critical'
   return (
     <div className={`stat-tile stat-tile--hero stat-tile--${status}`}>
-      <span className="stat-tile__label">Closeness to target</span>
+      <span className="stat-tile__label">Purchases vs. target</span>
       <span className="stat-tile__value">{score}/100</span>
     </div>
   )

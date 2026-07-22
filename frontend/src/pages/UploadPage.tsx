@@ -21,6 +21,32 @@ const UNIT_OPTIONS = ['g', 'kg', 'ml', 'l', 'piece'] as const
 
 type Screen = 'upload' | 'review' | 'confirmed'
 
+// Upload+match happens in one synchronous backend call, so there's no real
+// per-step signal to show -- these are timed to roughly track the actual
+// phases (OCR/text-layer read, parsing, then matching, which is the long
+// and variable tail: every not-yet-known product costs a live
+// OpenFoodFacts lookup, see backend/app/api/receipts.py's
+// _resolve_concurrently) so the user sees *something* happening rather
+// than a single frozen "Reading your receipt..." line for up to a minute.
+// Pasted text skips OCR entirely, so it gets its own shorter step list
+// rather than awkwardly skipping into the middle of the file-mode one.
+const FILE_PROGRESS_STEPS = [
+  'Reading your receipt…',
+  'Extracting the text…',
+  'Parsing the items…',
+  'Matching your items against our food database…',
+] as const
+const FILE_PROGRESS_DELAYS_MS = [1200, 3000, 5000]
+
+const TEXT_PROGRESS_STEPS = [
+  'Parsing the items…',
+  'Matching your items against our food database…',
+] as const
+const TEXT_PROGRESS_DELAYS_MS = [1000]
+
+const LONGER_NOTE_DELAY_MS = 15000
+const LONGER_NOTE = 'New or unusual products can take a little longer to match…'
+
 export function UploadPage() {
   const [screen, setScreen] = useState<Screen>('upload')
   const [uploadMode, setUploadMode] = useState<'file' | 'text'>('file')
@@ -30,7 +56,28 @@ export function UploadPage() {
   const [confirmResult, setConfirmResult] = useState<ConfirmResponse | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [progressSteps, setProgressSteps] =
+    useState<readonly string[]>(FILE_PROGRESS_STEPS)
+  const [progressStep, setProgressStep] = useState(0)
+  const [showLongerNote, setShowLongerNote] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const progressTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  function startProgress(steps: readonly string[], delaysMs: number[]) {
+    setProgressSteps(steps)
+    setProgressStep(0)
+    setShowLongerNote(false)
+    progressTimersRef.current.forEach(clearTimeout)
+    progressTimersRef.current = [
+      ...delaysMs.map((delay, i) => setTimeout(() => setProgressStep(i + 1), delay)),
+      setTimeout(() => setShowLongerNote(true), LONGER_NOTE_DELAY_MS),
+    ]
+  }
+
+  function stopProgress() {
+    progressTimersRef.current.forEach(clearTimeout)
+    progressTimersRef.current = []
+  }
 
   function reset() {
     setScreen('upload')
@@ -64,6 +111,7 @@ export function UploadPage() {
     if (!file) return
     setBusy(true)
     setError(null)
+    startProgress(FILE_PROGRESS_STEPS, FILE_PROGRESS_DELAYS_MS)
     try {
       const result = await uploadReceiptFile(file)
       setReceipt(result.receipt)
@@ -77,6 +125,7 @@ export function UploadPage() {
       )
     } finally {
       setBusy(false)
+      stopProgress()
     }
   }
 
@@ -84,6 +133,7 @@ export function UploadPage() {
     if (!pastedText.trim()) return
     setBusy(true)
     setError(null)
+    startProgress(TEXT_PROGRESS_STEPS, TEXT_PROGRESS_DELAYS_MS)
     try {
       const result = await uploadReceiptText(pastedText)
       setReceipt(result.receipt)
@@ -93,6 +143,7 @@ export function UploadPage() {
       setError(err instanceof ApiError ? err.message : 'Could not parse that text.')
     } finally {
       setBusy(false)
+      stopProgress()
     }
   }
 
@@ -276,7 +327,30 @@ export function UploadPage() {
         </div>
       )}
 
-      {busy && uploadMode === 'file' && <p>Reading your receipt…</p>}
+      {busy && (
+        <div className="upload-progress">
+          <ul className="upload-progress__steps">
+            {progressSteps.map((label, i) => (
+              <li
+                key={label}
+                className={
+                  i < progressStep
+                    ? 'upload-progress__step upload-progress__step--done'
+                    : i === progressStep
+                      ? 'upload-progress__step upload-progress__step--active'
+                      : 'upload-progress__step upload-progress__step--pending'
+                }
+              >
+                <span className="upload-progress__marker" aria-hidden>
+                  {i < progressStep ? '✓' : i === progressStep ? '…' : '·'}
+                </span>
+                {label}
+              </li>
+            ))}
+          </ul>
+          {showLongerNote && <p className="muted upload-progress__note">{LONGER_NOTE}</p>}
+        </div>
+      )}
       {error && (
         <p className="form-error" role="alert">
           {error}

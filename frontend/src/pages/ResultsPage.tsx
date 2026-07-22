@@ -90,6 +90,12 @@ export function ResultsPage() {
     setRecipes((prev) => ({ data: [recipe, ...(prev.data ?? [])], unavailable: false }))
   }
 
+  useEffect(() => {
+    if (!loading && window.location.hash) {
+      document.getElementById(window.location.hash.slice(1))?.scrollIntoView()
+    }
+  }, [loading])
+
   if (loading) {
     return (
       <section>
@@ -105,14 +111,6 @@ export function ResultsPage() {
     <section>
       <h1>Your results</h1>
 
-      {summary.data && summary.data.receipts_count > 0 && (
-        <p className="muted">
-          Based on {summary.data.receipts_count} confirmed receipt
-          {summary.data.receipts_count === 1 ? '' : 's'} ({summary.data.items_count} item
-          {summary.data.items_count === 1 ? '' : 's'}).
-        </p>
-      )}
-
       {noReceiptsYet && (
         <p className="callout">
           No confirmed receipts yet. <Link to="/upload">Upload one</Link> to see your
@@ -122,6 +120,20 @@ export function ResultsPage() {
 
       {comparison.data && !noReceiptsYet && (
         <ClosenessScore score={comparison.data.closeness_score} />
+      )}
+
+      {summary.data && summary.data.receipts_count > 0 && (
+        <div className="summary-line">
+          <p className="muted">
+            Based on {summary.data.receipts_count} confirmed receipt
+            {summary.data.receipts_count === 1 ? '' : 's'} ({summary.data.items_count}{' '}
+            item
+            {summary.data.items_count === 1 ? '' : 's'}).
+          </p>
+          <Link to="/upload" className="btn btn-secondary">
+            Upload more
+          </Link>
+        </div>
       )}
 
       {targets.data?.targets && targets.data.targets_pct && (
@@ -149,7 +161,7 @@ export function ResultsPage() {
           </p>
         )}
 
-      <h2>Recipe generation</h2>
+      <h2 id="recipes">Recipe generation</h2>
       <RecipeGenerationForm onGenerated={prependRecipe} />
 
       <h2>Recipes</h2>
@@ -162,7 +174,13 @@ export function ResultsPage() {
         <RecipeSummaryCard key={recipe.id} recipe={recipe} />
       ))}
 
-      {unlockStatus.data && <UnlockRecipesSection status={unlockStatus.data} />}
+      {/* Once unlocked AND the one-time preferences chat is done, this
+          section has nothing left to do -- dietary style/allergies/
+          dislikes are edited on the Profile page from here on. */}
+      {unlockStatus.data &&
+        !(unlockStatus.data.unlocked && unlockStatus.data.prefs_completed) && (
+          <UnlockRecipesSection status={unlockStatus.data} />
+        )}
     </section>
   )
 }
@@ -239,7 +257,7 @@ function TargetsSection({
           </div>
           <div>
             <dt>
-              × {goalAdjustmentPct >= 0 ? '+' : ''}
+              {goalAdjustmentPct >= 0 ? '+' : ''}
               {goalAdjustmentPct}% {goalLabel ? `(${goalLabel})` : '(goal adjustment)'}
             </dt>
             <dd>{targets.calories_kcal} kcal</dd>
@@ -432,7 +450,7 @@ function RecipeGenerationForm({
         </div>
 
         <div className="form-field">
-          <label htmlFor="recipe-max-time">Max. total time in minutes (optional)</label>
+          <label htmlFor="recipe-max-time">Max. cooking time (minutes)</label>
           <input
             id="recipe-max-time"
             type="number"
@@ -444,7 +462,7 @@ function RecipeGenerationForm({
         </div>
 
         <div className="form-field">
-          <label htmlFor="recipe-servings">Servings / portions (optional)</label>
+          <label htmlFor="recipe-servings">Servings / portions </label>
           <input
             id="recipe-servings"
             type="number"

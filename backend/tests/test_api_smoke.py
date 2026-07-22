@@ -221,6 +221,30 @@ def test_confirm_injects_receipt_store_into_resolve_item(monkeypatch):
     assert captured["store"] == "Lidl"
 
 
+def test_resolve_concurrently_preserves_order_despite_out_of_order_completion(monkeypatch):
+    """Regression guard for the concurrency change: items are resolved in
+    a thread pool now (real motivation: a 25-item receipt with almost no
+    prior verified matches took ~58s resolving OFF lookups sequentially),
+    so a slower-finishing item must not shift later items out of position
+    in the result list -- confirm_receipt/zip() depend on index alignment
+    between `food_items` and the resolved MatchedProduct list."""
+
+    import time
+
+    def fake_resolve(item):
+        # "A" deliberately finishes last despite starting first, so a
+        # naive as-completed order would misplace it.
+        time.sleep(0.05 if item["name"] == "A" else 0.01)
+        return MatchedProduct(
+            parsed_item_name=item["name"], match_type=MatchType.NONE, confidence=0.0, data_source="test"
+        )
+
+    monkeypatch.setattr(receipts_api, "resolve_item", fake_resolve)
+    items = [{"name": "A"}, {"name": "B"}, {"name": "C"}]
+    results = receipts_api._resolve_concurrently(items)
+    assert [r.parsed_item_name for r in results] == ["A", "B", "C"]
+
+
 def test_correct_item_records_verified_match_keyed_on_cleaned_name(monkeypatch):
     """Regression: correct_item used to key the verified match on
     `original_text` (the raw, uncleaned receipt line -- e.g. still carrying

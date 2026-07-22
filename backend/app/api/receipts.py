@@ -1,12 +1,14 @@
 """Epic 3 (upload/OCR/parse + review) & Epic 4 (nutrition matching) endpoints."""
 
-from typing import Optional
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Optional
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from backend.app.analytics.match_quality import compute_match_quality
 from backend.app.db import repo
+from backend.app.models.nutrition import MatchedProduct
 from backend.app.services import (
     bls_matcher,
     local_extractor,
@@ -19,6 +21,30 @@ from backend.app.services.nutrition_mapping import matched_product_to_row
 from backend.app.services.resolver import resolve_item
 
 router = APIRouter(prefix="/receipts", tags=["receipts"])
+
+# resolve_item()'s slow path is a live OpenFoodFacts network round-trip on
+# a cache miss (up to two search attempts, each with its own retry/backoff
+# -- see services/off_api.py), and that cost is paid per item regardless
+# of whether the item ends up matched, fallback-estimated, or unmatched
+# (all three try OFF first). Items are independent, so resolving them
+# concurrently cuts a many-new-product receipt's wall-clock time roughly
+# by the pool size instead of paying every item's network latency back to
+# back -- measured on a real 25-item receipt with almost no prior verified
+# matches: ~58s sequential. Kept modest (not "one thread per item") to
+# stay a polite citizen of a free public API rather than hammering it.
+_MAX_CONCURRENT_RESOLUTIONS = 6
+
+
+def _resolve_concurrently(items: List[dict]) -> List[MatchedProduct]:
+    """resolve_item() for every item in `items`, run concurrently.
+    Result order matches input order regardless of completion order
+    (ThreadPoolExecutor.map guarantees this) -- callers zip results back
+    against the same `items` list."""
+
+    if len(items) <= 1:
+        return [resolve_item(item) for item in items]
+    with ThreadPoolExecutor(max_workers=_MAX_CONCURRENT_RESOLUTIONS) as executor:
+        return list(executor.map(resolve_item, items))
 
 
 class PasteTextPayload(BaseModel):
@@ -78,12 +104,11 @@ def _persist_parsed(parsed: dict, source: str, raw_text: Optional[str]) -> dict:
     # under a real store (i.e. nearly all of them). `store` must be merged
     # onto the transient dict passed to resolve_item (not persisted onto
     # the row itself -- matched_product_to_row never includes it).
+    items_with_store = [{**item, "store": receipt.get("store")} for item in saved_items]
+    matched_products = _resolve_concurrently(items_with_store)
     resolved_items = [
-        repo.update_receipt_item(
-            item["id"],
-            matched_product_to_row(resolve_item({**item, "store": receipt.get("store")})),
-        )
-        for item in saved_items
+        repo.update_receipt_item(item["id"], matched_product_to_row(matched))
+        for item, matched in zip(saved_items, matched_products, strict=False)
     ]
     return {"receipt": receipt, "items": resolved_items}
 
@@ -144,14 +169,15 @@ def confirm_receipt(receipt_id: str):
     if not receipt:
         raise HTTPException(status_code=404, detail="Receipt not found")
 
-    updated = []
-    matched_products = []
-    for item in repo.get_receipt_items(receipt_id):
-        if item.get("is_non_food"):
-            continue
-        matched = resolve_item({**item, "store": receipt.get("store")})
-        matched_products.append(matched)
-        updated.append(repo.update_receipt_item(item["id"], matched_product_to_row(matched)))
+    food_items = [
+        item for item in repo.get_receipt_items(receipt_id) if not item.get("is_non_food")
+    ]
+    items_with_store = [{**item, "store": receipt.get("store")} for item in food_items]
+    matched_products = _resolve_concurrently(items_with_store)
+    updated = [
+        repo.update_receipt_item(item["id"], matched_product_to_row(matched))
+        for item, matched in zip(food_items, matched_products, strict=False)
+    ]
 
     repo.set_receipt_status(receipt_id, "confirmed")
     return {

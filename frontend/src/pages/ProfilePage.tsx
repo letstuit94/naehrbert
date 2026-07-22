@@ -329,8 +329,8 @@ export function ProfilePage() {
 
       <h2>Dietary preferences</h2>
       <p>
-        Used to generate your <Link to="/results">recipe recommendations</Link> -- never
-        included in your calorie/macro targets above.
+        Used to generate your <Link to="/results#recipes">recipe recommendations</Link> --
+        never included in your calorie/macro targets above.
       </p>
 
       <form className="form" onSubmit={handlePrefsSubmit}>

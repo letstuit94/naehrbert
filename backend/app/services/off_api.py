@@ -11,6 +11,7 @@ breaks the pipeline (Story 2.1: "missing items handled gracefully").
 """
 
 import json
+import threading
 import time
 from pathlib import Path
 from typing import List, Optional
@@ -38,6 +39,16 @@ _FIELDS = "code,product_name,product_name_de,brands,nutriments,nova_group"
 _G_TO_MG = 1000
 
 _CACHE_PATH = Path(__file__).parent / "_off_cache.json"
+
+# Receipt confirm/upload now resolves items concurrently (a thread pool in
+# api/receipts.py -- OFF lookups are network-bound, so that's where the
+# real win is), which means multiple threads can hit this cache at once.
+# Guards the read-merge-write cycle below so two threads racing on
+# DIFFERENT keys can't silently lose each other's write (each would
+# otherwise load the same pre-update snapshot and overwrite the other's
+# save) -- doesn't serialize the network fetch itself, only the fast
+# local read/save either side of it.
+_cache_lock = threading.Lock()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -119,15 +130,26 @@ def search_products(query: str, page_size: int = DEFAULT_PAGE_SIZE) -> List[dict
     if not key:
         return []
 
-    cache = _load_cache()
-    if key in cache:
-        return cache[key][:page_size]
+    with _cache_lock:
+        cache = _load_cache()
+        if key in cache:
+            return cache[key][:page_size]
 
+    # Network fetch deliberately happens outside the lock -- this is the
+    # slow part, and the whole point of resolving items concurrently is
+    # that these can overlap across threads. A duplicate concurrent fetch
+    # for the same brand-new key is possible (harmless, just a wasted
+    # request) but no write is ever lost.
     products = _fetch_off(query, page_size)
 
     if products:
-        cache[key] = products
-        _save_cache(cache)
+        with _cache_lock:
+            # Reload rather than reuse the snapshot from above -- another
+            # thread may have saved its own new key in the meantime, and
+            # writing that stale copy back would silently drop it.
+            cache = _load_cache()
+            cache[key] = products
+            _save_cache(cache)
 
     return products[:page_size]
 

@@ -132,3 +132,9 @@ als konfigurierbare Defaults, Tests. Die Prozent-Logik ändert sich nicht.
   `or 0.0` verwechselt „unbekannt" mit „null"; Fallback kollabiert faktisch auf `"other"`;
   grobe Mengenumrechnung (1 g/ml, 100 g-Default). Diese verzerren die Results zusätzlich,
   sind aber getrennt zu beheben.
+- **Abhängigkeit zur Vorrats-Planung:** [Vorrat.md §6.3](Vorrat.md) plant, die
+  `quantity`-Semantik in getrennte `count` × `unit_size` aufzuspalten. Das ändert die
+  Grundlage von `grams_for`/`factor` (Andockpunkte in §5 oben) — wird das umgesetzt,
+  müssen die Mengen-Rechnungen hier mitgezogen werden. Ebenfalls verwandt:
+  [GapUndEmpfehlung.md](GapUndEmpfehlung.md) (Konsum = Einkauf als Gap-Basis, Vorrat-
+  `entfernt` als Verderb-Korrektur).

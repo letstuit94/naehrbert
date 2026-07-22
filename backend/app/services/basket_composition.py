@@ -53,7 +53,7 @@ def compute_basket_composition(receipt_items: List[dict]) -> Optional[dict]:
     """Macro % split of everything purchased so far. None if there are no
     receipt items yet, or none carry matched nutrition."""
 
-    protein_total = fat_total = carb_total = kcal_total = 0.0
+    protein_total = fat_total = carb_total = fiber_total = kcal_total = 0.0
     considered = 0
 
     for item in receipt_items:
@@ -65,10 +65,15 @@ def compute_basket_composition(receipt_items: List[dict]) -> Optional[dict]:
         protein_total += (item.get("protein_g") or 0.0) * factor
         fat_total += (item.get("fat_g") or 0.0) * factor
         carb_total += (item.get("carbs_g") or 0.0) * factor
+        fiber_total += (item.get("fiber_g") or 0.0) * factor
         kcal_total += cal * factor
         considered += 1
 
     split = _pct_split(protein_total, fat_total, carb_total, kcal_total)
     if split is None:
         return None
-    return {**split, "items_considered": considered}
+    # Fiber isn't part of the %-of-calories split (see ideal_profile.py's
+    # FIBER_G_PER_1000KCAL) -- it's reported as the same density unit as its
+    # target so the two are directly comparable.
+    fiber_per_1000kcal = round(fiber_total / kcal_total * 1000, 1)
+    return {**split, "fiber_per_1000kcal": fiber_per_1000kcal, "items_considered": considered}

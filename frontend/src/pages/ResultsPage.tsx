@@ -24,13 +24,6 @@ import { GOAL_LABEL } from '../lib/chatSteps'
 
 type Slice<T> = { data: T | null; unavailable: boolean }
 
-const MACROS = ['protein', 'fat', 'carb'] as const
-const MACRO_LABEL: Record<(typeof MACROS)[number], string> = {
-  protein: 'Protein',
-  fat: 'Fat',
-  carb: 'Carbs',
-}
-
 function settledSlice<T>(result: PromiseSettledResult<T>): Slice<T> {
   return result.status === 'fulfilled'
     ? { data: result.value, unavailable: false }
@@ -141,16 +134,15 @@ export function ResultsPage() {
           targets={targets.data.targets}
           targetsPct={targets.data.targets_pct}
           goal={profileGoal}
+          comparison={comparison.data}
         />
       )}
 
-      {comparison.data && !noReceiptsYet ? (
-        <MacroComparisonChart comparison={comparison.data} />
-      ) : composition.data && !noReceiptsYet ? (
+      {composition.data && !noReceiptsYet && !targets.data?.targets && (
         <p className="callout">
           Set up your <Link to="/">profile</Link> to compare this against a target.
         </p>
-      ) : null}
+      )}
 
       {composition.data &&
         composition.data.unaccounted_pct !== null &&
@@ -188,10 +180,12 @@ function TargetsSection({
   targets,
   targetsPct,
   goal,
+  comparison,
 }: {
   targets: NonNullable<TargetsResponse['targets']>
   targetsPct: NonNullable<TargetsResponse['targets_pct']>
   goal: Goal | null
+  comparison: TargetComparisonResult | null
 }) {
   // Derived rather than hardcoded from the goal->adjustment mapping, so this
   // stays correct even if the backend's constants change -- see
@@ -217,18 +211,34 @@ function TargetsSection({
       )}
 
       <div className="macro-grid">
-        <MacroTargetTile
+        <MacroRingTile
           label="Protein"
           grams={targets.protein_g}
-          pct={targetsPct.protein_pct}
+          targetValue={targetsPct.protein_pct}
+          actualValue={comparison?.actual_pct.protein ?? null}
+          unit="pct"
         />
-        <MacroTargetTile label="Fat" grams={targets.fat_g} pct={targetsPct.fat_pct} />
-        <MacroTargetTile
+        <MacroRingTile
+          label="Fat"
+          grams={targets.fat_g}
+          targetValue={targetsPct.fat_pct}
+          actualValue={comparison?.actual_pct.fat ?? null}
+          unit="pct"
+        />
+        <MacroRingTile
           label="Carbs"
           grams={targets.carbs_g}
-          pct={targetsPct.carb_pct}
+          targetValue={targetsPct.carb_pct}
+          actualValue={comparison?.actual_pct.carb ?? null}
+          unit="pct"
         />
-        <MacroTargetTile label="Fiber" grams={targets.fiber_g} pct={null} />
+        <MacroRingTile
+          label="Fiber"
+          grams={targets.fiber_g}
+          targetValue={comparison?.fiber_target_per_1000kcal ?? null}
+          actualValue={comparison?.fiber_actual_per_1000kcal ?? null}
+          unit="density"
+        />
       </div>
 
       <details className="details-panel">
@@ -267,20 +277,68 @@ function TargetsSection({
   )
 }
 
-function MacroTargetTile({
+// Ring color reflects how far actual is from target in EITHER direction --
+// being well under is just as much a signal as being well over, so this is
+// symmetric around 100% rather than only escalating above it.
+function ringTierColor(ratioPct: number): string {
+  const distance = Math.abs(ratioPct - 100)
+  if (distance > 30) return '#d03b3b' // red
+  if (distance > 20) return '#e07b1f' // orange
+  if (distance > 10) return '#d1a300' // yellow
+  if (distance > 5) return '#5cab1e' // bright green
+  return '#0ca30c' // green
+}
+
+function MacroRingTile({
   label,
   grams,
-  pct,
+  targetValue,
+  actualValue,
+  unit,
 }: {
   label: string
   grams: number
-  pct: number | null
+  targetValue: number | null
+  actualValue: number | null
+  /** "pct" for Protein/Fat/Carbs (%-of-calories vs. their target %).
+   * "density" for Fiber (g/1000kcal vs. its fixed 14g/1000kcal target) --
+   * see ideal_profile.py's FIBER_G_PER_1000KCAL for why fiber isn't a
+   * %-of-calories figure like the other three. */
+  unit: 'pct' | 'density'
 }) {
+  const hasTracking = actualValue !== null && targetValue !== null && targetValue > 0
+  const ratioPct = hasTracking ? Math.round((actualValue / targetValue) * 100) : null
+  const color = ratioPct !== null ? ringTierColor(ratioPct) : 'var(--code-bg)'
+  const fillPct = ratioPct !== null ? Math.min(100, ratioPct) : 0
+  // More than 10% over/under target -> act on it; within that band, on track.
+  const action =
+    ratioPct === null ? null : ratioPct > 110 ? 'REDUCE' : ratioPct < 90 ? 'INCREASE' : 'KEEP'
+
   return (
-    <div className="stat-tile">
-      <span className="stat-tile__label">{label}</span>
-      <span className="stat-tile__value">{grams} g</span>
-      {pct !== null && <span className="stat-tile__sub">{pct}% of calories</span>}
+    <div className="macro-ring-tile">
+      <span className="macro-ring-tile__label">{label}</span>
+      <div className="macro-ring">
+        <div
+          className="macro-ring__fill"
+          style={{ background: `conic-gradient(${color} ${fillPct}%, var(--code-bg) 0)` }}
+        />
+        <div className="macro-ring__hole">
+          <span className="macro-ring__value">{grams} g</span>
+          {ratioPct !== null && (
+            <span className="macro-ring__ratio" style={{ color }}>
+              {ratioPct}%
+            </span>
+          )}
+        </div>
+      </div>
+      <span className="macro-ring-tile__caption">
+        {hasTracking
+          ? unit === 'pct'
+            ? `${actualValue}% of cal.`
+            : `${actualValue} g/1000kcal`
+          : 'No tracking data yet'}
+      </span>
+      {action !== null && <span className="macro-ring-tile__action">{action}</span>}
     </div>
   )
 }
@@ -332,62 +390,6 @@ function ClosenessScore({ score }: { score: number | null }) {
     <div className={`stat-tile stat-tile--hero stat-tile--${status}`}>
       <span className="stat-tile__label">Closeness to target</span>
       <span className="stat-tile__value">{score}/100</span>
-    </div>
-  )
-}
-
-function MacroComparisonChart({ comparison }: { comparison: TargetComparisonResult }) {
-  return (
-    <div className="viz-root macro-chart">
-      <div className="macro-chart__legend">
-        <span>
-          <i className="swatch swatch--actual" /> Actual
-        </span>
-        <span>
-          <i className="swatch swatch--target" /> Target
-        </span>
-      </div>
-      {MACROS.map((macro) => {
-        const actual = comparison.actual_pct[macro]
-        const target =
-          comparison.target_pct[`${macro}_pct` as keyof typeof comparison.target_pct]
-        const delta = comparison.delta_pct[macro]
-        return (
-          <div className="macro-chart__row" key={macro}>
-            <div className="macro-chart__row-label">
-              {MACRO_LABEL[macro]}
-              {delta !== null && (
-                <span className="macro-chart__delta">
-                  {delta > 0 ? `+${delta}` : delta}pp
-                </span>
-              )}
-            </div>
-            <div className="macro-chart__bars">
-              <MacroBar variant="actual" value={actual} />
-              <MacroBar variant="target" value={target} />
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function MacroBar({
-  variant,
-  value,
-}: {
-  variant: 'actual' | 'target'
-  value: number | null
-}) {
-  const pct = value ?? 0
-  return (
-    <div className="macro-chart__bar-track">
-      <div
-        className={`macro-chart__bar-fill macro-chart__bar-fill--${variant}`}
-        style={{ width: `${Math.min(100, pct)}%` }}
-      />
-      <span className="macro-chart__bar-label">{value === null ? '—' : `${value}%`}</span>
     </div>
   )
 }

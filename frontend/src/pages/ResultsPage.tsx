@@ -106,8 +106,9 @@ export function ResultsPage() {
 
       {!noReceiptsYet && composition.data && (
         <p className="muted">
-          Based on what you've <strong>bought</strong> — not necessarily what you eat.
-          Purchases are a proxy for your diet, not a food log.
+          Based on what you've <strong>bought</strong>, weighted toward your recent
+          purchases — not necessarily what you eat. Purchases are a proxy for your diet,
+          not a food log.
         </p>
       )}
 
@@ -160,14 +161,29 @@ export function ResultsPage() {
           </p>
         )}
 
+      {!noReceiptsYet && composition.data && composition.data.low_confidence && (
+        <p className="callout callout--warning">
+          <strong>These numbers are still shaky.</strong>{' '}
+          {composition.data.receipts_considered < 3 &&
+            `Only ${composition.data.receipts_considered} confirmed receipt${
+              composition.data.receipts_considered === 1 ? '' : 's'
+            } so far. `}
+          {composition.data.match_coverage_pct !== null &&
+            composition.data.match_coverage_pct < 60 &&
+            `${composition.data.match_coverage_pct}% of the calories are category estimates rather than identified products. `}
+          They'll sharpen as you upload more receipts.
+        </p>
+      )}
+
       {!noReceiptsYet &&
         composition.data &&
+        !composition.data.low_confidence &&
         composition.data.match_coverage_pct !== null &&
         composition.data.match_coverage_pct < 80 && (
-          <p className="callout callout--warning">
-            Only {composition.data.match_coverage_pct}% of these calories come from
-            confidently identified products; the rest are category estimates. Treat the
-            split as a rough guide, not an exact figure.
+          <p className="callout callout--muted">
+            {composition.data.match_coverage_pct}% of these calories come from confidently
+            identified products; the rest are category estimates. Treat the split as a
+            rough guide.
           </p>
         )}
 

@@ -1,6 +1,9 @@
 """Epic 5 (macro composition & target comparison) and Epic 6
 (bucketing & diversity) endpoints."""
 
+from datetime import date, timezone
+from datetime import datetime as _datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.core.auth import require_profile_id
@@ -26,9 +29,18 @@ _EMPTY_COMPOSITION = {
     "kcal_total": None,
     "fiber_per_1000kcal": None,
     "items_considered": 0,
+    "receipts_considered": 0,
     "macro_coverage_pct": None,
     "match_coverage_pct": None,
+    "quantity_coverage_pct": None,
+    "low_confidence": True,
 }
+
+
+def _today() -> date:
+    """Reference date for the recency-weighted composition (UTC to match the
+    stored timestamps)."""
+    return _datetime.now(timezone.utc).date()
 
 
 def _scaled_macro(value, factor):
@@ -114,7 +126,7 @@ def get_composition(profile_id: int = Depends(require_profile_id)):
     (confirmed) receipt to date."""
 
     items = repo.get_all_confirmed_receipt_items(profile_id)
-    composition = compute_basket_composition(items)
+    composition = compute_basket_composition(items, reference_date=_today())
     return composition or _EMPTY_COMPOSITION
 
 
@@ -125,7 +137,7 @@ def get_target_comparison(profile_id: int = Depends(require_profile_id)):
 
     target_pct = _targets_or_404(profile_id)
     items = repo.get_all_confirmed_receipt_items(profile_id)
-    composition = compute_basket_composition(items) or _EMPTY_COMPOSITION
+    composition = compute_basket_composition(items, reference_date=_today()) or _EMPTY_COMPOSITION
 
     deltas = {}
     diffs = []
@@ -169,7 +181,7 @@ def get_buckets(profile_id: int = Depends(require_profile_id)):
 
     target_pct = _targets_or_404(profile_id)
     items = repo.get_all_confirmed_receipt_items(profile_id)
-    composition = compute_basket_composition(items) or _EMPTY_COMPOSITION
+    composition = compute_basket_composition(items, reference_date=_today()) or _EMPTY_COMPOSITION
     actual_pct = {k: composition.get(k) for k in ("protein_pct", "fat_pct", "carb_pct")}
     return {"buckets": compute_buckets(items, actual_pct, target_pct)}
 

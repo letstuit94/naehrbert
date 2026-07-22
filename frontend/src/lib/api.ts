@@ -265,6 +265,8 @@ export interface CompositionResult {
    * density unit as its target instead. */
   fiber_per_1000kcal: number | null
   items_considered: number
+  /** Distinct confirmed receipts behind the split -- few receipts = shaky. */
+  receipts_considered: number
   /** Share of the counted calories that came from items with a full
    * protein/fat/carb breakdown. Low = the split leans on incomplete data. */
   macro_coverage_pct: number | null
@@ -272,6 +274,12 @@ export interface CompositionResult {
    * (vs a category-only estimate or no match). Drives the honesty label:
    * these results describe what was *purchased*, not necessarily eaten. */
   match_coverage_pct: number | null
+  /** Share of the counted calories from a real measured quantity (g/ml/kg/l)
+   * vs grams_for's coarse per-piece guess. Low = the weighting is rough. */
+  quantity_coverage_pct: number | null
+  /** True when the split is too thin to trust (few receipts and/or mostly
+   * category estimates) -- the UI labels it "shaky" rather than precise. */
+  low_confidence: boolean
 }
 
 export interface MacroDeltaMap {

@@ -1,3 +1,5 @@
+from datetime import date
+
 from backend.app.services.basket_composition import _pct_split, compute_basket_composition
 
 
@@ -94,3 +96,110 @@ def test_coverage_labels_reflect_match_confidence():
     # Both fully macro-covered; only one is a confident match.
     assert comp["macro_coverage_pct"] == 100.0
     assert comp["match_coverage_pct"] == 50.0
+
+
+def test_no_reference_date_leaves_split_unweighted():
+    """Without a reference_date every item's recency weight is 1.0, so the
+    result equals the old lifetime split -- callers that don't opt in are
+    unchanged even when items carry dates."""
+
+    items = [
+        {"name": "Old", "quantity": 100, "unit": "g", "receipt_id": "r1",
+         "protein_g": 25.0, "fat_g": 0.0, "carbs_g": 0.0, "calories_kcal": 100,
+         "receipts": {"purchased_at": "2020-01-01"}},
+        {"name": "New", "quantity": 100, "unit": "g", "receipt_id": "r2",
+         "protein_g": 0.0, "fat_g": 0.0, "carbs_g": 25.0, "calories_kcal": 100,
+         "receipts": {"purchased_at": "2026-01-01"}},
+    ]
+    comp = compute_basket_composition(items)
+    assert comp is not None
+    # Symmetric items (25g protein vs 25g carb, equal kcal), equal weight ->
+    # protein and carb contribute equally despite the 6-year age gap.
+    assert comp["protein_pct"] == comp["carb_pct"]
+
+
+def test_ewma_weights_recent_purchases_more_heavily():
+    """With a reference_date, a recent purchase dominates an old one of the
+    same calories -- 'alles je gekauft' becomes 'aktuelle Rate'."""
+
+    ref = date(2026, 2, 1)
+    items = [
+        # Bought ~13 months ago: heavily decayed at a 30-day half-life.
+        {"name": "OldProtein", "quantity": 100, "unit": "g", "receipt_id": "r1",
+         "protein_g": 25.0, "fat_g": 0.0, "carbs_g": 0.0, "calories_kcal": 100,
+         "receipts": {"purchased_at": "2025-01-01"}},
+        # Bought on the reference date: full weight.
+        {"name": "NewCarb", "quantity": 100, "unit": "g", "receipt_id": "r2",
+         "protein_g": 0.0, "fat_g": 0.0, "carbs_g": 25.0, "calories_kcal": 100,
+         "receipts": {"purchased_at": "2026-02-01"}},
+    ]
+    comp = compute_basket_composition(items, reference_date=ref, half_life_days=30.0)
+    assert comp is not None
+    # The recent carb purchase should dominate the decayed old protein one.
+    assert comp["carb_pct"] > comp["protein_pct"]
+
+
+def test_window_days_drops_purchases_older_than_the_window():
+    ref = date(2026, 2, 1)
+    items = [
+        {"name": "TooOld", "quantity": 100, "unit": "g", "receipt_id": "r1",
+         "protein_g": 25.0, "fat_g": 0.0, "carbs_g": 0.0, "calories_kcal": 100,
+         "receipts": {"purchased_at": "2025-12-01"}},  # ~62 days -> outside 28d window
+        {"name": "Recent", "quantity": 100, "unit": "g", "receipt_id": "r2",
+         "protein_g": 0.0, "fat_g": 0.0, "carbs_g": 25.0, "calories_kcal": 100,
+         "receipts": {"purchased_at": "2026-01-20"}},  # 12 days -> inside
+    ]
+    comp = compute_basket_composition(items, reference_date=ref, window_days=28)
+    assert comp is not None
+    assert comp["items_considered"] == 1  # the old one was dropped
+    assert comp["protein_pct"] == 0.0
+
+
+def test_quantity_coverage_flags_piece_guesses():
+    """A 'piece'/missing quantity goes through grams_for's coarse guess; a
+    g/ml quantity is a real measurement. quantity_coverage_pct reports the
+    measured share so the UI can flag rough weighting."""
+
+    items = [
+        {"name": "Measured", "quantity": 200, "unit": "g", "receipt_id": "r1",
+         "protein_g": 5.0, "fat_g": 5.0, "carbs_g": 5.0, "calories_kcal": 100,
+         "match_type": "exact"},
+        {"name": "GuessedPiece", "quantity": 1, "unit": "piece", "receipt_id": "r1",
+         "protein_g": 5.0, "fat_g": 5.0, "carbs_g": 5.0, "calories_kcal": 100,
+         "match_type": "exact"},
+    ]
+    comp = compute_basket_composition(items)
+    assert comp is not None
+    # Measured item = 200g -> 2.0 factor -> 200 kcal; piece = 100g -> 100 kcal.
+    # Measured share of kcal = 200 / 300 = 66.7%.
+    assert comp["quantity_coverage_pct"] == 66.7
+
+
+def test_low_confidence_flag_for_few_receipts_or_estimates():
+    # One receipt, confident match -> too few receipts => shaky.
+    thin = [
+        {"name": "Solid", "quantity": 100, "unit": "g", "receipt_id": "r1",
+         "protein_g": 5.0, "fat_g": 5.0, "carbs_g": 5.0, "calories_kcal": 100,
+         "match_type": "exact"},
+    ]
+    assert compute_basket_composition(thin)["low_confidence"] is True
+
+    # Three receipts, all confident matches -> solid.
+    solid = [
+        {"name": f"Item{i}", "quantity": 100, "unit": "g", "receipt_id": f"r{i}",
+         "protein_g": 5.0, "fat_g": 5.0, "carbs_g": 5.0, "calories_kcal": 100,
+         "match_type": "exact"}
+        for i in range(3)
+    ]
+    comp = compute_basket_composition(solid)
+    assert comp["receipts_considered"] == 3
+    assert comp["low_confidence"] is False
+
+    # Enough receipts but mostly category estimates -> still shaky.
+    estimated = [
+        {"name": f"Guess{i}", "quantity": 100, "unit": "g", "receipt_id": f"r{i}",
+         "protein_g": 5.0, "fat_g": 5.0, "carbs_g": 5.0, "calories_kcal": 100,
+         "match_type": "fallback"}
+        for i in range(4)
+    ]
+    assert compute_basket_composition(estimated)["low_confidence"] is True

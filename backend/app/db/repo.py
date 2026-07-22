@@ -116,7 +116,9 @@ def get_all_confirmed_receipt_items(profile_id: int) -> List[dict]:
     res = (
         get_client()
         .table("receipt_items")
-        .select("*, receipts!inner(status, profile_id)")
+        # purchased_at/created_at come along so the analysis can weight the
+        # macro split toward recent purchases (basket_composition EWMA).
+        .select("*, receipts!inner(status, profile_id, purchased_at, created_at)")
         .eq("receipts.status", "confirmed")
         .eq("receipts.profile_id", profile_id)
         .eq("is_non_food", False)

@@ -3,10 +3,11 @@
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from backend.app.analytics.match_quality import compute_match_quality
+from backend.app.core.auth import require_profile_id
 from backend.app.db import repo
 from backend.app.models.nutrition import MatchedProduct
 from backend.app.services import (
@@ -66,12 +67,13 @@ class ItemCorrection(BaseModel):
     nutrition: dict = {}
 
 
-def _persist_parsed(parsed: dict, source: str, raw_text: Optional[str]) -> dict:
+def _persist_parsed(parsed: dict, source: str, raw_text: Optional[str], profile_id: int) -> dict:
     if parsed.get("error"):
         raise HTTPException(status_code=422, detail=parsed["error"])
 
     parsed = non_food_terms.filter_learned_non_food(parsed)
     receipt = repo.create_receipt(
+        profile_id=profile_id,
         source=source,
         raw_text=raw_text,
         store=parsed.get("store"),
@@ -113,8 +115,21 @@ def _persist_parsed(parsed: dict, source: str, raw_text: Optional[str]) -> dict:
     return {"receipt": receipt, "items": resolved_items}
 
 
+def _owned_receipt_or_404(receipt_id: str, profile_id: int) -> dict:
+    """Every by-id endpoint below fetches the receipt anyway (to build its
+    response or check status) -- this just adds the one extra condition so
+    receipt A's owner can't act on receipt B by guessing its uuid."""
+
+    receipt = repo.get_receipt(receipt_id)
+    if not receipt or receipt.get("profile_id") != profile_id:
+        raise HTTPException(status_code=404, detail="Receipt not found")
+    return receipt
+
+
 @router.post("")
-async def upload_receipt_file(file: UploadFile = File(...)):
+async def upload_receipt_file(
+    file: UploadFile = File(...), profile_id: int = Depends(require_profile_id)
+):
     """Epic 3.1 — upload a receipt photo or PDF; OCR/text-layer extraction
     and parsing happen synchronously, no manual OCR step from the user."""
 
@@ -126,29 +141,35 @@ async def upload_receipt_file(file: UploadFile = File(...)):
 
     parsed = receipt_text_parser.parse_receipt_text_offline(raw_text)
     source = "pdf" if (file.filename or "").lower().endswith(".pdf") else "image"
-    return _persist_parsed(parsed, source, raw_text)
+    return _persist_parsed(parsed, source, raw_text, profile_id)
 
 
 @router.post("/text")
-def upload_receipt_text(payload: PasteTextPayload):
+def upload_receipt_text(
+    payload: PasteTextPayload, profile_id: int = Depends(require_profile_id)
+):
     """Epic 3.2 — pasted text bypasses OCR entirely."""
 
     parsed = receipt_text_parser.parse_receipt_text_offline(payload.text)
-    return _persist_parsed(parsed, "pasted_text", payload.text)
+    return _persist_parsed(parsed, "pasted_text", payload.text, profile_id)
 
 
 @router.get("/{receipt_id}")
-def get_receipt(receipt_id: str):
-    receipt = repo.get_receipt(receipt_id)
-    if not receipt:
-        raise HTTPException(status_code=404, detail="Receipt not found")
+def get_receipt(receipt_id: str, profile_id: int = Depends(require_profile_id)):
+    receipt = _owned_receipt_or_404(receipt_id, profile_id)
     return {"receipt": receipt, "items": repo.get_receipt_items(receipt_id)}
 
 
 @router.patch("/{receipt_id}/items/{item_id}")
-def update_item(receipt_id: str, item_id: str, payload: ItemUpdate):
+def update_item(
+    receipt_id: str,
+    item_id: str,
+    payload: ItemUpdate,
+    profile_id: int = Depends(require_profile_id),
+):
     """Epic 3.4 — inline edit or mark-as-non-food before confirming."""
 
+    _owned_receipt_or_404(receipt_id, profile_id)
     fields = payload.model_dump(exclude_unset=True)
     if not fields:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -156,18 +177,17 @@ def update_item(receipt_id: str, item_id: str, payload: ItemUpdate):
 
 
 @router.delete("/{receipt_id}/items/{item_id}", status_code=204)
-def delete_item(receipt_id: str, item_id: str):
+def delete_item(receipt_id: str, item_id: str, profile_id: int = Depends(require_profile_id)):
+    _owned_receipt_or_404(receipt_id, profile_id)
     repo.delete_receipt_item(item_id)
 
 
 @router.post("/{receipt_id}/confirm")
-def confirm_receipt(receipt_id: str):
+def confirm_receipt(receipt_id: str, profile_id: int = Depends(require_profile_id)):
     """Epic 3.4 / Epic 4.1 — finalize: run the tiered matcher on every
     remaining (non-non-food) item and persist the matched nutrition data."""
 
-    receipt = repo.get_receipt(receipt_id)
-    if not receipt:
-        raise HTTPException(status_code=404, detail="Receipt not found")
+    receipt = _owned_receipt_or_404(receipt_id, profile_id)
 
     food_items = [
         item for item in repo.get_receipt_items(receipt_id) if not item.get("is_non_food")
@@ -198,11 +218,15 @@ def _has_macros(nutrition: dict) -> bool:
 
 
 @router.get("/{receipt_id}/items/{item_id}/candidates")
-def search_candidates(receipt_id: str, item_id: str, q: str):
+def search_candidates(
+    receipt_id: str, item_id: str, q: str, profile_id: int = Depends(require_profile_id)
+):
     """Epic 4.2 — search OFF + BLS for a manual pick, for items flagged
     below the confidence threshold in review. Restricted to the top 5
     candidates per source that carry a complete macro profile — a match
     missing calories/protein/fat/carbs isn't a usable pick."""
+
+    _owned_receipt_or_404(receipt_id, profile_id)
 
     off_candidates = []
     for p in off_api.search_products(q, page_size=_CANDIDATE_POOL_SIZE):
@@ -240,15 +264,20 @@ def search_candidates(receipt_id: str, item_id: str, q: str):
 
 
 @router.post("/{receipt_id}/items/{item_id}/correct")
-def correct_item(receipt_id: str, item_id: str, payload: ItemCorrection):
+def correct_item(
+    receipt_id: str,
+    item_id: str,
+    payload: ItemCorrection,
+    profile_id: int = Depends(require_profile_id),
+):
     """Epic 4.2 — persist a manual correction on this item, and remember it
     as a verified match (services/verified_matches.py) so the same product
     never needs re-correcting on a future receipt."""
 
-    receipt = repo.get_receipt(receipt_id)
+    receipt = _owned_receipt_or_404(receipt_id, profile_id)
     items = repo.get_receipt_items(receipt_id)
     item = next((i for i in items if i["id"] == item_id), None)
-    if not receipt or not item:
+    if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
     row = {

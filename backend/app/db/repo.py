@@ -14,41 +14,59 @@ from typing import List, Optional
 
 from backend.app.db.supabase import get_client
 
-_PROFILE_ID = 1
-
-
 # ── profiles ────────────────────────────────────────────────────────────
 
-def get_profile() -> Optional[dict]:
-    res = get_client().table("profiles").select("*").eq("id", _PROFILE_ID).execute()
+def list_profiles() -> List[dict]:
+    """Login screen's "pick a user" directory (multi-user feature)."""
+
+    res = get_client().table("profiles").select("id, name").order("id").execute()
+    return res.data or []
+
+
+def get_profile(profile_id: int) -> Optional[dict]:
+    res = get_client().table("profiles").select("*").eq("id", profile_id).execute()
     rows = res.data or []
     return rows[0] if rows else None
 
 
-def upsert_profile(profile: dict) -> dict:
-    """Create-or-replace the single profile row (Epic 1.1)."""
+def upsert_profile(profile: dict, profile_id: Optional[int] = None) -> dict:
+    """Create a brand-new profile (signup -- `profile_id` is None, so
+    `id` is left for the DB's identity column to assign) or replace an
+    existing one in place (an already-logged-in user editing their own
+    biometrics on the Profile page -- `profile_id` is their own id, never
+    someone else's, since it comes from the X-Profile-Id header)."""
 
-    row = {**profile, "id": _PROFILE_ID, "updated_at": datetime.now(timezone.utc).isoformat()}
-    res = get_client().table("profiles").upsert(row, on_conflict="id").execute()
+    row = {**profile, "updated_at": datetime.now(timezone.utc).isoformat()}
+    if profile_id is not None:
+        row["id"] = profile_id
+        res = get_client().table("profiles").upsert(row, on_conflict="id").execute()
+    else:
+        res = get_client().table("profiles").insert(row).execute()
     return res.data[0]
 
 
-def update_dietary_preferences(fields: dict) -> dict:
+def update_dietary_preferences(profile_id: int, fields: dict) -> dict:
     """Partial update for the recipe-preferences chat / Profile page's
     dietary_style/allergies/dislikes fields — a plain `.update()`, not an
     upsert, so it doesn't require the full ProfileCreate shape the way
     upsert_profile does."""
 
     row = {**fields, "updated_at": datetime.now(timezone.utc).isoformat()}
-    res = get_client().table("profiles").update(row).eq("id", _PROFILE_ID).execute()
+    res = get_client().table("profiles").update(row).eq("id", profile_id).execute()
     return res.data[0]
 
 
 # ── receipts ────────────────────────────────────────────────────────────
 
-def create_receipt(source: str, raw_text: Optional[str], store: Optional[str] = None,
-                    purchased_at: Optional[str] = None) -> dict:
-    row = {"source": source, "raw_text": raw_text, "store": store, "purchased_at": purchased_at}
+def create_receipt(profile_id: int, source: str, raw_text: Optional[str],
+                    store: Optional[str] = None, purchased_at: Optional[str] = None) -> dict:
+    row = {
+        "profile_id": profile_id,
+        "source": source,
+        "raw_text": raw_text,
+        "store": store,
+        "purchased_at": purchased_at,
+    }
     res = get_client().table("receipts").insert(row).execute()
     return res.data[0]
 
@@ -87,36 +105,39 @@ def get_receipt(receipt_id: str) -> Optional[dict]:
     return rows[0] if rows else None
 
 
-def get_all_confirmed_receipt_items() -> List[dict]:
+def get_all_confirmed_receipt_items(profile_id: int) -> List[dict]:
     """Every non-non-food receipt_item belonging to a confirmed receipt
-    (Epic 5.1: the composition/comparison analysis runs across every
-    finalized receipt to date, not just the most recent upload). Excludes
-    is_non_food items here, once, rather than in every consumer of this
-    list — they were deliberately skipped at confirm time (Epic 3.4) and
-    never got matched nutrition to aggregate."""
+    owned by `profile_id` (Epic 5.1: the composition/comparison analysis
+    runs across every finalized receipt to date, not just the most recent
+    upload). Excludes is_non_food items here, once, rather than in every
+    consumer of this list — they were deliberately skipped at confirm time
+    (Epic 3.4) and never got matched nutrition to aggregate."""
 
     res = (
         get_client()
         .table("receipt_items")
-        .select("*, receipts!inner(status)")
+        .select("*, receipts!inner(status, profile_id)")
         .eq("receipts.status", "confirmed")
+        .eq("receipts.profile_id", profile_id)
         .eq("is_non_food", False)
         .execute()
     )
     return res.data or []
 
 
-def get_all_confirmed_receipt_items_with_receipt_info() -> List[dict]:
+def get_all_confirmed_receipt_items_with_receipt_info(profile_id: int) -> List[dict]:
     """Every receipt_item (food AND non-food) belonging to a confirmed
-    receipt, with its parent receipt's store/date embedded -- the Purchases
-    page's "everything you've uploaded" browser, as opposed to
-    get_all_confirmed_receipt_items()'s analysis-only (food-only) view."""
+    receipt owned by `profile_id`, with its parent receipt's store/date
+    embedded -- the Purchases page's "everything you've uploaded" browser,
+    as opposed to get_all_confirmed_receipt_items()'s analysis-only
+    (food-only) view."""
 
     res = (
         get_client()
         .table("receipt_items")
-        .select("*, receipts!inner(status, store, purchased_at, created_at)")
+        .select("*, receipts!inner(status, store, purchased_at, created_at, profile_id)")
         .eq("receipts.status", "confirmed")
+        .eq("receipts.profile_id", profile_id)
         .execute()
     )
     return res.data or []
@@ -166,26 +187,26 @@ def upsert_verified_match(match_key: str, store: str, matched_name: Optional[str
 
 # ── user_feedback (NPS, recipe-recommendations feature) ──────────────────
 
-def insert_feedback(nps_score: int) -> dict:
+def insert_feedback(profile_id: int, nps_score: int) -> dict:
     res = get_client().table("user_feedback").insert(
-        {"profile_id": _PROFILE_ID, "nps_score": nps_score}
+        {"profile_id": profile_id, "nps_score": nps_score}
     ).execute()
     return res.data[0]
 
 
 # ── recipes (recipe-recommendations feature) ─────────────────────────────
 
-def insert_recipe(row: dict) -> dict:
-    res = get_client().table("recipes").insert({**row, "profile_id": _PROFILE_ID}).execute()
+def insert_recipe(profile_id: int, row: dict) -> dict:
+    res = get_client().table("recipes").insert({**row, "profile_id": profile_id}).execute()
     return res.data[0]
 
 
-def get_all_recipes() -> List[dict]:
+def get_all_recipes(profile_id: int) -> List[dict]:
     res = (
         get_client()
         .table("recipes")
         .select("*")
-        .eq("profile_id", _PROFILE_ID)
+        .eq("profile_id", profile_id)
         .order("created_at", desc=True)
         .execute()
     )

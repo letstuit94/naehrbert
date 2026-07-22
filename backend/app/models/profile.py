@@ -90,6 +90,11 @@ class ProfileCreate(BaseModel):
 class Profile(ProfileCreate):
     """Stored profile, as returned by the API.
 
+    `id` is the multi-user feature's login identity: the frontend stores it
+    client-side after signup/login and sends it back as X-Profile-Id on
+    every request (see backend/app/core/auth.py). Not on `ProfileCreate`
+    since it's server-assigned, never client-supplied.
+
     `dietary_style`/`allergies`/`dislikes` are collected later, in the
     recipe-preferences chat (or edited directly on the Profile page) —
     never during onboarding — so they live only here, not on
@@ -97,6 +102,7 @@ class Profile(ProfileCreate):
     preference-gathering questions run again (None) or are skipped in
     favor of generating straight from the saved profile (set)."""
 
+    id: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -104,6 +110,14 @@ class Profile(ProfileCreate):
     allergies: List[str] = Field(default_factory=list)
     dislikes: List[str] = Field(default_factory=list)
     recipe_prefs_completed_at: Optional[datetime] = None
+
+
+class ProfileSummary(BaseModel):
+    """GET /profiles -- the login screen's "pick a user" directory. Just
+    enough to render a button per existing profile; no biometric data."""
+
+    id: int
+    name: Optional[str] = None
 
 
 class DietaryPreferencesUpdate(BaseModel):

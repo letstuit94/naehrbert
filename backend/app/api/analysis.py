@@ -1,8 +1,9 @@
 """Epic 5 (macro composition & target comparison) and Epic 6
 (bucketing & diversity) endpoints."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from backend.app.core.auth import require_profile_id
 from backend.app.db import repo
 from backend.app.models.profile import Profile
 from backend.app.services.basket_composition import compute_basket_composition
@@ -23,8 +24,8 @@ _EMPTY_COMPOSITION = {
 }
 
 
-def _targets_or_404() -> dict:
-    stored = repo.get_profile()
+def _targets_or_404(profile_id: int) -> dict:
+    stored = repo.get_profile(profile_id)
     if not stored:
         raise HTTPException(status_code=404, detail="No profile yet")
     targets = compute_ideal_profile(Profile(**stored))
@@ -34,11 +35,11 @@ def _targets_or_404() -> dict:
 
 
 @router.get("/summary")
-def get_summary():
+def get_summary(profile_id: int = Depends(require_profile_id)):
     """How much data the analysis below is actually based on — the number
     of confirmed receipts and (food, i.e. non-non-food) items across them."""
 
-    items = repo.get_all_confirmed_receipt_items()
+    items = repo.get_all_confirmed_receipt_items(profile_id)
     return {
         "receipts_count": len({item["receipt_id"] for item in items}),
         "items_count": len(items),
@@ -46,14 +47,14 @@ def get_summary():
 
 
 @router.get("/purchases")
-def get_purchases():
+def get_purchases(profile_id: int = Depends(require_profile_id)):
     """Purchases page — every item across every confirmed receipt (food AND
     non-food, unlike the food-only aggregates below), with where it was
     bought, the actual kcal/macros for the purchased quantity (not the
     stored per-100g reference values -- see nutrition_profile.grams_for),
     and how it was matched."""
 
-    rows = repo.get_all_confirmed_receipt_items_with_receipt_info()
+    rows = repo.get_all_confirmed_receipt_items_with_receipt_info(profile_id)
     items = []
     for row in rows:
         receipt = row.get("receipts") or {}
@@ -92,22 +93,22 @@ def get_purchases():
 
 
 @router.get("/composition")
-def get_composition():
+def get_composition(profile_id: int = Depends(require_profile_id)):
     """Epic 5.1 — calorie-weighted macro split across every finalized
     (confirmed) receipt to date."""
 
-    items = repo.get_all_confirmed_receipt_items()
+    items = repo.get_all_confirmed_receipt_items(profile_id)
     composition = compute_basket_composition(items)
     return composition or _EMPTY_COMPOSITION
 
 
 @router.get("/target-comparison")
-def get_target_comparison():
+def get_target_comparison(profile_id: int = Depends(require_profile_id)):
     """Epic 5.2 — actual vs. target macro %, a per-macro delta, and one
     overall closeness score (0-100; 100 = exact match)."""
 
-    target_pct = _targets_or_404()
-    items = repo.get_all_confirmed_receipt_items()
+    target_pct = _targets_or_404(profile_id)
+    items = repo.get_all_confirmed_receipt_items(profile_id)
     composition = compute_basket_composition(items) or _EMPTY_COMPOSITION
 
     deltas = {}
@@ -134,21 +135,21 @@ def get_target_comparison():
 
 
 @router.get("/buckets")
-def get_buckets():
+def get_buckets(profile_id: int = Depends(require_profile_id)):
     """Epic 6.1 — consume-more/consume-less per item, combining nutrient
     quality with the current macro gap (see services/bucketing.py for the
     threshold sources)."""
 
-    target_pct = _targets_or_404()
-    items = repo.get_all_confirmed_receipt_items()
+    target_pct = _targets_or_404(profile_id)
+    items = repo.get_all_confirmed_receipt_items(profile_id)
     composition = compute_basket_composition(items) or _EMPTY_COMPOSITION
     actual_pct = {k: composition.get(k) for k in ("protein_pct", "fat_pct", "carb_pct")}
     return {"buckets": compute_buckets(items, actual_pct, target_pct)}
 
 
 @router.get("/diversity")
-def get_diversity():
+def get_diversity(profile_id: int = Depends(require_profile_id)):
     """Epic 6.2 — per-macro source diversity + plain-language callouts."""
 
-    items = repo.get_all_confirmed_receipt_items()
+    items = repo.get_all_confirmed_receipt_items(profile_id)
     return compute_diversity(items)

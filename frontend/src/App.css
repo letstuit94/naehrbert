@@ -14,12 +14,18 @@
   padding: 20px 24px;
 }
 
-.nav-brand {
+.nav-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
   font-size: 15px;
   font-weight: 600;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--text-h);
 }
 
 .nav-links {
@@ -66,6 +72,41 @@
 }
 
 .nav-link--active:hover {
+  color: var(--accent-contrast);
+}
+
+.nav-profile-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text);
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.nav-profile-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nav-profile-icon:hover {
+  color: var(--text-h);
+}
+
+.nav-profile-icon--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.nav-profile-icon--active:hover {
   color: var(--accent-contrast);
 }
 
@@ -695,6 +736,67 @@
   margin: 28px 0;
   padding-top: 20px;
   border-top: 1px solid var(--border);
+}
+
+.section-divider {
+  margin: 28px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Login screen (multi-user feature) ────────────────────────────────── */
+
+.login-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  margin-top: 10vh;
+  text-align: center;
+}
+
+.login-logo {
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  color: var(--text-h);
+}
+
+.login-users {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.login-user-btn {
+  width: 100%;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--text-h);
+  text-align: center;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.login-user-btn:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.login-add-user-btn {
+  margin-top: 6px;
+  background: none;
+  border-style: dashed;
+  color: var(--text);
+}
+
+.login-add-user-btn:hover {
+  color: var(--text-h);
 }
 
 a.btn {

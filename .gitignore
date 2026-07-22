@@ -1,3 +1,6 @@
+# macOS
+.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -14,8 +17,11 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Anchored to the repo root: these are Python build artifacts. Unanchored,
+# `lib/` also ignored the frontend source at frontend/src/lib/ (api.ts etc.),
+# which must be version-controlled.
+/lib/
+/lib64/
 parts/
 sdist/
 var/

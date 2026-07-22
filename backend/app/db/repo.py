@@ -158,13 +158,21 @@ def upsert_non_food_term(term_key: str, raw_text: str) -> None:
 
 # ── verified_matches (services/verified_matches.py) ──────────────────────
 
-def get_verified_match(match_key: str, store: str) -> Optional[dict]:
+def get_verified_match(match_key: str) -> Optional[dict]:
+    """Matches on `match_key` alone, any store -- see verified_matches.py's
+    lookup_verified_match for why store is deliberately not part of the
+    read path. A key can have rows under more than one store (each store's
+    correction upserts its own (match_key, store) row), so ties break on
+    recency, same as the single-user "last correction wins" rule already
+    applied within one store."""
+
     res = (
         get_client()
         .table("verified_matches")
         .select("*")
         .eq("match_key", match_key)
-        .eq("store", store)
+        .order("updated_at", desc=True)
+        .limit(1)
         .execute()
     )
     rows = res.data or []

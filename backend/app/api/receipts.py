@@ -98,16 +98,7 @@ def _persist_parsed(parsed: dict, source: str, raw_text: Optional[str], profile_
     # insert rather than waiting for confirm_receipt's pass below. Editing
     # an item during review leaves its match stale until Confirm, which
     # unconditionally re-resolves every remaining item regardless.
-    #
-    # receipt_items has no `store` column (it lives on the parent receipt),
-    # so resolve_item's Tier-0 lookup (resolver._learned -> item.get("store"))
-    # was always seeing None here -- every verified-match lookup silently
-    # degraded to the store-agnostic scope only, missing every row recorded
-    # under a real store (i.e. nearly all of them). `store` must be merged
-    # onto the transient dict passed to resolve_item (not persisted onto
-    # the row itself -- matched_product_to_row never includes it).
-    items_with_store = [{**item, "store": receipt.get("store")} for item in saved_items]
-    matched_products = _resolve_concurrently(items_with_store)
+    matched_products = _resolve_concurrently(saved_items)
     resolved_items = [
         repo.update_receipt_item(item["id"], matched_product_to_row(matched))
         for item, matched in zip(saved_items, matched_products, strict=False)
@@ -192,8 +183,7 @@ def confirm_receipt(receipt_id: str, profile_id: int = Depends(require_profile_i
     food_items = [
         item for item in repo.get_receipt_items(receipt_id) if not item.get("is_non_food")
     ]
-    items_with_store = [{**item, "store": receipt.get("store")} for item in food_items]
-    matched_products = _resolve_concurrently(items_with_store)
+    matched_products = _resolve_concurrently(food_items)
     updated = [
         repo.update_receipt_item(item["id"], matched_product_to_row(matched))
         for item, matched in zip(food_items, matched_products, strict=False)

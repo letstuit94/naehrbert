@@ -39,3 +39,18 @@ def test_compute_basket_composition_skips_items_without_calories():
         {"name": "Unmatched thing", "quantity": 1, "unit": "piece", "calories_kcal": None},
     ]
     assert compute_basket_composition(items) is None
+
+
+def test_compute_basket_composition_reports_fiber_as_a_density_not_a_pct():
+    """Fiber isn't part of the %-of-calories split (see ideal_profile.py's
+    FIBER_G_PER_1000KCAL) -- it's reported in the same g-per-1000kcal unit
+    as its target so the two are directly comparable."""
+
+    items = [
+        {"name": "Haferflocken", "quantity": 500, "unit": "g",
+         "protein_g": 13.0, "fat_g": 7.0, "carbs_g": 60.0, "fiber_g": 10.0, "calories_kcal": 370},
+    ]
+    composition = compute_basket_composition(items)
+    assert composition is not None
+    # 10g fiber per 100g -> 50g fiber for the 500g purchased; 370kcal/100g -> 1850kcal total
+    assert composition["fiber_per_1000kcal"] == round(50 / 1850 * 1000, 1)

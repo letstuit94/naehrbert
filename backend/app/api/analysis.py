@@ -9,7 +9,11 @@ from backend.app.models.profile import Profile
 from backend.app.services.basket_composition import compute_basket_composition
 from backend.app.services.bucketing import compute_buckets
 from backend.app.services.diversity import compute_diversity
-from backend.app.services.ideal_profile import compute_ideal_profile, macro_percentages
+from backend.app.services.ideal_profile import (
+    FIBER_G_PER_1000KCAL,
+    compute_ideal_profile,
+    macro_percentages,
+)
 from backend.app.services.nutrition_profile import grams_for
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
@@ -20,6 +24,7 @@ _EMPTY_COMPOSITION = {
     "carb_pct": None,
     "unaccounted_pct": None,
     "kcal_total": None,
+    "fiber_per_1000kcal": None,
     "items_considered": 0,
 }
 
@@ -125,10 +130,21 @@ def get_target_comparison(profile_id: int = Depends(require_profile_id)):
 
     closeness = round(max(0.0, 100.0 - sum(diffs) / len(diffs)), 1) if diffs else None
 
+    # Fiber isn't one of the 3 %-of-calories macros above (BR-M7: its target
+    # is a fixed g/1000kcal density, see ideal_profile.FIBER_G_PER_1000KCAL),
+    # so it gets its own actual/target/delta trio in the same density unit
+    # rather than folding into actual_pct/target_pct/delta_pct or the
+    # closeness score, which stays a 3-macro figure by definition.
+    fiber_actual = composition.get("fiber_per_1000kcal")
+    fiber_delta = round(fiber_actual - FIBER_G_PER_1000KCAL, 1) if fiber_actual is not None else None
+
     return {
         "actual_pct": {k: composition.get(f"{k}_pct") for k in ("protein", "fat", "carb")},
         "target_pct": target_pct,
         "delta_pct": deltas,
+        "fiber_actual_per_1000kcal": fiber_actual,
+        "fiber_target_per_1000kcal": FIBER_G_PER_1000KCAL,
+        "fiber_delta_per_1000kcal": fiber_delta,
         "closeness_score": closeness,
         "items_considered": composition.get("items_considered", 0),
     }

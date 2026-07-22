@@ -381,14 +381,62 @@ function ReviewRow({
 
   return (
     <li className={item.is_non_food ? 'review-row review-row--non-food' : 'review-row'}>
-      <div className="review-row__name-cell">
-        <input
-          className="review-row__name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={() => name !== item.name && onSave({ name })}
-          aria-label="Item name"
-        />
+      <button
+        type="button"
+        className="review-row__delete"
+        onClick={onDelete}
+        aria-label={`Delete ${item.name}`}
+      >
+        ×
+      </button>
+
+      <div className="review-row__fields">
+        <div className="review-row__field review-row__field--name">
+          <span className="review-row__field-label">Extracted item text</span>
+          <input
+            className="review-row__name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => name !== item.name && onSave({ name })}
+            aria-label="Item name"
+          />
+        </div>
+        <div className="review-row__field review-row__field--qty">
+          <span className="review-row__field-label">Quantity</span>
+          <input
+            className="review-row__qty"
+            type="number"
+            min={0}
+            step="any"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            onBlur={() =>
+              Number(quantity) !== item.quantity && onSave({ quantity: Number(quantity) })
+            }
+            aria-label="Quantity"
+          />
+        </div>
+        <div className="review-row__field review-row__field--unit">
+          <span className="review-row__field-label">Unit</span>
+          <select
+            className="review-row__unit"
+            value={unit}
+            onChange={(e) => {
+              setUnit(e.target.value)
+              onSave({ unit: e.target.value })
+            }}
+            aria-label="Unit"
+          >
+            {UNIT_OPTIONS.map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="review-row__meta">
         {match && (
           <span
             className={
@@ -401,6 +449,14 @@ function ReviewRow({
             {match.label}
           </span>
         )}
+        <label className="review-row__nonfood">
+          <input
+            type="checkbox"
+            checked={item.is_non_food}
+            onChange={(e) => onSave({ is_non_food: e.target.checked })}
+          />
+          Not food
+        </label>
         {!item.is_non_food && (
           <button
             type="button"
@@ -411,48 +467,14 @@ function ReviewRow({
           </button>
         )}
       </div>
-      <input
-        className="review-row__qty"
-        type="number"
-        min={0}
-        step="any"
-        value={quantity}
-        onChange={(e) => setQuantity(e.target.value)}
-        onBlur={() =>
-          Number(quantity) !== item.quantity && onSave({ quantity: Number(quantity) })
-        }
-        aria-label="Quantity"
-      />
-      <select
-        className="review-row__unit"
-        value={unit}
-        onChange={(e) => {
-          setUnit(e.target.value)
-          onSave({ unit: e.target.value })
-        }}
-        aria-label="Unit"
-      >
-        {UNIT_OPTIONS.map((u) => (
-          <option key={u} value={u}>
-            {u}
-          </option>
-        ))}
-      </select>
-      <label className="review-row__nonfood">
-        <input
-          type="checkbox"
-          checked={item.is_non_food}
-          onChange={(e) => onSave({ is_non_food: e.target.checked })}
-        />
-        Not food
-      </label>
-      <button className="btn-icon" onClick={onDelete} aria-label={`Delete ${item.name}`}>
-        Delete
-      </button>
+
       {searching && (
         <div className="review-row__search-panel">
+          {/* Pre-fill with the live (possibly not-yet-saved) name field so a
+              spelling fix made just before "Fix match" doesn't have to be
+              retyped into the search box. */}
           <MatchSearchPanel
-            item={item}
+            item={{ id: item.id, name }}
             receiptId={receiptId}
             onCorrect={onCorrect}
             onClose={() => setSearching(false)}

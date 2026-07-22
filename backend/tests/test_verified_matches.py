@@ -12,20 +12,23 @@ from backend.app.services.verified_matches import (
 
 
 def _patch_table(monkeypatch):
-    """In-memory (match_key, store) -> row, replacing the DB layer."""
+    """In-memory match_key -> row, replacing the DB layer. Tier 0 matches
+    by product name alone (no store filter), so the fake mirrors that
+    directly rather than keying on (match_key, store) like the real table
+    does -- the store dimension is irrelevant to what these tests check."""
 
     table: dict = {}
 
     def fake_upsert(match_key, store, matched_name, off_id, bls_code, nutrition):
-        table[(match_key, store)] = {
+        table[match_key] = {
             "matched_name": matched_name,
             "off_id": off_id,
             "bls_code": bls_code,
             "nutrition": nutrition,
         }
 
-    def fake_get(match_key, store):
-        return table.get((match_key, store))
+    def fake_get(match_key):
+        return table.get(match_key)
 
     monkeypatch.setattr("backend.app.db.repo.upsert_verified_match", fake_upsert)
     monkeypatch.setattr("backend.app.db.repo.get_verified_match", fake_get)
@@ -33,10 +36,9 @@ def _patch_table(monkeypatch):
 
 
 def test_normalize_store_maps_spelling_variants_to_the_same_canonical_name():
-    # Regression: an imported verified match keyed under the old project's
-    # store string ("Netto Marken-Discount") was never found for a receipt
-    # this app's own receipt_text_parser._detect_store() calls "Netto" --
-    # 151 of 191 imported rows used a spelling that wouldn't have matched.
+    # normalize_store still matters on the write side (record_verified_match
+    # keeps recording which store a correction came from), even though
+    # lookups no longer filter by it.
     assert normalize_store("Netto Marken-Discount") == "Netto"
     assert normalize_store("NETTO") == "Netto"
     assert normalize_store("netto") == "Netto"
@@ -55,29 +57,23 @@ def test_normalize_store_handles_missing_store():
     assert normalize_store("") == ""
 
 
-def test_correction_written_under_one_store_spelling_is_found_under_another(monkeypatch):
+def test_lookup_matches_regardless_of_which_store_the_correction_came_from(monkeypatch):
     _patch_table(monkeypatch)
     record_verified_match(
         raw_text="Bio BB Feta",
-        store="Netto Marken-Discount",
+        store="Aldi",
         bls_code="M012200",
         matched_name="Feta mind. 45 % Fett i. Tr.",
         nutrition={"calories_kcal": 284},
     )
-    hit = lookup_verified_match("Bio BB Feta", store="Netto")
+    # No store passed at all -- a Netto or Lidl receipt hitting this same
+    # product line must find the Aldi-recorded correction just the same.
+    hit = lookup_verified_match("Bio BB Feta")
     assert hit is not None
     assert hit["matched_name"] == "Feta mind. 45 % Fett i. Tr."
-
-
-def test_store_agnostic_fallback_still_works(monkeypatch):
-    _patch_table(monkeypatch)
-    record_verified_match(raw_text="Apfel", store=None, matched_name="Apfel roh")
-    hit = lookup_verified_match("Apfel", store="Rewe")
-    assert hit is not None
-    assert hit["matched_name"] == "Apfel roh"
 
 
 def test_lookup_misses_a_genuinely_different_product(monkeypatch):
     _patch_table(monkeypatch)
     record_verified_match(raw_text="Bio BB Feta", store="Netto", matched_name="Feta")
-    assert lookup_verified_match("Gouda Scheiben", store="Netto") is None
+    assert lookup_verified_match("Gouda Scheiben") is None

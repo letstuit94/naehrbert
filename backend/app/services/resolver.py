@@ -252,14 +252,14 @@ def _category_fallback(item_name: str, category: Optional[str]) -> MatchedProduc
     )
 
 
-def _learned(item: dict, name: str) -> Optional[MatchedProduct]:
-    """Tier 0 (BR-MT0): verified-match store hit → conf 1.0. Inert until E5."""
+def _learned(name: str) -> Optional[MatchedProduct]:
+    """Tier 0 (BR-MT0): verified-match hit by product name, any store → conf 1.0."""
 
-    hit = verified_matches.lookup_verified_match(name, item.get("store"))
+    hit = verified_matches.lookup_verified_match(name)
     if not hit:
         return None
     nut = NutritionValues(**hit["nutrition"]) if hit.get("nutrition") else None
-    conf = float(hit.get("confidence", 1.0))  # 1.0 exact (key,store); 0.9 store-agnostic
+    conf = float(hit.get("confidence", 1.0))
     return MatchedProduct(
         parsed_item_name=name,
         matched_name=hit.get("matched_name"),
@@ -302,7 +302,7 @@ def resolve_item(item: dict) -> MatchedProduct:
         )
 
     # Tier 0 — learned verified match (inert until E5)
-    learned = _learned(item, name)
+    learned = _learned(name)
     if learned is not None:
         return learned
 

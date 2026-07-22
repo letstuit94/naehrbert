@@ -161,26 +161,25 @@ export function ResultsPage() {
           </p>
         )}
 
-      <h2 id="recipes">Recipe generation</h2>
-      <RecipeGenerationForm onGenerated={prependRecipe} />
+      {unlockStatus.data?.unlocked && unlockStatus.data.prefs_completed ? (
+        <>
+          <h2 id="recipes">Recipe generation</h2>
+          <RecipeGenerationForm onGenerated={prependRecipe} />
 
-      <h2>Recipes</h2>
-      {recipes.data && recipes.data.length === 0 && (
-        <p>
-          No recipes yet — fill in the form above (or leave it blank) and generate one.
-        </p>
+          <h2>Recipes</h2>
+          {recipes.data && recipes.data.length === 0 && (
+            <p>
+              No recipes yet — fill in the form above (or leave it blank) and generate
+              one.
+            </p>
+          )}
+          {recipes.data?.map((recipe) => (
+            <RecipeSummaryCard key={recipe.id} recipe={recipe} />
+          ))}
+        </>
+      ) : (
+        unlockStatus.data && <UnlockRecipesSection status={unlockStatus.data} />
       )}
-      {recipes.data?.map((recipe) => (
-        <RecipeSummaryCard key={recipe.id} recipe={recipe} />
-      ))}
-
-      {/* Once unlocked AND the one-time preferences chat is done, this
-          section has nothing left to do -- dietary style/allergies/
-          dislikes are edited on the Profile page from here on. */}
-      {unlockStatus.data &&
-        !(unlockStatus.data.unlocked && unlockStatus.data.prefs_completed) && (
-          <UnlockRecipesSection status={unlockStatus.data} />
-        )}
     </section>
   )
 }

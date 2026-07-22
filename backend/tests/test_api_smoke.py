@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from backend.app.api import analysis as analysis_api
 from backend.app.api import feedback as feedback_api
 from backend.app.api import profile as profile_api
+from backend.app.api import profiles as profiles_api
 from backend.app.api import receipts as receipts_api
 from backend.app.api import recipes as recipes_api
 from backend.app.main import app
@@ -23,6 +24,11 @@ from backend.app.models.recipe import GeminiRecipeSuggestion, RecipeIngredient
 from backend.app.services.gemini_client import GeminiNotConfigured
 
 client = TestClient(app)
+
+# Every protected endpoint reads the logged-in profile off this header
+# (multi-user feature, backend/app/core/auth.py) -- tests act as profile 1
+# throughout, matching _PROFILE_ROW below.
+AUTH = {"X-Profile-Id": "1"}
 
 _PROFILE_ROW = {
     "id": 1,
@@ -45,8 +51,43 @@ def test_health():
 
 
 def test_create_profile_returns_profile_and_targets(monkeypatch):
-    monkeypatch.setattr(profile_api.repo, "upsert_profile", lambda payload: _PROFILE_ROW)
+    monkeypatch.setattr(
+        profile_api.repo, "upsert_profile", lambda payload, profile_id: _PROFILE_ROW
+    )
 
+    resp = client.post(
+        "/profile",
+        json={
+            "sex": "female",
+            "date_of_birth": "1994-03-15",
+            "height_cm": 168,
+            "weight_kg": 64,
+            "exercise_frequency": "three_four",
+            "daily_movement": "mixed",
+            "goal": "maintain",
+        },
+        headers=AUTH,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["profile"]["sex"] == "female"
+    assert body["targets"]["calories_kcal"] > 0
+    assert abs(sum(body["targets_pct"].values()) - 100) < 1.0
+
+
+def test_create_profile_signup_has_no_profile_id_yet(monkeypatch):
+    """No X-Profile-Id header -- the onboarding-chat signup path, a brand
+    new user with nothing to log in as yet -- must insert rather than
+    update, so `profile_id` reaches the repo as None (repo.upsert_profile
+    branches insert-vs-update on exactly this)."""
+
+    captured = {}
+
+    def fake_upsert(payload, profile_id):
+        captured["profile_id"] = profile_id
+        return _PROFILE_ROW
+
+    monkeypatch.setattr(profile_api.repo, "upsert_profile", fake_upsert)
     resp = client.post(
         "/profile",
         json={
@@ -60,23 +101,36 @@ def test_create_profile_returns_profile_and_targets(monkeypatch):
         },
     )
     assert resp.status_code == 200
-    body = resp.json()
-    assert body["profile"]["sex"] == "female"
-    assert body["targets"]["calories_kcal"] > 0
-    assert abs(sum(body["targets_pct"].values()) - 100) < 1.0
+    assert captured["profile_id"] is None
 
 
 def test_read_profile_404_when_none_exists(monkeypatch):
-    monkeypatch.setattr(profile_api.repo, "get_profile", lambda: None)
-    resp = client.get("/profile")
+    monkeypatch.setattr(profile_api.repo, "get_profile", lambda profile_id: None)
+    resp = client.get("/profile", headers=AUTH)
     assert resp.status_code == 404
+
+
+def test_read_profile_401_without_login(monkeypatch):
+    resp = client.get("/profile")
+    assert resp.status_code == 401
+
+
+def test_list_profiles_endpoint(monkeypatch):
+    monkeypatch.setattr(
+        profiles_api.repo,
+        "list_profiles",
+        lambda: [{"id": 1, "name": "Stu"}, {"id": 2, "name": None}],
+    )
+    resp = client.get("/profiles")
+    assert resp.status_code == 200
+    assert resp.json() == [{"id": 1, "name": "Stu"}, {"id": 2, "name": None}]
 
 
 def test_purchases_converts_per_100g_to_actual_quantity_and_includes_non_food(monkeypatch):
     monkeypatch.setattr(
         analysis_api.repo,
         "get_all_confirmed_receipt_items_with_receipt_info",
-        lambda: [
+        lambda profile_id: [
             {
                 "id": "i1",
                 "receipt_id": "r1",
@@ -125,7 +179,7 @@ def test_purchases_converts_per_100g_to_actual_quantity_and_includes_non_food(mo
             },
         ],
     )
-    resp = client.get("/analysis/purchases")
+    resp = client.get("/analysis/purchases", headers=AUTH)
     assert resp.status_code == 200
     items = resp.json()["items"]
     assert len(items) == 2  # non-food item is included, unlike composition/buckets/diversity
@@ -195,7 +249,9 @@ def test_upload_text_injects_receipt_store_into_resolve_item(monkeypatch):
     captured = {}
     monkeypatch.setattr(receipts_api, "resolve_item", _fake_resolve_capturing_store(captured))
 
-    resp = client.post("/receipts/text", json={"text": "irrelevant, parser is mocked"})
+    resp = client.post(
+        "/receipts/text", json={"text": "irrelevant, parser is mocked"}, headers=AUTH
+    )
     assert resp.status_code == 200
     assert captured["store"] == "Rewe"
 
@@ -204,7 +260,11 @@ def test_confirm_injects_receipt_store_into_resolve_item(monkeypatch):
     """Same regression as the upload-time test, for confirm_receipt's
     resolve_item call."""
 
-    monkeypatch.setattr(receipts_api.repo, "get_receipt", lambda rid: {"id": rid, "store": "Lidl"})
+    monkeypatch.setattr(
+        receipts_api.repo,
+        "get_receipt",
+        lambda rid: {"id": rid, "store": "Lidl", "profile_id": 1},
+    )
     monkeypatch.setattr(
         receipts_api.repo,
         "get_receipt_items",
@@ -216,9 +276,21 @@ def test_confirm_injects_receipt_store_into_resolve_item(monkeypatch):
     captured = {}
     monkeypatch.setattr(receipts_api, "resolve_item", _fake_resolve_capturing_store(captured))
 
-    resp = client.post("/receipts/r1/confirm")
+    resp = client.post("/receipts/r1/confirm", headers=AUTH)
     assert resp.status_code == 200
     assert captured["store"] == "Lidl"
+
+
+def test_confirm_receipt_404_when_owned_by_a_different_profile(monkeypatch):
+    """A receipt that exists but belongs to profile 2 must look identical
+    to a missing one from profile 1's point of view -- no leaking whether
+    the id exists at all."""
+
+    monkeypatch.setattr(
+        receipts_api.repo, "get_receipt", lambda rid: {"id": rid, "store": "Lidl", "profile_id": 2}
+    )
+    resp = client.post("/receipts/r1/confirm", headers=AUTH)
+    assert resp.status_code == 404
 
 
 def test_resolve_concurrently_preserves_order_despite_out_of_order_completion(monkeypatch):
@@ -259,7 +331,9 @@ def test_correct_item_records_verified_match_keyed_on_cleaned_name(monkeypatch):
         "name": "Bio Paprika Mix",
         "original_text": "Bio Paprika Mix 400g 2,29 B",
     }
-    monkeypatch.setattr(receipts_api.repo, "get_receipt", lambda rid: {"store": "Netto"})
+    monkeypatch.setattr(
+        receipts_api.repo, "get_receipt", lambda rid: {"store": "Netto", "profile_id": 1}
+    )
     monkeypatch.setattr(receipts_api.repo, "get_receipt_items", lambda rid: [fake_item])
     monkeypatch.setattr(receipts_api.repo, "update_receipt_item", lambda item_id, fields: fields)
 
@@ -273,6 +347,7 @@ def test_correct_item_records_verified_match_keyed_on_cleaned_name(monkeypatch):
     resp = client.post(
         "/receipts/r1/items/item-1/correct",
         json={"matched_name": "Gemüsepaprika rot, roh", "bls_code": "S000100", "nutrition": {}},
+        headers=AUTH,
     )
     assert resp.status_code == 200
     assert recorded["raw_text"] == "Bio Paprika Mix"  # the cleaned `name`, not `original_text`
@@ -282,34 +357,39 @@ def test_summary_counts_distinct_receipts_and_items(monkeypatch):
     monkeypatch.setattr(
         analysis_api.repo,
         "get_all_confirmed_receipt_items",
-        lambda: [
+        lambda profile_id: [
             {"receipt_id": "r1"},
             {"receipt_id": "r1"},
             {"receipt_id": "r2"},
         ],
     )
-    resp = client.get("/analysis/summary")
+    resp = client.get("/analysis/summary", headers=AUTH)
     assert resp.status_code == 200
     assert resp.json() == {"receipts_count": 2, "items_count": 3}
 
 
-def test_summary_empty_state_without_receipts(monkeypatch):
-    monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda: [])
+def test_summary_401_without_login(monkeypatch):
     resp = client.get("/analysis/summary")
+    assert resp.status_code == 401
+
+
+def test_summary_empty_state_without_receipts(monkeypatch):
+    monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: [])
+    resp = client.get("/analysis/summary", headers=AUTH)
     assert resp.status_code == 200
     assert resp.json() == {"receipts_count": 0, "items_count": 0}
 
 
 def test_composition_empty_state_without_receipts(monkeypatch):
-    monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda: [])
-    resp = client.get("/analysis/composition")
+    monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: [])
+    resp = client.get("/analysis/composition", headers=AUTH)
     assert resp.status_code == 200
     assert resp.json()["items_considered"] == 0
 
 
 def test_diversity_empty_state_without_receipts(monkeypatch):
-    monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda: [])
-    resp = client.get("/analysis/diversity")
+    monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: [])
+    resp = client.get("/analysis/diversity", headers=AUTH)
     assert resp.status_code == 200
     assert resp.json()["recommendations"] == []
 
@@ -329,15 +409,15 @@ def test_unlock_status_counts_matched_items(monkeypatch):
     monkeypatch.setattr(
         recipes_api.repo,
         "get_all_confirmed_receipt_items",
-        lambda: [
+        lambda profile_id: [
             {"is_non_food": False, "matched_name": "Vollmilch", "fallback_category": None},
             {"is_non_food": False, "matched_name": None, "fallback_category": "lean_poultry"},
             {"is_non_food": False, "matched_name": None, "fallback_category": None},  # no-match, excluded
             {"is_non_food": True, "matched_name": "Pfand", "fallback_category": None},  # non-food, excluded
         ],
     )
-    monkeypatch.setattr(recipes_api.repo, "get_profile", lambda: None)
-    resp = client.get("/recipes/unlock-status")
+    monkeypatch.setattr(recipes_api.repo, "get_profile", lambda profile_id: None)
+    resp = client.get("/recipes/unlock-status", headers=AUTH)
     assert resp.status_code == 200
     assert resp.json() == {
         "matched_items_count": 2,
@@ -351,22 +431,25 @@ def test_inferred_dietary_style_endpoint(monkeypatch):
     monkeypatch.setattr(
         recipes_api.repo,
         "get_all_confirmed_receipt_items",
-        lambda: [{"category": "fatty_fish", "is_non_food": False}],
+        lambda profile_id: [{"category": "fatty_fish", "is_non_food": False}],
     )
-    resp = client.get("/recipes/inferred-dietary-style")
+    resp = client.get("/recipes/inferred-dietary-style", headers=AUTH)
     assert resp.status_code == 200
     assert resp.json() == {"dietary_style": "pescatarian"}
 
 
 def test_update_dietary_preferences(monkeypatch):
-    monkeypatch.setattr(profile_api.repo, "get_profile", lambda: _PROFILE_ROW)
+    monkeypatch.setattr(profile_api.repo, "get_profile", lambda profile_id: _PROFILE_ROW)
     monkeypatch.setattr(
-        profile_api.repo, "update_dietary_preferences", lambda fields: {**_PROFILE_ROW, **fields}
+        profile_api.repo,
+        "update_dietary_preferences",
+        lambda profile_id, fields: {**_PROFILE_ROW, **fields},
     )
 
     resp = client.patch(
         "/profile/preferences",
         json={"dietary_style": "vegan", "allergies": ["gluten"], "dislikes": ["cilantro"]},
+        headers=AUTH,
     )
     assert resp.status_code == 200
     body = resp.json()
@@ -376,8 +459,10 @@ def test_update_dietary_preferences(monkeypatch):
 
 
 def test_generate_recipe_endpoint(monkeypatch):
-    monkeypatch.setattr(recipes_api.repo, "get_profile", lambda: _RECIPE_PROFILE_ROW)
-    monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda: [])
+    monkeypatch.setattr(recipes_api.repo, "get_profile", lambda profile_id: _RECIPE_PROFILE_ROW)
+    monkeypatch.setattr(
+        analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: []
+    )
 
     fake_suggestion = GeminiRecipeSuggestion(
         title="Lentil bowl",
@@ -404,12 +489,13 @@ def test_generate_recipe_endpoint(monkeypatch):
     monkeypatch.setattr(
         recipes_api.repo,
         "insert_recipe",
-        lambda row: {**row, "id": "recipe-1", "created_at": "2026-07-21T00:00:00+00:00"},
+        lambda profile_id, row: {**row, "id": "recipe-1", "created_at": "2026-07-21T00:00:00+00:00"},
     )
 
     resp = client.post(
         "/recipes/generate",
         json={"cuisine": "Thai", "max_time_minutes": 30, "servings": 4},
+        headers=AUTH,
     )
     assert resp.status_code == 200
     body = resp.json()
@@ -423,8 +509,10 @@ def test_generate_recipe_without_body_uses_no_cuisine_or_time_limit(monkeypatch)
     still work -- cuisine/max_time_minutes/servings are optional
     per-generation inputs, not required ones."""
 
-    monkeypatch.setattr(recipes_api.repo, "get_profile", lambda: _RECIPE_PROFILE_ROW)
-    monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda: [])
+    monkeypatch.setattr(recipes_api.repo, "get_profile", lambda profile_id: _RECIPE_PROFILE_ROW)
+    monkeypatch.setattr(
+        analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: []
+    )
 
     fake_suggestion = GeminiRecipeSuggestion(
         title="Simple bowl",
@@ -451,29 +539,36 @@ def test_generate_recipe_without_body_uses_no_cuisine_or_time_limit(monkeypatch)
     monkeypatch.setattr(
         recipes_api.repo,
         "insert_recipe",
-        lambda row: {**row, "id": "recipe-2", "created_at": "2026-07-21T00:00:00+00:00"},
+        lambda profile_id, row: {**row, "id": "recipe-2", "created_at": "2026-07-21T00:00:00+00:00"},
     )
 
-    resp = client.post("/recipes/generate")
+    resp = client.post("/recipes/generate", headers=AUTH)
     assert resp.status_code == 200
     assert captured_kwargs == {"cuisine": None, "max_time_minutes": None, "servings": None}
 
 
 def test_generate_recipe_404_without_profile(monkeypatch):
-    monkeypatch.setattr(recipes_api.repo, "get_profile", lambda: None)
-    resp = client.post("/recipes/generate")
+    monkeypatch.setattr(recipes_api.repo, "get_profile", lambda profile_id: None)
+    resp = client.post("/recipes/generate", headers=AUTH)
     assert resp.status_code == 404
 
 
+def test_generate_recipe_401_without_login(monkeypatch):
+    resp = client.post("/recipes/generate")
+    assert resp.status_code == 401
+
+
 def test_generate_recipe_returns_503_when_gemini_not_configured(monkeypatch):
-    monkeypatch.setattr(recipes_api.repo, "get_profile", lambda: _RECIPE_PROFILE_ROW)
-    monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda: [])
+    monkeypatch.setattr(recipes_api.repo, "get_profile", lambda profile_id: _RECIPE_PROFILE_ROW)
+    monkeypatch.setattr(
+        analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: []
+    )
 
     def raise_not_configured(profile, gap, recs, cuisine=None, max_time_minutes=None, servings=None):
         raise GeminiNotConfigured("GEMINI_API_KEY is not set")
 
     monkeypatch.setattr(recipes_api, "generate_and_assemble_recipe", raise_not_configured)
-    resp = client.post("/recipes/generate")
+    resp = client.post("/recipes/generate", headers=AUTH)
     assert resp.status_code == 503
 
 
@@ -481,7 +576,7 @@ def test_list_recipes_endpoint(monkeypatch):
     monkeypatch.setattr(
         recipes_api.repo,
         "get_all_recipes",
-        lambda: [
+        lambda profile_id: [
             {
                 "id": "r1",
                 "title": "Lentil bowl",
@@ -498,7 +593,7 @@ def test_list_recipes_endpoint(monkeypatch):
             }
         ],
     )
-    resp = client.get("/recipes")
+    resp = client.get("/recipes", headers=AUTH)
     assert resp.status_code == 200
     assert resp.json()[0]["title"] == "Lentil bowl"
 
@@ -507,13 +602,18 @@ def test_submit_feedback(monkeypatch):
     monkeypatch.setattr(
         feedback_api.repo,
         "insert_feedback",
-        lambda score: {
+        lambda profile_id, score: {
             "id": "f1",
-            "profile_id": 1,
+            "profile_id": profile_id,
             "nps_score": score,
             "created_at": "2026-07-21T00:00:00+00:00",
         },
     )
-    resp = client.post("/feedback", json={"nps_score": 9})
+    resp = client.post("/feedback", json={"nps_score": 9}, headers=AUTH)
     assert resp.status_code == 200
     assert resp.json()["nps_score"] == 9
+
+
+def test_submit_feedback_401_without_login(monkeypatch):
+    resp = client.post("/feedback", json={"nps_score": 9})
+    assert resp.status_code == 401

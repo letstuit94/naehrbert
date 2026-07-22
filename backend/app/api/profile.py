@@ -1,9 +1,11 @@
 """Epic 1 (onboarding) & Epic 2 (target calculation) endpoints."""
 
 from datetime import datetime, timezone
+from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from backend.app.core.auth import optional_profile_id, require_profile_id
 from backend.app.db import repo
 from backend.app.models.profile import DietaryPreferencesUpdate, Profile, ProfileCreate
 from backend.app.services.ideal_profile import compute_ideal_profile, macro_percentages
@@ -19,43 +21,49 @@ def _targets_payload(profile: Profile) -> dict:
 
 
 @router.post("")
-def create_profile(payload: ProfileCreate):
-    """Create-or-replace the single profile row and compute targets
-    synchronously (Epic 1.1, Epic 1.2) so the frontend can render the
-    targets screen from this one response."""
+def create_profile(
+    payload: ProfileCreate, profile_id: Optional[int] = Depends(optional_profile_id)
+):
+    """Create a brand-new profile (onboarding signup -- no X-Profile-Id
+    header sent yet) or replace the caller's own profile in place (the
+    Profile page's biometric edit form -- header present). Computes targets
+    synchronously either way (Epic 1.1, Epic 1.2) so the frontend can
+    render the targets screen from this one response."""
 
-    stored = repo.upsert_profile(payload.model_dump(mode="json"))
+    stored = repo.upsert_profile(payload.model_dump(mode="json"), profile_id)
     profile = Profile(**stored)
     return {"profile": profile, **_targets_payload(profile)}
 
 
 @router.get("")
-def read_profile():
+def read_profile(profile_id: int = Depends(require_profile_id)):
     """Current profile, for the "edit profile" entry point (Epic 1.2)."""
 
-    stored = repo.get_profile()
+    stored = repo.get_profile(profile_id)
     if not stored:
         raise HTTPException(status_code=404, detail="No profile yet")
     return Profile(**stored)
 
 
 @router.get("/targets")
-def read_targets():
-    stored = repo.get_profile()
+def read_targets(profile_id: int = Depends(require_profile_id)):
+    stored = repo.get_profile(profile_id)
     if not stored:
         raise HTTPException(status_code=404, detail="No profile yet")
     return _targets_payload(Profile(**stored))
 
 
 @router.patch("/preferences")
-def update_dietary_preferences(payload: DietaryPreferencesUpdate):
+def update_dietary_preferences(
+    payload: DietaryPreferencesUpdate, profile_id: int = Depends(require_profile_id)
+):
     """Recipe-preferences chat (or the Profile page) saves dietary style/
     allergies/dislikes here -- separate from the biometric ProfileCreate
     fields, so editing them never requires re-submitting height/weight/etc.
     Stamps `recipe_prefs_completed_at` so the recipe chat skips straight to
     generation on future visits (recipe-recommendations feature)."""
 
-    stored = repo.get_profile()
+    stored = repo.get_profile(profile_id)
     if not stored:
         raise HTTPException(status_code=404, detail="No profile yet")
 
@@ -63,5 +71,5 @@ def update_dietary_preferences(payload: DietaryPreferencesUpdate):
         **payload.model_dump(mode="json"),
         "recipe_prefs_completed_at": datetime.now(timezone.utc).isoformat(),
     }
-    updated = repo.update_dietary_preferences(fields)
+    updated = repo.update_dietary_preferences(profile_id, fields)
     return Profile(**updated)

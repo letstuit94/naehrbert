@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { setCurrentProfileId } from '../lib/session'
 import {
   ApiError,
   createProfile,
@@ -64,6 +65,7 @@ function toForm(profile: Profile): FormState {
 }
 
 export function ProfilePage() {
+  const navigate = useNavigate()
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
@@ -140,6 +142,11 @@ export function ProfilePage() {
     setSaved(false)
   }
 
+  function logOut() {
+    setCurrentProfileId(null)
+    navigate('/')
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -178,8 +185,8 @@ export function ProfilePage() {
       <section>
         <h1>Profile</h1>
         <p>
-          You haven't completed onboarding yet. <Link to="/">Start onboarding</Link> to
-          create your profile.
+          You haven't completed onboarding yet.{' '}
+          <Link to="/onboarding">Start onboarding</Link> to create your profile.
         </p>
       </section>
     )
@@ -415,6 +422,12 @@ export function ProfilePage() {
           {prefsSaving ? 'Saving…' : 'Save preferences'}
         </button>
       </form>
+
+      <div className="section-divider">
+        <button type="button" className="btn btn-secondary" onClick={logOut}>
+          Log out
+        </button>
+      </div>
     </section>
   )
 }

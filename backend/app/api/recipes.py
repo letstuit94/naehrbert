@@ -8,9 +8,10 @@ re-deriving the same macro-gap computation here -- one source of truth for
 "what's the current gap", same as every other consumer of that data.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.api.analysis import get_diversity, get_target_comparison
+from backend.app.core.auth import require_profile_id
 from backend.app.db import repo
 from backend.app.models.profile import Profile
 from backend.app.models.recipe import Recipe, RecipeGenerateRequest
@@ -23,12 +24,12 @@ router = APIRouter(prefix="/recipes", tags=["recipes"])
 
 
 @router.get("/unlock-status")
-def get_unlock_status():
+def get_unlock_status(profile_id: int = Depends(require_profile_id)):
     """Results page's "Unlock recipes" progress bar / button."""
 
-    items = repo.get_all_confirmed_receipt_items()
+    items = repo.get_all_confirmed_receipt_items(profile_id)
     matched = count_matched_items(items)
-    stored = repo.get_profile()
+    stored = repo.get_profile(profile_id)
     return {
         "matched_items_count": matched,
         "threshold": UNLOCK_THRESHOLD,
@@ -38,16 +39,19 @@ def get_unlock_status():
 
 
 @router.get("/inferred-dietary-style")
-def get_inferred_dietary_style():
+def get_inferred_dietary_style(profile_id: int = Depends(require_profile_id)):
     """First guess shown in the recipe-preferences chat, for the user to
     confirm or correct -- never saved without that confirmation."""
 
-    items = repo.get_all_confirmed_receipt_items()
+    items = repo.get_all_confirmed_receipt_items(profile_id)
     return {"dietary_style": infer_dietary_style(items)}
 
 
 @router.post("/generate")
-def generate_recipe(payload: RecipeGenerateRequest = RecipeGenerateRequest()):
+def generate_recipe(
+    payload: RecipeGenerateRequest = RecipeGenerateRequest(),
+    profile_id: int = Depends(require_profile_id),
+):
     """Triggered from the Recipes page only -- the recipe-preferences chat
     (recipes/new) just collects NPS feedback + dietary style/allergies/
     dislikes and never generates anything itself. `cuisine`/
@@ -55,15 +59,15 @@ def generate_recipe(payload: RecipeGenerateRequest = RecipeGenerateRequest()):
     user gives; everything else (dietary style, allergies, dislikes, the
     nutrient gap) comes from the saved profile/analysis data by design."""
 
-    stored = repo.get_profile()
+    stored = repo.get_profile(profile_id)
     if not stored:
         raise HTTPException(status_code=404, detail="No profile yet")
     profile = Profile(**stored)
 
     # get_target_comparison() raises its own 404/422 if there's no profile
     # or the targets are incomplete -- propagates unchanged.
-    gap = get_target_comparison()
-    diversity = get_diversity()
+    gap = get_target_comparison(profile_id)
+    diversity = get_diversity(profile_id)
 
     try:
         suggestion = generate_and_assemble_recipe(
@@ -79,10 +83,10 @@ def generate_recipe(payload: RecipeGenerateRequest = RecipeGenerateRequest()):
     except ValueError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    row = repo.insert_recipe(suggestion.model_dump(mode="json"))
+    row = repo.insert_recipe(profile_id, suggestion.model_dump(mode="json"))
     return Recipe(**row)
 
 
 @router.get("")
-def list_recipes():
-    return [Recipe(**row) for row in repo.get_all_recipes()]
+def list_recipes(profile_id: int = Depends(require_profile_id)):
+    return [Recipe(**row) for row in repo.get_all_recipes(profile_id)]

@@ -38,6 +38,7 @@ import {
   typedItem,
   type SeqItem,
 } from '../lib/chatSequence'
+import { setCurrentProfileId } from '../lib/session'
 
 // Chat-style onboarding (Epic 1.1) -- a warmer alternative to a plain form,
 // adapted from an earlier version of this app (see repo-root
@@ -240,6 +241,15 @@ export function OnboardingPage() {
     if (historyRef.current) historyRef.current.scrollTop = historyRef.current.scrollHeight
   }, [stepIndex, phase, turnRevealed])
 
+  // Reaching this page always means "create a brand-new user" -- never
+  // "edit my own profile" (that's the Profile page's job) -- so drop any
+  // stale login first. Otherwise a leftover X-Profile-Id from a previous
+  // session would make submit() below silently overwrite that user's
+  // profile instead of creating a new one (multi-user feature).
+  useEffect(() => {
+    setCurrentProfileId(null)
+  }, [])
+
   function saveEdit(key: string, value: string) {
     setAnswers((prev) => ({ ...prev, [key]: value }))
     setEditingKey(null)
@@ -260,6 +270,7 @@ export function OnboardingPage() {
         goal: finalAnswers.goal as Goal,
       }
       const result = await createProfile(payload)
+      setCurrentProfileId(result.profile.id)
       setTurnQueue(revealSequence(result.targets))
       setTurnReplyCount(0)
       setTurnRevealed(0)

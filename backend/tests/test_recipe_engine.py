@@ -11,6 +11,7 @@ from backend.app.models.recipe import GeminiRecipeSuggestion, RecipeIngredient
 from backend.app.services import recipe_engine
 
 _PROFILE = Profile(
+    id=1,
     sex="female",
     date_of_birth="1994-03-15",
     height_cm=168,

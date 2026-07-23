@@ -152,7 +152,10 @@ voneinander und können gleichzeitig laufen; beide münden in Phase 4.
 
 ## Offene Entscheidungen (vor bzw. während der Phasen zu klären)
 
-- **IST-Begriff je Feature** (Phase 0.2).
+- **IST-Begriff je Feature** (Phase 0.2). **Bewusst in den nächsten Sprint verschoben:**
+  erst Phase 2 + 3 bauen, dann am konkreten Datenstand entscheiden. Blockiert nur Phase 4
+  (Gap-Design), nicht Phase 2/3. **Guardrail:** `eaten` und `removed` in Phase 2 getrennt
+  speichern (nicht kollabieren), sonst ist der Konsum-Korrektur-Pfad in Phase 4 zu.
 - **Basket-Anzeige:** pro-Lot (MVP) vs. pro-Produkt aggregiert ([Vorrat.md §5](Vorrat.md)).
 - **Empfehlungs-Zutaten:** kontrollierte Liste vs. freie Gemini-Zutaten
   ([GapUndEmpfehlung §3.2](GapUndEmpfehlung.md)).

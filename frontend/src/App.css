@@ -1224,6 +1224,19 @@ a.btn {
   justify-content: flex-end;
 }
 
+/* "Remove" (not eaten) is the rarer action -- a small, muted ✕ next to the
+   primary "Eaten" button, turning red on hover to read as a discard. */
+.basket-row__remove {
+  font-size: 15px;
+  line-height: 1;
+  padding: 4px 6px;
+  color: var(--text-muted, #888);
+}
+
+.basket-row__remove:hover {
+  color: #d03b3b;
+}
+
 @media (max-width: 640px) {
   .basket-row {
     grid-template-columns: 1fr;

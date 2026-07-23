@@ -9,7 +9,7 @@ import {
   type PantryRemoval,
   type PantryRemovalReason,
 } from '../lib/api'
-import { matchInfo } from '../lib/matchInfo'
+import { formatFallbackCategory, matchInfo } from '../lib/matchInfo'
 import {
   quantityBasis,
   QUANTITY_BASIS_LABEL,
@@ -38,11 +38,25 @@ const QUANTITY_BASIS_ICON: Record<QuantityBasis, string> = {
   unknown: '?',
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return 'Unknown date'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+// How long a lot has sat in the basket (today − purchase date), the thing
+// that matters here -- old stock is what you want to use up or clear. The
+// exact purchase date lives on the Purchases page instead.
+function daysInBasket(iso: string | null): string {
+  if (!iso) return 'unknown age'
+  const then = new Date(iso)
+  if (Number.isNaN(then.getTime())) return 'unknown age'
+  const days = Math.floor((Date.now() - then.getTime()) / 86_400_000)
+  if (days <= 0) return 'today'
+  return `${days} day${days === 1 ? '' : 's'} in basket`
+}
+
+// The verified identity to show, never the raw parsed receipt text: the
+// matched product ("Tomate roh"), else the fallback category, else -- only
+// when nothing matched at all -- the parsed name as a last resort.
+function displayName(item: PantryItem): string {
+  if (item.matched_name) return item.matched_name
+  if (item.fallback_category) return formatFallbackCategory(item.fallback_category)
+  return item.name
 }
 
 function byNewest(a: PantryItem, b: PantryItem): number {
@@ -201,19 +215,17 @@ function BasketRow({
   return (
     <li className="purchase-row basket-row">
       <div className="purchase-row__name-cell">
-        <span className="purchase-row__name">{item.name}</span>
-        {match && (
-          <span
-            className={
-              match.lowConfidence
-                ? 'review-row__match review-row__match--warn'
-                : 'review-row__match'
-            }
-          >
-            {match.lowConfidence ? '~ ' : '✓ '}
-            {match.label}
-          </span>
-        )}
+        <span
+          className={
+            match?.lowConfidence
+              ? 'purchase-row__name review-row__match--warn'
+              : 'purchase-row__name'
+          }
+          title={match?.lowConfidence ? 'Category estimate, not a verified match' : undefined}
+        >
+          {match?.lowConfidence ? '~ ' : ''}
+          {displayName(item)}
+        </span>
       </div>
       <span className="purchase-row__qty">
         {item.quantity ?? '—'} {item.unit ?? ''}
@@ -224,11 +236,7 @@ function BasketRow({
         >
           {QUANTITY_BASIS_ICON[basis]}
         </span>
-        <span className="muted">
-          {' '}
-          · {formatDate(item.purchased_at)}
-          {item.store ? ` · ${item.store}` : ''}
-        </span>
+        <span className="muted"> · {daysInBasket(item.purchased_at)}</span>
       </span>
       <span className="purchase-row__macros">
         {item.calories_kcal !== null ? `${Math.round(item.calories_kcal)} kcal` : '—'} · P{' '}
@@ -239,8 +247,14 @@ function BasketRow({
         <button type="button" className="btn-secondary" onClick={onEaten}>
           Eaten
         </button>
-        <button type="button" className="btn-link" onClick={onRemoved}>
-          Remove
+        <button
+          type="button"
+          className="btn-link basket-row__remove"
+          onClick={onRemoved}
+          aria-label="Remove"
+          title="Remove (not eaten — spoiled, given away, miscan)"
+        >
+          ✕
         </button>
       </div>
     </li>

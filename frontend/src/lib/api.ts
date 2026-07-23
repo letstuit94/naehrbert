@@ -561,6 +561,73 @@ export function getRecipes(): Promise<Recipe[]> {
   return request<Recipe[]>('/recipes')
 }
 
+// ── Pantry / Basket (Vorrat.md) ───────────────────────────────────────────
+
+/** Why a lot left the pantry. 'eaten' (gegessen) counts as consumption;
+ * 'removed' (entfernt) left without being eaten (spoiled/given away/miscan).
+ * Both reduce the pantry; only the later consumption-gap analysis tells them
+ * apart (GapUndEmpfehlung.md §4). */
+export type PantryRemovalReason = 'eaten' | 'removed'
+
+/** GET /pantry -- one row per in-stock lot (a single receipt_items line on a
+ * single receipt). kcal/macros are already scaled for the purchased quantity,
+ * same as PurchaseItem; pantry is food-only so there's no is_non_food. */
+export interface PantryItem {
+  id: string
+  receipt_id: string
+  name: string
+  store: string | null
+  purchased_at: string | null
+  quantity: number | null
+  unit: string | null
+  /** Always false -- the pantry view is food-only; present so the match
+   * helpers (matchInfo/matchCategory) accept a PantryItem. */
+  is_non_food: boolean
+  match_type: MatchType | null
+  matched_name: string | null
+  fallback_category: string | null
+  confidence: number | null
+  calories_kcal: number | null
+  protein_g: number | null
+  fat_g: number | null
+  carbs_g: number | null
+  fiber_g: number | null
+}
+
+export interface PantryResult {
+  items: PantryItem[]
+}
+
+/** A row appended to the withdrawal ledger (pantry_removals). */
+export interface PantryRemoval {
+  id: string
+  receipt_item_id: string
+  reason: PantryRemovalReason
+  quantity: number | null
+  removed_at: string
+}
+
+export function getPantry(): Promise<PantryResult> {
+  return request<PantryResult>('/pantry')
+}
+
+/** Mark a lot eaten/removed -- it disappears from the pantry. Returns the
+ * ledger row so the caller can offer an undo (deletePantryRemoval). */
+export function addPantryRemoval(
+  receiptItemId: string,
+  reason: PantryRemovalReason,
+): Promise<PantryRemoval> {
+  return request<PantryRemoval>('/pantry/removals', {
+    method: 'POST',
+    body: JSON.stringify({ receipt_item_id: receiptItemId, reason }),
+  })
+}
+
+/** Undo a withdrawal -- the lot reappears in the pantry. */
+export function deletePantryRemoval(removalId: string): Promise<void> {
+  return request<void>(`/pantry/removals/${removalId}`, { method: 'DELETE' })
+}
+
 // ── Feedback (recipe recommendations feature) ─────────────────────────────
 
 export function submitFeedback(npsScore: number): Promise<void> {

@@ -8,6 +8,7 @@ import { LoginPage } from './pages/LoginPage.tsx'
 import { OnboardingPage } from './pages/OnboardingPage.tsx'
 import { ProfilePage } from './pages/ProfilePage.tsx'
 import { UploadPage } from './pages/UploadPage.tsx'
+import { BasketPage } from './pages/BasketPage.tsx'
 import { PurchasesPage } from './pages/PurchasesPage.tsx'
 import { ResultsPage } from './pages/ResultsPage.tsx'
 import { RecipeChatPage } from './pages/RecipeChatPage.tsx'
@@ -29,6 +30,7 @@ createRoot(document.getElementById('root')!).render(
           <Route element={<RequireProfile />}>
             <Route path="profile" element={<ProfilePage />} />
             <Route path="upload" element={<UploadPage />} />
+            <Route path="basket" element={<BasketPage />} />
             <Route path="purchases" element={<PurchasesPage />} />
             <Route path="results" element={<ResultsPage />} />
             <Route path="recipes/new" element={<RecipeChatPage />} />

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api import analysis, feedback, profile, profiles, receipts, recipes
+from backend.app.api import analysis, feedback, pantry, profile, profiles, receipts, recipes
 from backend.app.core.config import get_settings
 
 app = FastAPI(title="naehrbert", version="0.1.0")
@@ -20,6 +20,7 @@ app.include_router(receipts.router)
 app.include_router(analysis.router)
 app.include_router(recipes.router)
 app.include_router(feedback.router)
+app.include_router(pantry.router)
 
 
 @app.get("/health")

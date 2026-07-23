@@ -1209,6 +1209,31 @@ a.btn {
   }
 }
 
+/* ── Basket / pantry (Vorrat.md) ───────────────────────────────────────── */
+
+/* Same card styling as .purchase-row, but a 4th column for the
+   eaten/removed actions (name · qty+date+store · macros · actions). */
+.basket-row {
+  grid-template-columns: 2fr 2.5fr 2fr auto;
+}
+
+.basket-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .basket-row {
+    grid-template-columns: 1fr;
+  }
+
+  .basket-row__actions {
+    justify-content: flex-start;
+  }
+}
+
 /* ── Recipes ───────────────────────────────────────────────────────────── */
 
 .recipe-card {

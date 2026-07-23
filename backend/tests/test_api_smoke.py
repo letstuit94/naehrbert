@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from backend.app.api import analysis as analysis_api
 from backend.app.api import feedback as feedback_api
+from backend.app.api import pantry as pantry_api
 from backend.app.api import profile as profile_api
 from backend.app.api import profiles as profiles_api
 from backend.app.api import receipts as receipts_api
@@ -509,6 +510,150 @@ def test_list_recipes_endpoint(monkeypatch):
     resp = client.get("/recipes", headers=AUTH)
     assert resp.status_code == 200
     assert resp.json()[0]["title"] == "Lentil bowl"
+
+
+# ── Pantry / basket (Vorrat.md) ───────────────────────────────────────────
+
+
+def test_pantry_scales_macros_is_food_only_and_newest_first(monkeypatch):
+    """GET /pantry returns v_pantry rows as basket lots: kcal/macros scaled
+    for the purchased quantity (like /analysis/purchases), is_non_food always
+    false, newest purchase first."""
+
+    monkeypatch.setattr(
+        pantry_api.repo,
+        "get_pantry",
+        lambda profile_id: [
+            {
+                "id": "i-old",
+                "receipt_id": "r1",
+                "name": "Reis",
+                "quantity": 1000,
+                "unit": "g",
+                "category": "grains",
+                "match_type": "bls",
+                "matched_name": "Reis, roh",
+                "fallback_category": None,
+                "confidence": 0.9,
+                "calories_kcal": 350,
+                "protein_g": 7,
+                "fat_g": 1,
+                "carbs_g": 78,
+                "fiber_g": 1.3,
+                "store": "Rewe",
+                "purchased_at": "2026-06-01",
+            },
+            {
+                "id": "i-new",
+                "receipt_id": "r2",
+                "name": "Vollmilch",
+                "quantity": 500,
+                "unit": "ml",
+                "category": "full_fat_dairy",
+                "match_type": "bls",
+                "matched_name": "Vollmilch 3,5%",
+                "fallback_category": None,
+                "confidence": 0.9,
+                "calories_kcal": 64,
+                "protein_g": 3.3,
+                "fat_g": 3.6,
+                "carbs_g": 4.8,
+                "fiber_g": 0,
+                "store": "Rewe",
+                "purchased_at": "2026-07-01",
+            },
+        ],
+    )
+    resp = client.get("/pantry", headers=AUTH)
+    assert resp.status_code == 200
+    items = resp.json()["items"]
+    assert [i["name"] for i in items] == ["Vollmilch", "Reis"]  # newest first
+    assert all(i["is_non_food"] is False for i in items)
+    milk = items[0]
+    assert milk["calories_kcal"] == 320  # 64 kcal/100g * 500ml (=500g) / 100
+    assert milk["protein_g"] == 16.5
+
+
+def test_pantry_removal_success_passes_reason_and_quantity(monkeypatch):
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
+    captured = {}
+
+    def fake_add(receipt_item_id, reason, quantity=None):
+        captured.update(receipt_item_id=receipt_item_id, reason=reason, quantity=quantity)
+        return {"id": "rm1", "receipt_item_id": receipt_item_id, "reason": reason,
+                "quantity": quantity, "removed_at": "2026-07-23T00:00:00+00:00"}
+
+    monkeypatch.setattr(pantry_api.repo, "add_pantry_removal", fake_add)
+    resp = client.post(
+        "/pantry/removals", json={"receipt_item_id": "i1", "reason": "eaten"}, headers=AUTH
+    )
+    assert resp.status_code == 201
+    assert resp.json()["reason"] == "eaten"
+    assert captured == {"receipt_item_id": "i1", "reason": "eaten", "quantity": None}
+
+
+def test_pantry_removal_rejects_invalid_reason(monkeypatch):
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
+    resp = client.post(
+        "/pantry/removals", json={"receipt_item_id": "i1", "reason": "burned"}, headers=AUTH
+    )
+    assert resp.status_code == 422  # reason not in {eaten, removed}
+
+
+def test_pantry_removal_404_for_another_profiles_item(monkeypatch):
+    """You can't withdraw a lot you don't own -- and it must look like the
+    item simply doesn't exist, never revealing it belongs to someone else."""
+
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 2)
+    called = {"added": False}
+    monkeypatch.setattr(
+        pantry_api.repo,
+        "add_pantry_removal",
+        lambda *a, **k: called.__setitem__("added", True),
+    )
+    resp = client.post(
+        "/pantry/removals", json={"receipt_item_id": "i1", "reason": "eaten"}, headers=AUTH
+    )
+    assert resp.status_code == 404
+    assert called["added"] is False  # never reached the write
+
+
+def test_pantry_removal_404_for_unknown_item(monkeypatch):
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: None)
+    resp = client.post(
+        "/pantry/removals", json={"receipt_item_id": "nope", "reason": "removed"}, headers=AUTH
+    )
+    assert resp.status_code == 404
+
+
+def test_delete_pantry_removal_undo_checks_ownership(monkeypatch):
+    monkeypatch.setattr(
+        pantry_api.repo, "get_pantry_removal", lambda rid: {"id": rid, "receipt_item_id": "i1"}
+    )
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
+    deleted = {"id": None}
+    monkeypatch.setattr(
+        pantry_api.repo, "remove_pantry_removal", lambda rid: deleted.__setitem__("id", rid)
+    )
+    resp = client.delete("/pantry/removals/rm1", headers=AUTH)
+    assert resp.status_code == 204
+    assert deleted["id"] == "rm1"
+
+
+def test_delete_pantry_removal_404_for_another_profiles_removal(monkeypatch):
+    monkeypatch.setattr(
+        pantry_api.repo, "get_pantry_removal", lambda rid: {"id": rid, "receipt_item_id": "i1"}
+    )
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 2)
+    resp = client.delete("/pantry/removals/rm1", headers=AUTH)
+    assert resp.status_code == 404
+
+
+def test_pantry_401_without_login(monkeypatch):
+    assert client.get("/pantry").status_code == 401
+    assert client.post(
+        "/pantry/removals", json={"receipt_item_id": "i1", "reason": "eaten"}
+    ).status_code == 401
 
 
 def test_submit_feedback(monkeypatch):

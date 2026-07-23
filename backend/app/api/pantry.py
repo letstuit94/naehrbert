@@ -1,0 +1,104 @@
+"""Pantry / basket (Vorrat.md) -- the user's current stock and the
+withdrawal ledger behind it.
+
+What the Basket page shows (an item list with "eaten"/"removed" buttons) is
+NOT how it's stored: there is no pantry table to mutate. Stock is derived at
+read time as purchases MINUS an append-only ledger of withdrawals
+(pantry_removals), so the immutable purchase history stays untouched and the
+consumption analytics that read the same receipt_items are never
+double-counted (Vorrat.md §2)."""
+
+from typing import Literal, Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+
+from backend.app.core.auth import require_profile_id
+from backend.app.db import repo
+from backend.app.services.nutrition_profile import grams_for
+
+router = APIRouter(prefix="/pantry", tags=["pantry"])
+
+
+class RemovalCreate(BaseModel):
+    receipt_item_id: str
+    # 'eaten' (gegessen) vs 'removed' (entfernt: spoiled/given away/miscan).
+    # Both leave the pantry; only the later consumption-gap analysis tells
+    # them apart (GapUndEmpfehlung.md §4).
+    reason: Literal["eaten", "removed"]
+    # Optional partial withdrawal; omitted (None) = whole lot gone (MVP).
+    quantity: Optional[float] = None
+
+
+def _scaled(value, factor):
+    """A missing macro is *unknown*, not 0 g -- keep it None so the UI shows
+    '—' instead of a fake measured zero (same policy as /analysis/purchases)."""
+    return None if value is None else round(value * factor, 1)
+
+
+def _pantry_item(row: dict) -> dict:
+    """One v_pantry row -> the shape the Basket page renders: identity, where/
+    when bought, and kcal/macros already scaled for the purchased quantity
+    (not the stored per-100g reference values -- see grams_for)."""
+
+    cal_per_100g = row.get("calories_kcal")
+    macros = {"calories_kcal": None, "protein_g": None, "fat_g": None, "carbs_g": None, "fiber_g": None}
+    if cal_per_100g is not None:
+        factor = (
+            grams_for(row.get("quantity"), row.get("unit"), row.get("category"), row.get("name")) / 100.0
+        )
+        macros = {
+            "calories_kcal": round(cal_per_100g * factor, 1),
+            "protein_g": _scaled(row.get("protein_g"), factor),
+            "fat_g": _scaled(row.get("fat_g"), factor),
+            "carbs_g": _scaled(row.get("carbs_g"), factor),
+            "fiber_g": _scaled(row.get("fiber_g"), factor),
+        }
+    return {
+        "id": row["id"],
+        "receipt_id": row["receipt_id"],
+        "name": row["name"],
+        "store": row.get("store"),
+        "purchased_at": row.get("purchased_at") or row.get("created_at"),
+        "quantity": row.get("quantity"),
+        "unit": row.get("unit"),
+        # v_pantry is food-only (is_non_food = false); sent so the frontend's
+        # shared match helpers accept a PantryItem like a PurchaseItem.
+        "is_non_food": False,
+        "match_type": row.get("match_type"),
+        "matched_name": row.get("matched_name"),
+        "fallback_category": row.get("fallback_category"),
+        "confidence": row.get("confidence"),
+        **macros,
+    }
+
+
+@router.get("")
+def get_pantry(profile_id: int = Depends(require_profile_id)):
+    """Current stock: confirmed, food purchases with no withdrawal yet
+    (Vorrat.md §5, per-lot MVP). Newest purchase first."""
+
+    items = [_pantry_item(row) for row in repo.get_pantry(profile_id)]
+    items.sort(key=lambda i: i["purchased_at"] or "", reverse=True)
+    return {"items": items}
+
+
+@router.post("/removals", status_code=201)
+def create_removal(payload: RemovalCreate, profile_id: int = Depends(require_profile_id)):
+    """Mark a lot as eaten/removed. 404 (not 403) if the item isn't the
+    caller's -- an owned-or-invisible item shouldn't reveal its existence."""
+
+    owner = repo.get_receipt_item_owner(payload.receipt_item_id)
+    if owner != profile_id:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return repo.add_pantry_removal(payload.receipt_item_id, payload.reason, payload.quantity)
+
+
+@router.delete("/removals/{removal_id}", status_code=204)
+def delete_removal(removal_id: str, profile_id: int = Depends(require_profile_id)):
+    """Undo a withdrawal -- the lot reappears in the pantry."""
+
+    removal = repo.get_pantry_removal(removal_id)
+    if removal is None or repo.get_receipt_item_owner(removal["receipt_item_id"]) != profile_id:
+        raise HTTPException(status_code=404, detail="Removal not found")
+    repo.remove_pantry_removal(removal_id)

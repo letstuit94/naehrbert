@@ -180,10 +180,6 @@ export interface ItemUpdate {
   unit?: string
   price?: number
   is_non_food?: boolean
-  /** The displayed/verified identity (Basket name edit) -- overrides what the
-   * item is shown as, without touching its match ids or nutrition. Nullable to
-   * match ReceiptItem, though the Basket only ever sends a non-empty string. */
-  matched_name?: string | null
 }
 
 /** Per-100g macro fields a candidate must carry in full to be returned

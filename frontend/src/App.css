@@ -1248,6 +1248,11 @@ a.btn {
   color: var(--text-h);
 }
 
+.basket-row__icon-btn--active {
+  opacity: 1;
+  color: var(--accent, #2f7d5b);
+}
+
 .basket-row__edit {
   display: inline-flex;
   align-items: center;
@@ -1270,17 +1275,27 @@ a.btn {
   justify-content: flex-end;
 }
 
-/* "Remove" (not eaten) is the rarer action -- a small, muted ✕ next to the
-   primary "Eaten" button, turning red on hover to read as a discard. */
-.basket-row__remove {
-  font-size: 15px;
+/* Emoji icon actions (🍴 eaten / 🗑️ removed): borderless, subtle hover, and
+   a highlighted background while their withdrawal panel is open. */
+.basket-row__action {
+  border: 1px solid var(--border);
+  background: none;
+  padding: 4px 8px;
+  font-size: 18px;
   line-height: 1;
-  padding: 4px 6px;
-  color: var(--text-muted, #888);
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: 0.85;
 }
 
-.basket-row__remove:hover {
-  color: #d03b3b;
+.basket-row__action:hover {
+  opacity: 1;
+  background: var(--surface);
+}
+
+.basket-row__action--active {
+  opacity: 1;
+  background: rgba(47, 125, 91, 0.16);
 }
 
 .btn-secondary--active {

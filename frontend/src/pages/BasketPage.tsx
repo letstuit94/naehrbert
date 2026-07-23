@@ -3,13 +3,16 @@ import { Link } from 'react-router-dom'
 import {
   addPantryRemoval,
   ApiError,
+  correctReceiptItem,
   deletePantryRemoval,
   getPantry,
   updateReceiptItem,
+  type ItemCorrection,
   type ItemUpdate,
   type PantryItem,
   type PantryRemovalReason,
 } from '../lib/api'
+import { MatchSearchPanel } from '../components/MatchSearchPanel'
 import { formatFallbackCategory, matchInfo } from '../lib/matchInfo'
 import {
   quantityBasis,
@@ -85,7 +88,7 @@ function daysInBasket(iso: string | null): string {
   if (Number.isNaN(then.getTime())) return 'unknown age'
   const days = Math.floor((Date.now() - then.getTime()) / 86_400_000)
   if (days <= 0) return 'today'
-  return `${days} day${days === 1 ? '' : 's'} in basket`
+  return `${days} day${days === 1 ? '' : 's'}`
 }
 
 // The verified identity to show, never the raw parsed receipt text: the
@@ -165,6 +168,19 @@ export function BasketPage() {
     }
   }
 
+  // Fixing the product name = re-matching the item against OFF/BLS (same flow
+  // as the Purchases page), so the picked candidate's name AND its verified
+  // nutrition replace the old ones -- not a free-text rename.
+  async function handleCorrect(item: PantryItem, correction: ItemCorrection) {
+    setActionError(null)
+    try {
+      await correctReceiptItem(item.receipt_id, item.id, correction)
+      await load()
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Could not save that match.')
+    }
+  }
+
   async function handleUndo() {
     if (!lastAction) return
     const { removalId } = lastAction
@@ -241,6 +257,7 @@ export function BasketPage() {
             item={item}
             onWithdraw={(reason, quantity) => void handleWithdraw(item, reason, quantity)}
             onEdit={(fields) => void handleEdit(item, fields)}
+            onCorrect={(correction) => void handleCorrect(item, correction)}
           />
         ))}
       </ul>
@@ -256,10 +273,12 @@ function BasketRow({
   item,
   onWithdraw,
   onEdit,
+  onCorrect,
 }: {
   item: PantryItem
   onWithdraw: (reason: PantryRemovalReason, quantity: number) => void
   onEdit: (fields: ItemUpdate) => void
+  onCorrect: (correction: ItemCorrection) => void
 }) {
   const match = matchInfo(item)
   const basis = quantityBasis(item)
@@ -272,14 +291,15 @@ function BasketRow({
   const [panel, setPanel] = useState<PantryRemovalReason | null>(null)
   const [amount, setAmount] = useState<number>(remaining)
 
-  // Inline edits of the displayed name and the quantity.
-  const [editingName, setEditingName] = useState(false)
-  const [nameDraft, setNameDraft] = useState('')
+  // The name pencil opens a match-search panel (fix match, like the Purchases
+  // page); the quantity pencil is a plain inline edit.
+  const [searchingMatch, setSearchingMatch] = useState(false)
   const [editingQty, setEditingQty] = useState(false)
   const [qtyDraft, setQtyDraft] = useState('')
 
   function openPanel(reason: PantryRemovalReason) {
     setAmount(remaining)
+    setSearchingMatch(false)
     setPanel((cur) => (cur === reason ? null : reason))
   }
 
@@ -293,12 +313,6 @@ function BasketRow({
       onWithdraw(panel, amount)
       setPanel(null)
     }
-  }
-
-  function saveName() {
-    const v = nameDraft.trim()
-    if (v && v !== displayName(item)) onEdit({ matched_name: v })
-    setEditingName(false)
   }
 
   function saveQty() {
@@ -322,57 +336,34 @@ function BasketRow({
   return (
     <li className="purchase-row basket-row">
       <div className="purchase-row__name-cell">
-        {editingName ? (
-          <span className="basket-row__edit">
-            <input
-              value={nameDraft}
-              onChange={(e) => setNameDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') saveName()
-                if (e.key === 'Escape') setEditingName(false)
-              }}
-              aria-label="Product name"
-              autoFocus
-            />
-            <button type="button" className="basket-row__icon-btn" onClick={saveName} aria-label="Save name">
-              ✓
-            </button>
-            <button
-              type="button"
-              className="basket-row__icon-btn"
-              onClick={() => setEditingName(false)}
-              aria-label="Cancel"
-            >
-              ✕
-            </button>
+        <span className="basket-row__name-line">
+          <span
+            className={
+              match?.lowConfidence
+                ? 'purchase-row__name review-row__match--warn'
+                : 'purchase-row__name'
+            }
+            title={match?.lowConfidence ? 'Category estimate, not a verified match' : undefined}
+          >
+            {match?.lowConfidence ? '~ ' : ''}
+            {displayName(item)}
           </span>
-        ) : (
-          <span className="basket-row__name-line">
-            <span
-              className={
-                match?.lowConfidence
-                  ? 'purchase-row__name review-row__match--warn'
-                  : 'purchase-row__name'
-              }
-              title={match?.lowConfidence ? 'Category estimate, not a verified match' : undefined}
-            >
-              {match?.lowConfidence ? '~ ' : ''}
-              {displayName(item)}
-            </span>
-            <button
-              type="button"
-              className="basket-row__icon-btn"
-              onClick={() => {
-                setNameDraft(displayName(item))
-                setEditingName(true)
-              }}
-              aria-label="Edit name"
-              title="Edit name"
-            >
-              ✎
-            </button>
-          </span>
-        )}
+          <button
+            type="button"
+            className={
+              searchingMatch ? 'basket-row__icon-btn basket-row__icon-btn--active' : 'basket-row__icon-btn'
+            }
+            onClick={() => {
+              setPanel(null)
+              setSearchingMatch((s) => !s)
+            }}
+            aria-label="Fix match"
+            aria-pressed={searchingMatch}
+            title="Fix match (search product)"
+          >
+            ✎
+          </button>
+        </span>
         {macrosLine}
       </div>
       <span className="purchase-row__qty">
@@ -433,19 +424,23 @@ function BasketRow({
       <div className="basket-row__actions">
         <button
           type="button"
-          className={panel === 'eaten' ? 'btn-secondary btn-secondary--active' : 'btn-secondary'}
+          className={panel === 'eaten' ? 'basket-row__action basket-row__action--active' : 'basket-row__action'}
           onClick={() => openPanel('eaten')}
+          aria-label="Gegessen"
+          aria-pressed={panel === 'eaten'}
+          title="Gegessen"
         >
-          Eaten
+          🍴
         </button>
         <button
           type="button"
-          className="btn-link basket-row__remove"
+          className={panel === 'removed' ? 'basket-row__action basket-row__action--active' : 'basket-row__action'}
           onClick={() => openPanel('removed')}
-          aria-label="Remove"
-          title="Remove (not eaten — spoiled, given away, miscan)"
+          aria-label="Löschen"
+          aria-pressed={panel === 'removed'}
+          title="Löschen (nicht gegessen — verdorben, verschenkt, Fehlscan)"
         >
-          ✕
+          🗑️
         </button>
       </div>
 
@@ -495,6 +490,17 @@ function BasketRow({
               Cancel
             </button>
           </div>
+        </div>
+      )}
+
+      {searchingMatch && (
+        <div className="basket-row__panel">
+          <MatchSearchPanel
+            item={item}
+            receiptId={item.receipt_id}
+            onCorrect={onCorrect}
+            onClose={() => setSearchingMatch(false)}
+          />
         </div>
       )}
     </li>

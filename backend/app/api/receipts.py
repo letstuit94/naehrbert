@@ -58,9 +58,6 @@ class ItemUpdate(BaseModel):
     unit: Optional[str] = None
     price: Optional[float] = None
     is_non_food: Optional[bool] = None
-    # The displayed/verified identity (Basket name edit): overrides what the
-    # item is shown as without touching its off_id/bls_code or nutrition.
-    matched_name: Optional[str] = None
 
 
 class ItemCorrection(BaseModel):

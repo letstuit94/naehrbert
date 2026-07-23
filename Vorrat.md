@@ -4,8 +4,13 @@ Wie aus allen hochgeladenen Kassenbons ein **aktueller Vorrat** pro User entsteh
 den eine neue Frontend-Page **„Basket"** anzeigt — und warum das Datenmodell ein
 **Entnahme-Ledger** ist und keine Statusspalte auf `receipt_items`.
 
-> Status: **geplant, noch nicht gebaut.** Diese Datei ist die Entscheidungs- und
-> Umsetzungsgrundlage, kein Implementierungsstand.
+> Status: **umgesetzt (MVP + Teil-Entnahme)** auf Branch `basket` (Stand 2026-07-23).
+> Migrationen `0008_pantry.sql` + `0009_pantry_partial.sql`, Router
+> [`pantry.py`](backend/app/api/pantry.py), Page
+> [`BasketPage.tsx`](frontend/src/pages/BasketPage.tsx). Diese Datei bleibt die
+> Entscheidungsgrundlage; **konkrete Abweichungen** vom ursprünglichen Plan sind unten
+> je Abschnitt markiert. Zurückgestellt: Aggregation pro Produkt (§5 Stufe 2) und die
+> volle `count`/`unit_size`-Trennung (§6.3).
 
 ---
 
@@ -112,6 +117,13 @@ where r.status = 'confirmed'
   and not exists (select 1 from pantry_removals pr where pr.receipt_item_id = ri.id);
 ```
 
+> **Umgesetzt (abweichend):** Der Vorrat ist eine **View `v_pantry`** (kein `not exists`
+> mehr, seit Teil-Entnahme). Sie berechnet `remaining_quantity = coalesce(quantity,1) −
+> Σ coalesce(pr.quantity, …)` und filtert `remaining_quantity > 0`; `profile_id`, `store`
+> und `purchased_at` werden als Spalten aus dem Bon hochgezogen, damit das Repo per
+> `.eq("profile_id", …)` filtern kann (der Supabase-Client setzt keine parametrisierte
+> SQL ab). Siehe [`0009_pantry_partial.sql`](supabase/migrations/0009_pantry_partial.sql).
+
 ---
 
 ## 5. Anzeige: pro Lot (MVP) vs. pro Produkt (Ausbau)
@@ -125,17 +137,24 @@ Jedes Lot behält eigene Nährwerte, Menge, Einheit, Kaufdatum, Preis, Match-Her
 Summieren beim Speichern würde Herkunft *und* die eindeutige Entnahme-Zuordnung
 zerstören.
 
-### Anzeige-Stufe 1 — MVP: pro Lot (gewählt für Start)
+### Anzeige-Stufe 1 — MVP: pro Lot ✅ gebaut
 
 Die Basket-Page zeigt jede Kauf-Position als eigene, einzeln abhakbare Zeile:
 
 ```
 Dein Vorrat
 ─────────────────────────────
-Gurke        1 Stück · 05.01. · Lidl     [gegessen] [x]
-Salatgurke   3 Stück · 12.01. · Edeka    [gegessen] [x]
-Tomaten      500 g   · 12.01. · Edeka    [gegessen] [x]
+Gurke        1 Stück · 3 Tage     🍴  🗑️
+Salatgurke   3 Stück · 10 Tage    🍴  🗑️
+Tomaten      500 g   · 10 Tage    🍴  🗑️
 ```
+
+> **Umgesetzt (abweichend vom obigen Skizzen-Layout):** Anzeigename ist der **verifizierte
+> Match** (nicht der Bon-Rohtext), Nährwerte stehen als **Subtitel** unter dem Namen,
+> statt Kaufdatum die **Tage im Basket**, kein Store (steht auf der — inzwischen
+> ausgeblendeten — Purchases-Seite). Aktionen sind **Icon-Buttons** 🍴 (gegessen) /
+> 🗑️ (entfernt), je mit Mengen-Regler (Teil-Entnahme, §6.4). Name-✎ öffnet die
+> Fix-Match-Suche, Mengen-✎ ein Zahlenfeld.
 
 Entnahme = `pantry_removals`-Zeile auf genau dieses Lot. Vorteile:
 - **kein Gruppierungs-Schlüssel** nötig („Gurke" vs. „Salatgurke"?),
@@ -145,10 +164,14 @@ Entnahme = `pantry_removals`-Zeile auf genau dieses Lot. Vorteile:
 Nachteil: Bei häufigen Wiederkäufen wird die Liste lang/repetitiv. Reine
 Anzeige-Kosmetik.
 
-### Anzeige-Stufe 2 — Ausbau: pro Produkt aggregiert
+### Anzeige-Stufe 2 — Ausbau: pro Produkt aggregiert ⏸️ zurückgestellt (späterer Sprint)
 
-„Gurke: 4 Stück" statt vier Zeilen. Rein **Read-/Anzeige-Logik, keine Schemaänderung**.
-Erfordert drei Regeln:
+„Gurke: 4 Stück" statt vier Zeilen. **Präzisierung aus der Umsetzungs-Diskussion:** nicht
+„rein Read-Logik" — Regel 3 (FIFO-Entnahme) ist **Schreib**-Logik (eine Gruppen-Entnahme
+verteilt sich auf mehrere Lots → mehrere `pantry_removals`-Zeilen + Mehrfach-Undo), und sie
+kollidiert mit dem pro-Lot-Inline-Edit. Empfohlene Gruppierung dann nach **Identität +
+Einheit** (statt Gramm-Normalisierung), um gemischte Einheiten zu vermeiden. Keine
+Schemaänderung. Erfordert drei Regeln:
 1. **Gruppierungs-Schlüssel:** Match-Identität (`bls_code`/`off_id`), Fallback
    normalisierter Name.
 2. **Einheiten:** nur Kompatibles summieren; sonst über
@@ -187,7 +210,15 @@ einzelne Menge**, keine getrennte „Anzahl" und „Größe". Der Parser erkennt
 | **Einheitsgröße** (unit_size + unit) | Inhalt je Einheit | 500 g | 1 L |
 | = **Gesamtmenge** | Anzahl × Einheitsgröße | 1000 g | 3 L |
 
-### 6.3 Plan: Anzahl × Einheitsgröße getrennt erfassen
+### 6.3 Plan: Anzahl × Einheitsgröße getrennt erfassen ⏸️ zurückgestellt
+
+> **Stattdessen umgesetzt (Parser-Multiply, commit c547be6):** Für Multipacks mit
+> *gemessener* Größe rechnet der Parser jetzt „N × Größe" zu **einer Gesamtmenge**
+> zusammen (Joghurt 4×150 g → 600 g, Milch 3×1 l → 3 l) — kein Schema-Umbau, deckt die
+> häufigen Fälle. Die **volle getrennte Erfassung** unten bleibt zurückgestellt; sie wird
+> erst nötig, wenn aggregierte Multipacks **becherweise** abgehakt werden sollen (dann
+> braucht der Regler die „150 g je Becher"-Info). Rein-Stück-Multipacks ohne Maß bleiben
+> Anzahl.
 
 Eigener, abgegrenzter Schritt (**Parser + Schema + Review-UI**), unabhängig vom
 Vorrat-Ledger. Neue Spalten auf `receipt_items`:
@@ -217,17 +248,23 @@ hängt — beide müssen mitgezogen werden, sonst driften die Docs/Berechnungen 
 
 ### 6.4 Regler zum Reduzieren — gestaffelt
 
-| Stufe | Regler im Basket | Voraussetzung |
+| Stufe | Regler im Basket | Status |
 |---|---|---|
-| **MVP** | binär: „ganze Position gegessen/entfernt" | nichts — funktioniert sofort |
-| **Teil-Entnahme** | Feld/Regler in der Lot-Einheit (g/ml/Stück) → schreibt `pantry_removals.quantity` | zuverlässige Basis-`quantity` |
-| **Einheitenweise** | „1 von 2 Einheiten weg" → `count` um 1 runter | getrennte `count`/`unit_size` (§6.3) |
+| **MVP** | binär: „ganze Position gegessen/entfernt" | ✅ gebaut |
+| **Teil-Entnahme** | Regler in der Lot-Einheit → schreibt `pantry_removals.quantity` | ✅ gebaut |
+| **Einheitenweise** | „1 von 2 Einheiten weg" → `count` um 1 runter | ⏸️ braucht §6.3 |
 
-Ohne die getrennte **Anzahl** lässt sich „1 von 2 Paketen" gar nicht anbieten — genau
-der Fall aus den Beispielen (2× Butter, 3× Milch). Der Regler ist zudem nur so gut wie
-die Basis-Menge: bei `quantity=1, unit=piece, uncertain=True` ist er faktisch wieder
-binär. Das Datenmodell (`pantry_removals.quantity`, §3) trägt die Teil-Entnahme bereits;
-die einheitenweise Reduktion setzt §6.3 voraus.
+> **Umgesetzt:** Klick auf 🍴/🗑️ öffnet ein Panel, **vorbelegt mit dem vollen Rest**
+> (ein Bestätigen = ganze Position, das alte binäre Tempo). Für Teilmengen: **Zahlenfeld**
+> bei Masse/Volumen (g/ml/kg/l, z. B. 0,2 l von 3 l), **Viertel-Schieberegler** bei Stück
+> (¼ ½ ¾ + ganze). Server **clampt** eine Über-Entnahme auf den Rest (kein 409, außer der
+> Rest ist 0) und meldet `applied`/`remaining_after`/`clamped`; Makros skalieren auf den
+> Rest. Undo = Ledger-Zeile löschen.
+
+Ohne die getrennte **Anzahl** lässt sich „1 von 2 Paketen" (à 500 g) nicht als
+**einheitenweiser** Schritt mit korrekten Rest-Makros anbieten — dafür §6.3. Der Regler ist
+zudem nur so gut wie die Basis-Menge: bei `quantity=1, unit=piece, uncertain=True` ist er
+faktisch binär.
 
 ---
 
@@ -245,37 +282,38 @@ müsste. Ein einzelner „weg"-Button würde diese Information verschenken — d
 
 ---
 
-## 8. Umsetzungsschritte (wenn gebaut wird)
+## 8. Umsetzungsschritte — ✅ gebaut
 
-1. **Migration** `supabase/migrations/0008_pantry.sql`: Tabelle `pantry_removals` +
-   View `v_pantry` (§3, §4).
-2. **Repo** ([backend/app/db/repo.py](backend/app/db/repo.py)):
-   - `add_pantry_removal(receipt_item_id, reason, quantity=None)`
-   - `remove_pantry_removal(...)` (Rückgängig-Machen)
-   - `get_pantry(profile_id)` — Read-Query aus §4
-3. **API** (neuer Router `backend/app/api/pantry.py`, Muster wie
-   [profile.py](backend/app/api/profile.py) / X-Profile-Id via
-   [`require_profile_id`](backend/app/core/auth.py)):
-   - `GET  /pantry` — aktueller Vorrat
-   - `POST /pantry/removals` — Item als gegessen/entfernt markieren
-   - `DELETE /pantry/removals/{id}` — Entnahme rückgängig
-4. **Frontend** — neue Page `Basket` (Route + NavBar-Eintrag), pro-Lot-Anzeige (§5),
-   `api.ts`-Aufrufe. (Hinweis: `frontend/src/lib/` ist derzeit durch die zu breite
-   `.gitignore`-Regel `lib/` nicht eingecheckt — vor Frontend-Arbeit lösen.)
-5. **Tests:** Vorrat = Käufe − Entnahmen; Ownership (fremdes Profil kann nicht
-   entnehmen); Non-Food/unbestätigte Bons erscheinen nie im Vorrat.
+1. ✅ **Migration** [`0008_pantry.sql`](supabase/migrations/0008_pantry.sql) (Tabelle +
+   View) und [`0009_pantry_partial.sql`](supabase/migrations/0009_pantry_partial.sql)
+   (`remaining_quantity` für Teil-Entnahme). *Beide im Dev-Supabase angewendet; in anderen
+   Umgebungen einmalig, in Reihenfolge ausführen.*
+2. ✅ **Repo** ([repo.py](backend/app/db/repo.py)): `add_pantry_removal`,
+   `remove_pantry_removal`, `get_pantry`, plus `get_lot_remaining` (Clamp) und
+   `get_receipt_item_owner` (Ownership).
+3. ✅ **API** ([pantry.py](backend/app/api/pantry.py)): `GET /pantry`,
+   `POST /pantry/removals` (mit `quantity` + Clamp), `DELETE /pantry/removals/{id}`.
+4. ✅ **Frontend** — Page [`BasketPage.tsx`](frontend/src/pages/BasketPage.tsx) (Route +
+   NavBar), pro-Lot, `api.ts`-Aufrufe. Der `lib/`-`.gitignore`-Blocker war vorab behoben
+   (commit e524c8d).
+5. ✅ **Tests:** in [`test_api_smoke.py`](backend/tests/test_api_smoke.py) (Vorrat =
+   Käufe − Entnahmen, remaining-Skalierung, Clamp, Ownership-404) und
+   [`test_receipt_text_parser.py`](backend/tests/test_receipt_text_parser.py)
+   (Multipack-Multiply).
 
 ---
 
 ## 9. Offene Punkte / später
 
-- **Anzahl × Einheitsgröße getrennt erfassen (§6.3):** Voraussetzung für den
-  einheitenweisen Regler; eigener Schritt (Parser + Schema + Review-UI).
-- **Teilverbrauch:** `pantry_removals.quantity` ist vorbereitet, MVP ist binär (ganze
-  Position).
-- **Aggregierte Anzeige (Stufe 2):** Gruppierungs-Schlüssel + FIFO, wenn die pro-Lot-
-  Liste zu lang wird.
-- **Konsum-Kopplung:** `reason='eaten'` als Eingang in
-  [`compute_basket_composition`](backend/app/services/basket_composition.py) — erst
-  angehen, wenn die Konsum-Stufen (Konsum.md) umgesetzt werden; sauber getrennt halten.
-- **Abhängigkeit:** Frontend-Teil setzt die behobene `lib/`-`.gitignore`-Sache voraus.
+- ✅ **Teilverbrauch:** gebaut (§6.4) — `pantry_removals.quantity` + `remaining_quantity`.
+- ⏸️ **Aggregierte Anzeige (Stufe 2):** Gruppierung (Identität + Einheit) + FIFO — in einen
+  späteren Sprint verschoben (§5).
+- ⏸️ **Anzahl × Einheitsgröße getrennt erfassen (§6.3):** nur für den *einheitenweisen*
+  Regler auf aggregierten Multipacks nötig; für den MVP durch die Parser-Multiplikation
+  umgangen.
+- ⏳ **Konsum-Kopplung:** `reason='eaten'`/`'removed'` als Eingang in
+  [`compute_basket_composition`](backend/app/services/basket_composition.py) — erst mit
+  Phase 4 (Gap, [GapUndEmpfehlung.md](GapUndEmpfehlung.md)); sauber getrennt halten. Beide
+  `reason`-Werte werden bereits getrennt gespeichert.
+- ⚠️ **Deploy:** Migrationen 0008 + 0009 müssen in Nicht-Dev-Umgebungen angewendet werden.
+- ⏳ **IA-Feinschliff:** Purchases ist ausgeblendet; Bottom-Nav / Basket-als-Landing stehen aus.

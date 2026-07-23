@@ -10,7 +10,6 @@ import { getCurrentProfileId } from '../lib/session'
 const NAV_LINKS = [
   { to: '/upload', label: 'Upload' },
   { to: '/basket', label: 'Basket' },
-  { to: '/purchases', label: 'Purchases' },
   { to: '/results', label: 'Results' },
 ]
 

@@ -58,6 +58,9 @@ class ItemUpdate(BaseModel):
     unit: Optional[str] = None
     price: Optional[float] = None
     is_non_food: Optional[bool] = None
+    # The displayed/verified identity (Basket name edit): overrides what the
+    # item is shown as without touching its off_id/bls_code or nutrition.
+    matched_name: Optional[str] = None
 
 
 class ItemCorrection(BaseModel):
@@ -178,7 +181,7 @@ def confirm_receipt(receipt_id: str, profile_id: int = Depends(require_profile_i
     """Epic 3.4 / Epic 4.1 — finalize: run the tiered matcher on every
     remaining (non-non-food) item and persist the matched nutrition data."""
 
-    receipt = _owned_receipt_or_404(receipt_id, profile_id)
+    _owned_receipt_or_404(receipt_id, profile_id)
 
     food_items = [
         item for item in repo.get_receipt_items(receipt_id) if not item.get("is_non_food")

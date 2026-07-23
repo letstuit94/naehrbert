@@ -1214,7 +1214,53 @@ a.btn {
 /* Same card styling as .purchase-row, but a 4th column for the
    eaten/removed actions (name · qty+date+store · macros · actions). */
 .basket-row {
-  grid-template-columns: 2fr 2.5fr 2fr auto;
+  /* name (+ macros subtitle) · quantity · actions -- macros moved under the
+     name, so no separate macros column. */
+  grid-template-columns: 2.5fr 1.75fr auto;
+}
+
+.basket-row__name-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.basket-row__macros-sub {
+  color: var(--text-muted, #888);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.basket-row__icon-btn {
+  border: none;
+  background: none;
+  padding: 2px 4px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.basket-row__icon-btn:hover {
+  opacity: 1;
+  color: var(--text-h);
+}
+
+.basket-row__edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.basket-row__edit input {
+  width: 100%;
+  max-width: 200px;
+}
+
+.basket-row__edit input[type='number'] {
+  width: 80px;
 }
 
 .basket-row__actions {

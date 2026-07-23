@@ -5,6 +5,8 @@ import {
   ApiError,
   deletePantryRemoval,
   getPantry,
+  updateReceiptItem,
+  type ItemUpdate,
   type PantryItem,
   type PantryRemovalReason,
 } from '../lib/api'
@@ -150,6 +152,19 @@ export function BasketPage() {
     }
   }
 
+  // Inline correction of a lot's displayed name / purchased quantity, via the
+  // same receipt-item edit endpoint the Purchases page uses. Reloads so the
+  // recomputed remaining + macros are the source of truth.
+  async function handleEdit(item: PantryItem, fields: ItemUpdate) {
+    setActionError(null)
+    try {
+      await updateReceiptItem(item.receipt_id, item.id, fields)
+      await load()
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Could not save that change.')
+    }
+  }
+
   async function handleUndo() {
     if (!lastAction) return
     const { removalId } = lastAction
@@ -225,6 +240,7 @@ export function BasketPage() {
             key={item.id}
             item={item}
             onWithdraw={(reason, quantity) => void handleWithdraw(item, reason, quantity)}
+            onEdit={(fields) => void handleEdit(item, fields)}
           />
         ))}
       </ul>
@@ -239,9 +255,11 @@ function formatGrams(value: number | null): string {
 function BasketRow({
   item,
   onWithdraw,
+  onEdit,
 }: {
   item: PantryItem
   onWithdraw: (reason: PantryRemovalReason, quantity: number) => void
+  onEdit: (fields: ItemUpdate) => void
 }) {
   const match = matchInfo(item)
   const basis = quantityBasis(item)
@@ -253,6 +271,12 @@ function BasketRow({
   // clears the lot; adjust down for a partial (Vorrat.md §6.4).
   const [panel, setPanel] = useState<PantryRemovalReason | null>(null)
   const [amount, setAmount] = useState<number>(remaining)
+
+  // Inline edits of the displayed name and the quantity.
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
+  const [editingQty, setEditingQty] = useState(false)
+  const [qtyDraft, setQtyDraft] = useState('')
 
   function openPanel(reason: PantryRemovalReason) {
     setAmount(remaining)
@@ -271,44 +295,140 @@ function BasketRow({
     }
   }
 
+  function saveName() {
+    const v = nameDraft.trim()
+    if (v && v !== displayName(item)) onEdit({ matched_name: v })
+    setEditingName(false)
+  }
+
+  function saveQty() {
+    const n = Number(qtyDraft)
+    if (!Number.isNaN(n) && n > 0 && n !== remaining) onEdit({ quantity: n })
+    setEditingQty(false)
+  }
+
   const partial = amount < remaining
   const amountLabel = measured
     ? formatAmount(amount, item.unit)
     : `${quarterLabel(amount)}${item.unit ? ` ${item.unit}` : ''}`
 
+  const macrosLine = (
+    <span className="basket-row__macros-sub">
+      {item.calories_kcal !== null ? `${Math.round(item.calories_kcal)} kcal` : '—'} · P{' '}
+      {formatGrams(item.protein_g)} · F {formatGrams(item.fat_g)} · C {formatGrams(item.carbs_g)}
+    </span>
+  )
+
   return (
     <li className="purchase-row basket-row">
       <div className="purchase-row__name-cell">
-        <span
-          className={
-            match?.lowConfidence
-              ? 'purchase-row__name review-row__match--warn'
-              : 'purchase-row__name'
-          }
-          title={match?.lowConfidence ? 'Category estimate, not a verified match' : undefined}
-        >
-          {match?.lowConfidence ? '~ ' : ''}
-          {displayName(item)}
-        </span>
+        {editingName ? (
+          <span className="basket-row__edit">
+            <input
+              value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') saveName()
+                if (e.key === 'Escape') setEditingName(false)
+              }}
+              aria-label="Product name"
+              autoFocus
+            />
+            <button type="button" className="basket-row__icon-btn" onClick={saveName} aria-label="Save name">
+              ✓
+            </button>
+            <button
+              type="button"
+              className="basket-row__icon-btn"
+              onClick={() => setEditingName(false)}
+              aria-label="Cancel"
+            >
+              ✕
+            </button>
+          </span>
+        ) : (
+          <span className="basket-row__name-line">
+            <span
+              className={
+                match?.lowConfidence
+                  ? 'purchase-row__name review-row__match--warn'
+                  : 'purchase-row__name'
+              }
+              title={match?.lowConfidence ? 'Category estimate, not a verified match' : undefined}
+            >
+              {match?.lowConfidence ? '~ ' : ''}
+              {displayName(item)}
+            </span>
+            <button
+              type="button"
+              className="basket-row__icon-btn"
+              onClick={() => {
+                setNameDraft(displayName(item))
+                setEditingName(true)
+              }}
+              aria-label="Edit name"
+              title="Edit name"
+            >
+              ✎
+            </button>
+          </span>
+        )}
+        {macrosLine}
       </div>
       <span className="purchase-row__qty">
-        {formatAmount(remaining, item.unit)}
-        <span
-          className={`qty-basis qty-basis--${basis}`}
-          title={QUANTITY_BASIS_LABEL[basis]}
-          aria-label={QUANTITY_BASIS_LABEL[basis]}
-        >
-          {QUANTITY_BASIS_ICON[basis]}
-        </span>
-        {item.original_quantity != null && item.original_quantity !== remaining && (
-          <span className="muted"> of {formatAmount(item.original_quantity, item.unit)}</span>
+        {editingQty ? (
+          <span className="basket-row__edit">
+            <input
+              type="number"
+              min={0}
+              step="any"
+              value={qtyDraft}
+              onChange={(e) => setQtyDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') saveQty()
+                if (e.key === 'Escape') setEditingQty(false)
+              }}
+              aria-label="Quantity"
+              autoFocus
+            />
+            <span className="muted">{item.unit}</span>
+            <button type="button" className="basket-row__icon-btn" onClick={saveQty} aria-label="Save quantity">
+              ✓
+            </button>
+            <button
+              type="button"
+              className="basket-row__icon-btn"
+              onClick={() => setEditingQty(false)}
+              aria-label="Cancel"
+            >
+              ✕
+            </button>
+          </span>
+        ) : (
+          <>
+            {formatAmount(remaining, item.unit)}
+            <span
+              className={`qty-basis qty-basis--${basis}`}
+              title={QUANTITY_BASIS_LABEL[basis]}
+              aria-label={QUANTITY_BASIS_LABEL[basis]}
+            >
+              {QUANTITY_BASIS_ICON[basis]}
+            </span>
+            <button
+              type="button"
+              className="basket-row__icon-btn"
+              onClick={() => {
+                setQtyDraft(String(remaining))
+                setEditingQty(true)
+              }}
+              aria-label="Edit quantity"
+              title="Edit quantity"
+            >
+              ✎
+            </button>
+            <span className="muted"> · {daysInBasket(item.purchased_at)}</span>
+          </>
         )}
-        <span className="muted"> · {daysInBasket(item.purchased_at)}</span>
-      </span>
-      <span className="purchase-row__macros">
-        {item.calories_kcal !== null ? `${Math.round(item.calories_kcal)} kcal` : '—'} · P{' '}
-        {formatGrams(item.protein_g)} · F {formatGrams(item.fat_g)} · C{' '}
-        {formatGrams(item.carbs_g)}
       </span>
       <div className="basket-row__actions">
         <button

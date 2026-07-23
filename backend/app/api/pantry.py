@@ -26,7 +26,9 @@ class RemovalCreate(BaseModel):
     # Both leave the pantry; only the later consumption-gap analysis tells
     # them apart (GapUndEmpfehlung.md §4).
     reason: Literal["eaten", "removed"]
-    # Optional partial withdrawal; omitted (None) = whole lot gone (MVP).
+    # Partial withdrawal, in the lot's own unit (0.5 l of 1 l, 250 g of 500 g,
+    # 1 of 3 pieces). Omitted = the whole remaining amount. Over-shooting the
+    # remaining is clamped, not rejected (see create_removal).
     quantity: Optional[float] = None
 
 
@@ -38,15 +40,19 @@ def _scaled(value, factor):
 
 def _pantry_item(row: dict) -> dict:
     """One v_pantry row -> the shape the Basket page renders: identity, where/
-    when bought, and kcal/macros already scaled for the purchased quantity
-    (not the stored per-100g reference values -- see grams_for)."""
+    when bought, and kcal/macros scaled for the amount STILL in stock
+    (remaining_quantity, not the purchased quantity -- a half-eaten lot shows
+    half its macros). `quantity` is the remaining amount the UI displays and
+    pre-fills the withdrawal control with; `original_quantity` is what was
+    bought, for a "0.5 l of 1 l" hint."""
 
+    remaining = row.get("remaining_quantity")
+    if remaining is None:  # NULL-quantity lot treated as one unit (see migration 0009)
+        remaining = 1.0
     cal_per_100g = row.get("calories_kcal")
     macros = {"calories_kcal": None, "protein_g": None, "fat_g": None, "carbs_g": None, "fiber_g": None}
     if cal_per_100g is not None:
-        factor = (
-            grams_for(row.get("quantity"), row.get("unit"), row.get("category"), row.get("name")) / 100.0
-        )
+        factor = grams_for(remaining, row.get("unit"), row.get("category"), row.get("name")) / 100.0
         macros = {
             "calories_kcal": round(cal_per_100g * factor, 1),
             "protein_g": _scaled(row.get("protein_g"), factor),
@@ -60,7 +66,8 @@ def _pantry_item(row: dict) -> dict:
         "name": row["name"],
         "store": row.get("store"),
         "purchased_at": row.get("purchased_at") or row.get("created_at"),
-        "quantity": row.get("quantity"),
+        "quantity": round(remaining, 3),
+        "original_quantity": row.get("quantity"),
         "unit": row.get("unit"),
         # v_pantry is food-only (is_non_food = false); sent so the frontend's
         # shared match helpers accept a PantryItem like a PurchaseItem.
@@ -85,13 +92,38 @@ def get_pantry(profile_id: int = Depends(require_profile_id)):
 
 @router.post("/removals", status_code=201)
 def create_removal(payload: RemovalCreate, profile_id: int = Depends(require_profile_id)):
-    """Mark a lot as eaten/removed. 404 (not 403) if the item isn't the
-    caller's -- an owned-or-invisible item shouldn't reveal its existence."""
+    """Withdraw all or part of a lot (eaten/removed).
+
+    404 (not 403) if the item isn't the caller's -- an owned-or-invisible
+    item shouldn't reveal its existence. 409 if nothing is left to withdraw.
+    A requested quantity above the remaining amount is CLAMPED to it (not
+    rejected) -- the honest outcome for a stale UI or a concurrent request --
+    and the response reports the actually-applied amount, the remaining after,
+    and whether it was clamped, so the UI can say so."""
 
     owner = repo.get_receipt_item_owner(payload.receipt_item_id)
     if owner != profile_id:
         raise HTTPException(status_code=404, detail="Item not found")
-    return repo.add_pantry_removal(payload.receipt_item_id, payload.reason, payload.quantity)
+
+    remaining = repo.get_lot_remaining(payload.receipt_item_id)
+    if remaining is None or remaining <= 0:
+        raise HTTPException(status_code=409, detail="Nothing left to withdraw")
+
+    requested = payload.quantity if payload.quantity is not None else remaining
+    if requested <= 0:
+        raise HTTPException(status_code=422, detail="Quantity must be positive")
+
+    clamped = requested > remaining
+    applied = round(min(requested, remaining), 3)
+
+    removal = repo.add_pantry_removal(payload.receipt_item_id, payload.reason, applied)
+    return {
+        **removal,
+        "applied_quantity": applied,
+        # `+ 0.0` normalizes a float -0.0 (from subtracting equal values) to 0.0.
+        "remaining_after": round(remaining - applied, 3) + 0.0,
+        "clamped": clamped,
+    }
 
 
 @router.delete("/removals/{removal_id}", status_code=204)

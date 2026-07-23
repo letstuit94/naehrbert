@@ -515,10 +515,10 @@ def test_list_recipes_endpoint(monkeypatch):
 # ── Pantry / basket (Vorrat.md) ───────────────────────────────────────────
 
 
-def test_pantry_scales_macros_is_food_only_and_newest_first(monkeypatch):
-    """GET /pantry returns v_pantry rows as basket lots: kcal/macros scaled
-    for the purchased quantity (like /analysis/purchases), is_non_food always
-    false, newest purchase first."""
+def test_pantry_scales_macros_to_remaining_food_only_newest_first(monkeypatch):
+    """GET /pantry returns v_pantry rows as basket lots: kcal/macros scaled to
+    the amount STILL in stock (remaining_quantity, not the purchased quantity),
+    is_non_food always false, newest purchase first."""
 
     monkeypatch.setattr(
         pantry_api.repo,
@@ -529,6 +529,7 @@ def test_pantry_scales_macros_is_food_only_and_newest_first(monkeypatch):
                 "receipt_id": "r1",
                 "name": "Reis",
                 "quantity": 1000,
+                "remaining_quantity": 1000,  # untouched
                 "unit": "g",
                 "category": "grains",
                 "match_type": "bls",
@@ -548,6 +549,7 @@ def test_pantry_scales_macros_is_food_only_and_newest_first(monkeypatch):
                 "receipt_id": "r2",
                 "name": "Vollmilch",
                 "quantity": 500,
+                "remaining_quantity": 250,  # half already drunk
                 "unit": "ml",
                 "category": "full_fat_dairy",
                 "match_type": "bls",
@@ -570,12 +572,18 @@ def test_pantry_scales_macros_is_food_only_and_newest_first(monkeypatch):
     assert [i["name"] for i in items] == ["Vollmilch", "Reis"]  # newest first
     assert all(i["is_non_food"] is False for i in items)
     milk = items[0]
-    assert milk["calories_kcal"] == 320  # 64 kcal/100g * 500ml (=500g) / 100
-    assert milk["protein_g"] == 16.5
+    assert milk["quantity"] == 250  # remaining shown, not the 500 bought
+    assert milk["original_quantity"] == 500
+    assert milk["calories_kcal"] == 160  # 64 kcal/100g * 250ml (=250g) / 100, scaled to remaining
+    assert milk["protein_g"] == 8.2  # 3.3 * 2.5 = 8.25, rounded to 1 decimal
 
 
-def test_pantry_removal_success_passes_reason_and_quantity(monkeypatch):
+def test_pantry_removal_whole_lot_applies_full_remaining(monkeypatch):
+    """No quantity in the payload = withdraw the whole remaining amount; the
+    server resolves that to the current remaining and reports it."""
+
     monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
+    monkeypatch.setattr(pantry_api.repo, "get_lot_remaining", lambda item_id: 3.0)
     captured = {}
 
     def fake_add(receipt_item_id, reason, quantity=None):
@@ -588,8 +596,77 @@ def test_pantry_removal_success_passes_reason_and_quantity(monkeypatch):
         "/pantry/removals", json={"receipt_item_id": "i1", "reason": "eaten"}, headers=AUTH
     )
     assert resp.status_code == 201
-    assert resp.json()["reason"] == "eaten"
-    assert captured == {"receipt_item_id": "i1", "reason": "eaten", "quantity": None}
+    body = resp.json()
+    assert body["reason"] == "eaten"
+    assert body["applied_quantity"] == 3.0
+    assert body["remaining_after"] == 0.0
+    assert body["clamped"] is False
+    assert captured["quantity"] == 3.0  # full remaining written, not None
+
+
+def test_pantry_removal_partial_leaves_remainder(monkeypatch):
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
+    monkeypatch.setattr(pantry_api.repo, "get_lot_remaining", lambda item_id: 1.0)
+    captured = {}
+    monkeypatch.setattr(
+        pantry_api.repo,
+        "add_pantry_removal",
+        lambda receipt_item_id, reason, quantity=None: captured.update(quantity=quantity)
+        or {"id": "rm1", "receipt_item_id": receipt_item_id, "reason": reason,
+            "quantity": quantity, "removed_at": "2026-07-23T00:00:00+00:00"},
+    )
+    resp = client.post(
+        "/pantry/removals",
+        json={"receipt_item_id": "i1", "reason": "eaten", "quantity": 0.2},
+        headers=AUTH,
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["applied_quantity"] == 0.2
+    assert body["remaining_after"] == 0.8
+    assert body["clamped"] is False
+    assert captured["quantity"] == 0.2
+
+
+def test_pantry_removal_clamps_overshoot(monkeypatch):
+    """Requesting more than what's left is clamped to the remaining, not
+    rejected -- the honest outcome for a stale UI / concurrent request."""
+
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
+    monkeypatch.setattr(pantry_api.repo, "get_lot_remaining", lambda item_id: 0.3)
+    captured = {}
+    monkeypatch.setattr(
+        pantry_api.repo,
+        "add_pantry_removal",
+        lambda receipt_item_id, reason, quantity=None: captured.update(quantity=quantity)
+        or {"id": "rm1", "receipt_item_id": receipt_item_id, "reason": reason,
+            "quantity": quantity, "removed_at": "2026-07-23T00:00:00+00:00"},
+    )
+    resp = client.post(
+        "/pantry/removals",
+        json={"receipt_item_id": "i1", "reason": "eaten", "quantity": 0.5},
+        headers=AUTH,
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["applied_quantity"] == 0.3  # clamped down to what was left
+    assert body["remaining_after"] == 0.0
+    assert body["clamped"] is True
+    assert captured["quantity"] == 0.3
+
+
+def test_pantry_removal_409_when_nothing_left(monkeypatch):
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
+    monkeypatch.setattr(pantry_api.repo, "get_lot_remaining", lambda item_id: 0.0)
+    called = {"added": False}
+    monkeypatch.setattr(
+        pantry_api.repo, "add_pantry_removal", lambda *a, **k: called.__setitem__("added", True)
+    )
+    resp = client.post(
+        "/pantry/removals", json={"receipt_item_id": "i1", "reason": "eaten"}, headers=AUTH
+    )
+    assert resp.status_code == 409
+    assert called["added"] is False
 
 
 def test_pantry_removal_rejects_invalid_reason(monkeypatch):

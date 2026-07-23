@@ -1237,6 +1237,68 @@ a.btn {
   color: #d03b3b;
 }
 
+.btn-secondary--active {
+  outline: 2px solid var(--accent, #2f7d5b);
+  outline-offset: 1px;
+}
+
+/* Inline "how much eaten/removed?" control, spanning the row's full width
+   below the primary cells. */
+.basket-row__panel {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.basket-row__panel-label {
+  color: var(--text-h);
+  font-size: 13px;
+}
+
+.basket-row__amount {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.basket-row__amount input {
+  width: 90px;
+}
+
+/* Piece control: a quarter-step slider (0 -> remaining), snapping to ¼ ½ ¾
+   and whole counts, with the chosen amount shown as a fraction glyph. */
+.basket-row__slider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 180px;
+}
+
+.basket-row__slider input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent, #2f7d5b);
+}
+
+.basket-row__slider-value {
+  min-width: 56px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-h);
+}
+
+.basket-row__panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
 @media (max-width: 640px) {
   .basket-row {
     grid-template-columns: 1fr;

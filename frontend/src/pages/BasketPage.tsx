@@ -6,7 +6,6 @@ import {
   deletePantryRemoval,
   getPantry,
   type PantryItem,
-  type PantryRemoval,
   type PantryRemovalReason,
 } from '../lib/api'
 import { formatFallbackCategory, matchInfo } from '../lib/matchInfo'
@@ -22,14 +21,51 @@ type LoadState =
   | { status: 'error'; message: string }
   | { status: 'ready'; items: PantryItem[] }
 
-// What the last action removed, so it can be undone (deletes the ledger row
-// -> the lot reappears). Only the most recent action is undoable; anything
-// older is a fresh page reload away.
-type LastAction = { removal: PantryRemoval; item: PantryItem; reason: PantryRemovalReason }
+// What the last withdrawal did, so it can be undone (deletes the ledger row
+// -> the amount comes back). Only the most recent action is undoable; older
+// ones are a fresh page reload away.
+type LastAction = {
+  removalId: string
+  itemName: string
+  reason: PantryRemovalReason
+  appliedQuantity: number
+  unit: string | null
+  clamped: boolean
+}
 
 const REASON_VERB: Record<PantryRemovalReason, string> = {
   eaten: 'eaten',
   removed: 'removed',
+}
+
+const REASON_CONFIRM: Record<PantryRemovalReason, string> = {
+  eaten: 'Eaten',
+  removed: 'Remove',
+}
+
+// Units where a withdrawal is a continuous amount (0.5 l, 250 g) -> number
+// field; anything else is a discrete count -> a quarter-step slider (½ an
+// apple, whole eggs), since you also eat *part* of one piece.
+const MEASURED_UNITS = new Set(['g', 'kg', 'ml', 'l'])
+
+// Step the piece slider snaps to: quarters cover the realistic partials
+// (¼ ½ ¾) and whole counts land exactly on integers.
+const PIECE_STEP = 0.25
+
+const QUARTER_GLYPH: Record<string, string> = { '0.25': '¼', '0.5': '½', '0.75': '¾' }
+
+// Render a quarter-step piece amount with fraction glyphs: 0.5 -> "½",
+// 1.5 -> "1½", 2 -> "2".
+function quarterLabel(q: number): string {
+  const whole = Math.floor(q + 1e-9)
+  const glyph = QUARTER_GLYPH[String(Math.round((q - whole) * 100) / 100)]
+  if (glyph) return whole > 0 ? `${whole}${glyph}` : glyph
+  return String(whole)
+}
+
+function formatAmount(q: number, unit: string | null): string {
+  const n = Number.isInteger(q) ? q : Math.round(q * 100) / 100
+  return `${n}${unit ? ` ${unit}` : ''}`
 }
 
 const QUANTITY_BASIS_ICON: Record<QuantityBasis, string> = {
@@ -59,10 +95,6 @@ function displayName(item: PantryItem): string {
   return item.name
 }
 
-function byNewest(a: PantryItem, b: PantryItem): number {
-  return (b.purchased_at ?? '').localeCompare(a.purchased_at ?? '')
-}
-
 export function BasketPage() {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [actionError, setActionError] = useState<string | null>(null)
@@ -89,42 +121,45 @@ export function BasketPage() {
     void load()
   }, [])
 
-  // Optimistic: drop the lot from the list immediately, then record the
-  // ledger row for undo. On failure, put it back and surface the error.
-  async function handleRemoval(item: PantryItem, reason: PantryRemovalReason) {
+  // A partial withdrawal can leave the lot with some amount still in stock,
+  // so we reload rather than optimistically dropping the row -- the server's
+  // remaining (after any clamping) is the source of truth.
+  async function handleWithdraw(
+    item: PantryItem,
+    reason: PantryRemovalReason,
+    quantity: number,
+  ) {
     setActionError(null)
-    setState((prev) =>
-      prev.status === 'ready'
-        ? { status: 'ready', items: prev.items.filter((i) => i.id !== item.id) }
-        : prev,
-    )
     try {
-      const removal = await addPantryRemoval(item.id, reason)
-      setLastAction({ removal, item, reason })
+      const removal = await addPantryRemoval(item.id, reason, quantity)
+      await load()
+      setLastAction({
+        removalId: removal.id,
+        itemName: displayName(item),
+        reason,
+        appliedQuantity: removal.applied_quantity,
+        unit: item.unit,
+        clamped: removal.clamped,
+      })
     } catch (err) {
       setActionError(
-        err instanceof ApiError ? err.message : `Could not mark "${item.name}" as ${reason}.`,
+        err instanceof ApiError
+          ? err.message
+          : `Could not mark "${displayName(item)}" as ${reason}.`,
       )
-      setLastAction(null)
-      await load()
     }
   }
 
   async function handleUndo() {
     if (!lastAction) return
-    const { removal, item } = lastAction
+    const { removalId } = lastAction
     setActionError(null)
     setLastAction(null)
     try {
-      await deletePantryRemoval(removal.id)
-      setState((prev) =>
-        prev.status === 'ready'
-          ? { status: 'ready', items: [...prev.items, item].sort(byNewest) }
-          : { status: 'ready', items: [item] },
-      )
+      await deletePantryRemoval(removalId)
+      await load()
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Could not undo that.')
-      await load()
     }
   }
 
@@ -150,7 +185,9 @@ export function BasketPage() {
 
   const undoBanner = lastAction && (
     <p className="callout callout--muted" role="status">
-      Marked “{lastAction.item.name}” as {REASON_VERB[lastAction.reason]}.{' '}
+      Marked {formatAmount(lastAction.appliedQuantity, lastAction.unit)} of “
+      {lastAction.itemName}” as {REASON_VERB[lastAction.reason]}
+      {lastAction.clamped ? ' (capped at what was left)' : ''}.{' '}
       <button type="button" className="btn-link" onClick={() => void handleUndo()}>
         Undo
       </button>
@@ -187,8 +224,7 @@ export function BasketPage() {
           <BasketRow
             key={item.id}
             item={item}
-            onEaten={() => void handleRemoval(item, 'eaten')}
-            onRemoved={() => void handleRemoval(item, 'removed')}
+            onWithdraw={(reason, quantity) => void handleWithdraw(item, reason, quantity)}
           />
         ))}
       </ul>
@@ -202,15 +238,43 @@ function formatGrams(value: number | null): string {
 
 function BasketRow({
   item,
-  onEaten,
-  onRemoved,
+  onWithdraw,
 }: {
   item: PantryItem
-  onEaten: () => void
-  onRemoved: () => void
+  onWithdraw: (reason: PantryRemovalReason, quantity: number) => void
 }) {
   const match = matchInfo(item)
   const basis = quantityBasis(item)
+  const measured = MEASURED_UNITS.has((item.unit ?? '').toLowerCase())
+  const remaining = item.quantity ?? 1
+
+  // Which withdrawal panel is open (eaten/removed), and the amount it will
+  // withdraw -- pre-filled with the whole remaining so one open+confirm
+  // clears the lot; adjust down for a partial (Vorrat.md §6.4).
+  const [panel, setPanel] = useState<PantryRemovalReason | null>(null)
+  const [amount, setAmount] = useState<number>(remaining)
+
+  function openPanel(reason: PantryRemovalReason) {
+    setAmount(remaining)
+    setPanel((cur) => (cur === reason ? null : reason))
+  }
+
+  function clampAmount(next: number): number {
+    if (Number.isNaN(next)) return 0
+    return Math.min(Math.max(next, 0), remaining)
+  }
+
+  function confirm() {
+    if (panel && amount > 0) {
+      onWithdraw(panel, amount)
+      setPanel(null)
+    }
+  }
+
+  const partial = amount < remaining
+  const amountLabel = measured
+    ? formatAmount(amount, item.unit)
+    : `${quarterLabel(amount)}${item.unit ? ` ${item.unit}` : ''}`
 
   return (
     <li className="purchase-row basket-row">
@@ -228,7 +292,7 @@ function BasketRow({
         </span>
       </div>
       <span className="purchase-row__qty">
-        {item.quantity ?? '—'} {item.unit ?? ''}
+        {formatAmount(remaining, item.unit)}
         <span
           className={`qty-basis qty-basis--${basis}`}
           title={QUANTITY_BASIS_LABEL[basis]}
@@ -236,6 +300,9 @@ function BasketRow({
         >
           {QUANTITY_BASIS_ICON[basis]}
         </span>
+        {item.original_quantity != null && item.original_quantity !== remaining && (
+          <span className="muted"> of {formatAmount(item.original_quantity, item.unit)}</span>
+        )}
         <span className="muted"> · {daysInBasket(item.purchased_at)}</span>
       </span>
       <span className="purchase-row__macros">
@@ -244,19 +311,72 @@ function BasketRow({
         {formatGrams(item.carbs_g)}
       </span>
       <div className="basket-row__actions">
-        <button type="button" className="btn-secondary" onClick={onEaten}>
+        <button
+          type="button"
+          className={panel === 'eaten' ? 'btn-secondary btn-secondary--active' : 'btn-secondary'}
+          onClick={() => openPanel('eaten')}
+        >
           Eaten
         </button>
         <button
           type="button"
           className="btn-link basket-row__remove"
-          onClick={onRemoved}
+          onClick={() => openPanel('removed')}
           aria-label="Remove"
           title="Remove (not eaten — spoiled, given away, miscan)"
         >
           ✕
         </button>
       </div>
+
+      {panel && (
+        <div className="basket-row__panel">
+          <span className="basket-row__panel-label">
+            How much {REASON_VERB[panel]}?
+          </span>
+          {measured ? (
+            <div className="basket-row__amount">
+              <input
+                type="number"
+                min={0}
+                max={remaining}
+                step="any"
+                value={amount}
+                onChange={(e) => setAmount(clampAmount(Number(e.target.value)))}
+                aria-label={`Amount ${REASON_VERB[panel]} (${item.unit ?? ''})`}
+              />
+              <span className="muted">{item.unit}</span>
+              {partial && (
+                <button type="button" className="btn-link" onClick={() => setAmount(remaining)}>
+                  All ({formatAmount(remaining, item.unit)})
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="basket-row__slider">
+              <input
+                type="range"
+                min={0}
+                max={remaining}
+                step={PIECE_STEP}
+                value={amount}
+                onChange={(e) => setAmount(clampAmount(Number(e.target.value)))}
+                aria-label={`Amount ${REASON_VERB[panel]}`}
+              />
+              <span className="basket-row__slider-value">{amountLabel}</span>
+            </div>
+          )}
+          <div className="basket-row__panel-actions">
+            <button type="button" className="btn-secondary" onClick={confirm} disabled={amount <= 0}>
+              {REASON_CONFIRM[panel]}
+              {partial ? ` ${amountLabel}` : ' all'}
+            </button>
+            <button type="button" className="btn-link" onClick={() => setPanel(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </li>
   )
 }

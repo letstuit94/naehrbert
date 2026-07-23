@@ -255,6 +255,38 @@ def get_receipt_item_owner(receipt_item_id: str) -> Optional[int]:
     return (rows[0].get("receipts") or {}).get("profile_id")
 
 
+def get_lot_remaining(receipt_item_id: str) -> Optional[float]:
+    """How much of a lot is still in stock: its purchased quantity minus the
+    sum of prior withdrawals (Vorrat.md §6.4). Mirrors v_pantry's arithmetic
+    so the write path can clamp a new withdrawal to what's actually left.
+    A NULL receipt_items.quantity counts as one unit and a NULL removal
+    quantity as the whole lot -- same COALESCE rules as migration 0009.
+    Returns None only when the item doesn't exist."""
+
+    item = (
+        get_client()
+        .table("receipt_items")
+        .select("quantity")
+        .eq("id", receipt_item_id)
+        .execute()
+        .data
+    )
+    if not item:
+        return None
+    base = item[0].get("quantity")
+    base = 1.0 if base is None else float(base)
+    removals = (
+        get_client()
+        .table("pantry_removals")
+        .select("quantity")
+        .eq("receipt_item_id", receipt_item_id)
+        .execute()
+        .data
+    ) or []
+    used = sum(base if r.get("quantity") is None else float(r["quantity"]) for r in removals)
+    return base - used
+
+
 def add_pantry_removal(
     receipt_item_id: str, reason: str, quantity: Optional[float] = None
 ) -> dict:

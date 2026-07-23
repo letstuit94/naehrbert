@@ -570,15 +570,20 @@ export function getRecipes(): Promise<Recipe[]> {
 export type PantryRemovalReason = 'eaten' | 'removed'
 
 /** GET /pantry -- one row per in-stock lot (a single receipt_items line on a
- * single receipt). kcal/macros are already scaled for the purchased quantity,
- * same as PurchaseItem; pantry is food-only so there's no is_non_food. */
+ * single receipt). `quantity` is the amount STILL in stock (remaining after
+ * withdrawals); `original_quantity` is what was bought. kcal/macros are
+ * scaled to the remaining amount. Pantry is food-only so there's no
+ * is_non_food. */
 export interface PantryItem {
   id: string
   receipt_id: string
   name: string
   store: string | null
   purchased_at: string | null
+  /** Remaining amount in stock, in `unit`. Pre-fills the withdrawal control. */
   quantity: number | null
+  /** What was originally purchased -- for a "0.5 l of 1 l" hint. */
+  original_quantity: number | null
   unit: string | null
   /** Always false -- the pantry view is food-only; present so the match
    * helpers (matchInfo/matchCategory) accept a PantryItem. */
@@ -598,28 +603,41 @@ export interface PantryResult {
   items: PantryItem[]
 }
 
-/** A row appended to the withdrawal ledger (pantry_removals). */
+/** A row appended to the withdrawal ledger (pantry_removals), plus the
+ * server's view of the effect: how much was actually applied (after
+ * clamping), what's left afterward, and whether the request over-shot the
+ * remaining amount and was clamped down. */
 export interface PantryRemoval {
   id: string
   receipt_item_id: string
   reason: PantryRemovalReason
   quantity: number | null
   removed_at: string
+  applied_quantity: number
+  remaining_after: number
+  clamped: boolean
 }
 
 export function getPantry(): Promise<PantryResult> {
   return request<PantryResult>('/pantry')
 }
 
-/** Mark a lot eaten/removed -- it disappears from the pantry. Returns the
+/** Withdraw all or part of a lot (eaten/removed). `quantity` is in the lot's
+ * own unit; omit it to withdraw the whole remaining amount. A quantity above
+ * what's left is clamped server-side (see PantryRemoval.clamped). Returns the
  * ledger row so the caller can offer an undo (deletePantryRemoval). */
 export function addPantryRemoval(
   receiptItemId: string,
   reason: PantryRemovalReason,
+  quantity?: number,
 ): Promise<PantryRemoval> {
   return request<PantryRemoval>('/pantry/removals', {
     method: 'POST',
-    body: JSON.stringify({ receipt_item_id: receiptItemId, reason }),
+    body: JSON.stringify({
+      receipt_item_id: receiptItemId,
+      reason,
+      ...(quantity !== undefined ? { quantity } : {}),
+    }),
   })
 }
 

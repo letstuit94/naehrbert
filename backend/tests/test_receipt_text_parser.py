@@ -94,6 +94,34 @@ def test_product_name_ending_in_x_does_not_trigger_false_multiplier():
     assert item["unit"] == "g"
 
 
+def test_multipack_with_measured_size_folds_into_total_amount():
+    """A "×N" multiplier next to a MEASURED pack size is folded into a total
+    (Commit 2): "Joghurt 150g … x 4" -> 600 g, "Milch 1l … x 3" -> 3 l, so
+    the basket shows the real amount instead of a bare count that grams_for
+    would misread as 4/3 pieces. A pure count with no measured size (Brötchen
+    … x 6) stays a piece count, as before."""
+
+    text = (
+        "Joghurt 150g 0,59 x 4 2,36 B\n"
+        "Milch 1l 0,99 x 3 2,97 A\n"
+        "Broetchen 0,30 x 6 1,80 B\n"
+    )
+    parsed = parse_receipt_text_offline(text)
+    by_name = {i["name"].lower(): i for i in parsed["items"]}
+
+    joghurt = next(i for n, i in by_name.items() if "joghurt" in n)
+    assert joghurt["quantity"] == 600  # 4 × 150 g
+    assert joghurt["unit"] == "g"
+
+    milch = next(i for n, i in by_name.items() if "milch" in n)
+    assert milch["quantity"] == 3  # 3 × 1 l, l not converted to ml
+    assert milch["unit"] == "l"
+
+    broetchen = next(i for n, i in by_name.items() if "roetchen" in n)
+    assert broetchen["quantity"] == 6  # pure count, no measured size
+    assert broetchen["unit"] == "piece"
+
+
 def test_price_line_tolerates_trailing_period_after_tax_letter():
     """Regression: a real WhatsApp-photo receipt OCR'd a stray period after
     the tax-class letter ("2,29 B ."), which _PRICE_RE's trailing-cruft

@@ -315,6 +315,21 @@
   color: var(--text);
 }
 
+.plant-diversity-group {
+  margin-top: 14px;
+}
+
+.plant-diversity-group:first-of-type {
+  margin-top: 12px;
+}
+
+.plant-diversity-group__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 6px;
+}
+
 /* ── Upload / review screen ───────────────────────────────────────────── */
 
 .upload-card {

@@ -296,7 +296,9 @@ export interface TargetComparisonResult {
   fiber_actual_per_1000kcal: number | null
   fiber_target_per_1000kcal: number
   fiber_delta_per_1000kcal: number | null
-  /** Normalized distance across the 3 macros, 0-100 (100 = exact match). */
+  /** 100 - sum(|actual% - target%|) across protein/fat/carb, floored at 0
+   * (100 = exact match). Summed, not averaged, so one macro badly off
+   * target can't hide behind two that are close. */
   closeness_score: number | null
   items_considered: number
 }
@@ -328,6 +330,25 @@ export interface DiversityResult {
   fat: DiversityGroup
   carb: DiversityGroup
   recommendations: string[]
+}
+
+/** One distinct plant behind the /analysis/plant-diversity count -- `group`
+ * is one of the six fixed labels (Fruits, Vegetables, Whole grains,
+ * Legumes, Nuts & seeds, Herbs & spices), already ordered by the backend. */
+export interface PlantDiversityItem {
+  name: string
+  group: string
+}
+
+/** GET /analysis/plant-diversity -- Results page's plant-diversity progress
+ * bar: distinct fruits/vegetables/whole grains/legumes/nuts&seeds/herbs&
+ * spices bought in the last `window_days` (see backend/app/services/
+ * plant_diversity.py for the category scope). */
+export interface PlantDiversityResult {
+  count: number
+  target: number
+  window_days: number
+  items: PlantDiversityItem[]
 }
 
 // ── Recipe recommendations feature ────────────────────────────────────────
@@ -521,6 +542,10 @@ export function getBuckets(): Promise<BucketsResult> {
 
 export function getDiversity(): Promise<DiversityResult> {
   return request<DiversityResult>('/analysis/diversity')
+}
+
+export function getPlantDiversity(): Promise<PlantDiversityResult> {
+  return request<PlantDiversityResult>('/analysis/plant-diversity')
 }
 
 // ── Dietary preferences (recipe recommendations feature) ─────────────────

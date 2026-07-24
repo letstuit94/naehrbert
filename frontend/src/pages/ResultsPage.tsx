@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   getComposition,
+  getPlantDiversity,
   getProfile,
   getSummary,
   getTargetComparison,
   getTargets,
   type CompositionResult,
   type Goal,
+  type PlantDiversityItem,
+  type PlantDiversityResult,
   type SummaryResult,
   type TargetComparisonResult,
   type TargetsResponse,
@@ -39,6 +42,10 @@ export function ResultsPage() {
     data: null,
     unavailable: false,
   })
+  const [plantDiversity, setPlantDiversity] = useState<Slice<PlantDiversityResult>>({
+    data: null,
+    unavailable: false,
+  })
   const [profileGoal, setProfileGoal] = useState<Goal | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -49,12 +56,14 @@ export function ResultsPage() {
       getTargetComparison(),
       getTargets(),
       getProfile(),
-    ]).then(([s, c, t, tg, p]) => {
+      getPlantDiversity(),
+    ]).then(([s, c, t, tg, p, pd]) => {
       setSummary(settledSlice(s))
       setComposition(settledSlice(c))
       setComparison(settledSlice(t))
       setTargets(settledSlice(tg))
       setProfileGoal(p.status === 'fulfilled' ? p.value.goal : null)
+      setPlantDiversity(settledSlice(pd))
       setLoading(false)
     })
   }, [])
@@ -96,7 +105,7 @@ export function ResultsPage() {
       )}
 
       {comparison.data && !noReceiptsYet && (
-        <ClosenessScore score={comparison.data.closeness_score} />
+        <ClosenessScore comparison={comparison.data} />
       )}
 
       {summary.data && summary.data.receipts_count > 0 && (
@@ -162,6 +171,10 @@ export function ResultsPage() {
             rough guide.
           </p>
         )}
+
+      {plantDiversity.data && !noReceiptsYet && (
+        <PlantDiversitySection diversity={plantDiversity.data} />
+      )}
     </section>
   )
 }
@@ -333,13 +346,140 @@ function MacroRingTile({
   )
 }
 
-function ClosenessScore({ score }: { score: number | null }) {
+const CLOSENESS_MACRO_ROWS: { label: string; macro: 'protein' | 'fat' | 'carb' }[] = [
+  { label: 'Protein', macro: 'protein' },
+  { label: 'Fat', macro: 'fat' },
+  { label: 'Carbs', macro: 'carb' },
+]
+
+function ClosenessScore({ comparison }: { comparison: TargetComparisonResult }) {
+  const score = comparison.closeness_score
   if (score === null) return null
   const status = score >= 80 ? 'good' : score >= 50 ? 'warning' : 'critical'
+
+  // Same 3 per-macro |actual% - target%| differences the backend sums (see
+  // analysis.py's get_target_comparison) -- shown individually so the final
+  // score isn't just asserted, only the sum-then-subtract-from-100 step is
+  // redone here, from these same already-rounded numbers.
+  const diffs = CLOSENESS_MACRO_ROWS.map((row) => comparison.delta_pct[row.macro]).filter(
+    (d): d is number => d !== null,
+  )
+  const totalDiff = diffs.length
+    ? diffs.reduce((sum, d) => sum + Math.abs(d), 0)
+    : null
+
   return (
-    <div className={`stat-tile stat-tile--hero stat-tile--${status}`}>
-      <span className="stat-tile__label">Purchases vs. target</span>
-      <span className="stat-tile__value">{score}/100</span>
+    <div>
+      <div className={`stat-tile stat-tile--hero stat-tile--${status}`}>
+        <span className="stat-tile__label">Purchases vs. target</span>
+        <span className="stat-tile__value">{score}/100</span>
+      </div>
+
+      <details className="details-panel">
+        <summary>How this was calculated</summary>
+        <dl className="kv-list">
+          {CLOSENESS_MACRO_ROWS.map(({ label, macro }) => {
+            const actual = comparison.actual_pct[macro]
+            const target = comparison.target_pct[`${macro}_pct`]
+            const delta = comparison.delta_pct[macro]
+            return (
+              <div key={macro}>
+                <dt>
+                  {label}: {actual ?? '—'}% actual vs {target ?? '—'}% target
+                </dt>
+                <dd>
+                  {delta === null ? '—' : `${delta > 0 ? '+' : ''}${delta} pts off`}
+                </dd>
+              </div>
+            )
+          })}
+          <div>
+            <dt>Total absolute difference</dt>
+            <dd>{totalDiff === null ? '—' : `${totalDiff.toFixed(1)} pts`}</dd>
+          </div>
+          <div>
+            <dt>= 100 − total difference</dt>
+            <dd>{score}/100</dd>
+          </div>
+        </dl>
+      </details>
+    </div>
+  )
+}
+
+// Same 4-color scale as ringTierColor above, re-purposed for an absolute
+// count instead of a %-of-target ratio: red under 10 distinct plants,
+// orange under 20, yellow under the 28-30 target range, green at/above it.
+function plantDiversityColor(count: number): string {
+  if (count < 10) return '#d03b3b' // red
+  if (count < 20) return '#e07b1f' // orange
+  if (count < 28) return '#d1a300' // yellow
+  return '#0ca30c' // green
+}
+
+function PlantDiversitySection({ diversity }: { diversity: PlantDiversityResult }) {
+  const { count, target, items } = diversity
+  const color = plantDiversityColor(count)
+  const pct = Math.min(100, Math.round((count / target) * 100))
+
+  // Items already arrive grouped+sorted by the backend (fixed group order,
+  // alphabetical within group) -- just fold consecutive same-group entries
+  // together rather than re-deriving the grouping here.
+  const groups: { label: string; items: PlantDiversityItem[] }[] = []
+  for (const item of items) {
+    const current = groups[groups.length - 1]
+    if (current && current.label === item.group) {
+      current.items.push(item)
+    } else {
+      groups.push({ label: item.group, items: [item] })
+    }
+  }
+
+  return (
+    <div className="section-divider">
+      <h2>Plant diversity</h2>
+      <p className="muted">
+        Eat 30 different plants regularly to maximize gut
+        microbiome diversity, improve immune function, and lower the risk of
+        chronic diseases.
+      </p>
+      <div
+        className="progress-bar"
+        role="progressbar"
+        aria-valuenow={count}
+        aria-valuemin={0}
+        aria-valuemax={target}
+      >
+        <div
+          className="progress-bar__fill"
+          style={{ width: `${pct}%`, background: color }}
+        />
+      </div>
+      <p className="muted">
+        <strong style={{ color }}>{count}</strong> / {target} different plants
+      </p>
+
+      <details className="details-panel">
+        <summary>See what counted ({count})</summary>
+        {groups.length === 0 ? (
+          <p className="muted">Nothing purchased in this window yet.</p>
+        ) : (
+          groups.map((group) => (
+            <div key={group.label} className="plant-diversity-group">
+              <h3 className="plant-diversity-group__label">
+                {group.label} ({group.items.length})
+              </h3>
+              <ul className="chip-list">
+                {group.items.map((item) => (
+                  <li key={item.name} className="chip">
+                    {item.name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        )}
+      </details>
     </div>
   )
 }

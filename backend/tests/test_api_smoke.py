@@ -301,6 +301,47 @@ def test_composition_empty_state_without_receipts(monkeypatch):
     assert resp.json()["items_considered"] == 0
 
 
+def test_target_comparison_closeness_score_sums_not_averages_macro_diffs(monkeypatch):
+    """Regression: closeness_score used to average the 3 macro diffs, which
+    let one macro be badly off target (e.g. protein at half its goal) hide
+    behind two that were close, producing a deceptively high score for a
+    purchase pattern that's actually missing a target by a lot. It now sums
+    the absolute per-macro differences instead."""
+
+    monkeypatch.setattr(analysis_api.repo, "get_profile", lambda profile_id: _PROFILE_ROW)
+    monkeypatch.setattr(
+        analysis_api.repo,
+        "get_all_confirmed_receipt_items",
+        lambda profile_id: [
+            {
+                "receipt_id": "r1",
+                "quantity": 100,
+                "unit": "g",
+                "protein_g": 3.0,
+                "fat_g": 12.0,
+                "carbs_g": 25.0,
+                "calories_kcal": 200,
+                "match_type": "exact",
+            },
+        ],
+    )
+    resp = client.get("/analysis/target-comparison", headers=AUTH)
+    assert resp.status_code == 200
+    body = resp.json()
+
+    diffs = [
+        abs(body["actual_pct"][m] - body["target_pct"][f"{m}_pct"])
+        for m in ("protein", "fat", "carb")
+    ]
+    assert body["closeness_score"] == round(max(0.0, 100.0 - sum(diffs)), 1)
+
+    # Sanity: with these 3 (deliberately mismatched) macros, summing must
+    # differ from averaging -- otherwise this test couldn't tell the two
+    # formulas apart.
+    averaged = round(max(0.0, 100.0 - sum(diffs) / len(diffs)), 1)
+    assert body["closeness_score"] != averaged
+
+
 def test_diversity_empty_state_without_receipts(monkeypatch):
     monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: [])
     resp = client.get("/analysis/diversity", headers=AUTH)

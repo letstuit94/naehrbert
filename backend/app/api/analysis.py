@@ -18,6 +18,7 @@ from backend.app.services.ideal_profile import (
     macro_percentages,
 )
 from backend.app.services.nutrition_profile import grams_for
+from backend.app.services.plant_diversity import compute_plant_diversity
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
@@ -133,7 +134,13 @@ def get_composition(profile_id: int = Depends(require_profile_id)):
 @router.get("/target-comparison")
 def get_target_comparison(profile_id: int = Depends(require_profile_id)):
     """Epic 5.2 — actual vs. target macro %, a per-macro delta, and one
-    overall closeness score (0-100; 100 = exact match)."""
+    overall closeness score (0-100; 100 = exact match).
+
+    closeness_score = 100 - sum(|actual% - target%|) across protein/fat/carb,
+    floored at 0. Summed rather than averaged: averaging let one macro that's
+    badly off target (e.g. protein at half its goal) get diluted by two
+    macros that happen to be close, producing a deceptively high score for
+    a purchase pattern that's actually missing a target by a lot."""
 
     target_pct = _targets_or_404(profile_id)
     items = repo.get_all_confirmed_receipt_items(profile_id)
@@ -151,7 +158,7 @@ def get_target_comparison(profile_id: int = Depends(require_profile_id)):
         deltas[macro] = diff
         diffs.append(abs(diff))
 
-    closeness = round(max(0.0, 100.0 - sum(diffs) / len(diffs)), 1) if diffs else None
+    closeness = round(max(0.0, 100.0 - sum(diffs)), 1) if diffs else None
 
     # Fiber isn't one of the 3 %-of-calories macros above (BR-M7: its target
     # is a fixed g/1000kcal density, see ideal_profile.FIBER_G_PER_1000KCAL),
@@ -192,3 +199,14 @@ def get_diversity(profile_id: int = Depends(require_profile_id)):
 
     items = repo.get_all_confirmed_receipt_items(profile_id)
     return compute_diversity(items)
+
+
+@router.get("/plant-diversity")
+def get_plant_diversity(profile_id: int = Depends(require_profile_id)):
+    """Results page's plant-diversity progress bar — distinct fruits/
+    vegetables/whole grains/legumes/nuts&seeds/herbs&spices bought in the
+    last 28 days (see services/plant_diversity.py for the category scope
+    and why the window is 28 days, not a lifetime sum)."""
+
+    items = repo.get_all_confirmed_receipt_items(profile_id)
+    return compute_plant_diversity(items, reference_date=_today())

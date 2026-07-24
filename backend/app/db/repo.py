@@ -116,7 +116,9 @@ def get_all_confirmed_receipt_items(profile_id: int) -> List[dict]:
     res = (
         get_client()
         .table("receipt_items")
-        .select("*, receipts!inner(status, profile_id)")
+        # purchased_at/created_at come along so the analysis can weight the
+        # macro split toward recent purchases (basket_composition EWMA).
+        .select("*, receipts!inner(status, profile_id, purchased_at, created_at)")
         .eq("receipts.status", "confirmed")
         .eq("receipts.profile_id", profile_id)
         .eq("is_non_food", False)
@@ -219,3 +221,94 @@ def get_all_recipes(profile_id: int) -> List[dict]:
         .execute()
     )
     return res.data or []
+
+
+# ── pantry / basket (Vorrat.md) ──────────────────────────────────────────
+
+def get_pantry(profile_id: int) -> List[dict]:
+    """Current stock for `profile_id`: confirmed, food receipt_items with no
+    withdrawal yet (Vorrat.md §4). Reads the v_pantry view (migration 0008),
+    which already applies the confirmed/food/not-removed filter and lifts
+    profile_id/store/purchased_at off the parent receipt -- so here it's a
+    plain owner filter, never a stored pantry to keep in sync."""
+
+    res = get_client().table("v_pantry").select("*").eq("profile_id", profile_id).execute()
+    return res.data or []
+
+
+def get_receipt_item_owner(receipt_item_id: str) -> Optional[int]:
+    """The profile_id that owns a receipt_item, via its parent receipt --
+    the one seam the pantry endpoints check before letting a caller withdraw
+    an item, so a stray request can't touch someone else's stock. None if the
+    item doesn't exist."""
+
+    res = (
+        get_client()
+        .table("receipt_items")
+        .select("id, receipts!inner(profile_id)")
+        .eq("id", receipt_item_id)
+        .execute()
+    )
+    rows = res.data or []
+    if not rows:
+        return None
+    return (rows[0].get("receipts") or {}).get("profile_id")
+
+
+def get_lot_remaining(receipt_item_id: str) -> Optional[float]:
+    """How much of a lot is still in stock: its purchased quantity minus the
+    sum of prior withdrawals (Vorrat.md §6.4). Mirrors v_pantry's arithmetic
+    so the write path can clamp a new withdrawal to what's actually left.
+    A NULL receipt_items.quantity counts as one unit and a NULL removal
+    quantity as the whole lot -- same COALESCE rules as migration 0009.
+    Returns None only when the item doesn't exist."""
+
+    item = (
+        get_client()
+        .table("receipt_items")
+        .select("quantity")
+        .eq("id", receipt_item_id)
+        .execute()
+        .data
+    )
+    if not item:
+        return None
+    base = item[0].get("quantity")
+    base = 1.0 if base is None else float(base)
+    removals = (
+        get_client()
+        .table("pantry_removals")
+        .select("quantity")
+        .eq("receipt_item_id", receipt_item_id)
+        .execute()
+        .data
+    ) or []
+    used = sum(base if r.get("quantity") is None else float(r["quantity"]) for r in removals)
+    return base - used
+
+
+def add_pantry_removal(
+    receipt_item_id: str, reason: str, quantity: Optional[float] = None
+) -> dict:
+    """Append a withdrawal to the ledger (Vorrat.md §3). `quantity=None` (the
+    MVP default) means the whole lot is gone; a value records a partial
+    withdrawal for later use."""
+
+    row = {"receipt_item_id": receipt_item_id, "reason": reason}
+    if quantity is not None:
+        row["quantity"] = quantity
+    res = get_client().table("pantry_removals").insert(row).execute()
+    return res.data[0]
+
+
+def get_pantry_removal(removal_id: str) -> Optional[dict]:
+    res = get_client().table("pantry_removals").select("*").eq("id", removal_id).execute()
+    rows = res.data or []
+    return rows[0] if rows else None
+
+
+def remove_pantry_removal(removal_id: str) -> None:
+    """Undo a withdrawal -- the item reappears in v_pantry once its only
+    ledger row is gone."""
+
+    get_client().table("pantry_removals").delete().eq("id", removal_id).execute()

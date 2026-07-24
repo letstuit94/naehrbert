@@ -1,6 +1,9 @@
 """Epic 5 (macro composition & target comparison) and Epic 6
 (bucketing & diversity) endpoints."""
 
+from datetime import date, timezone
+from datetime import datetime as _datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.core.auth import require_profile_id
@@ -26,7 +29,24 @@ _EMPTY_COMPOSITION = {
     "kcal_total": None,
     "fiber_per_1000kcal": None,
     "items_considered": 0,
+    "receipts_considered": 0,
+    "macro_coverage_pct": None,
+    "match_coverage_pct": None,
+    "quantity_coverage_pct": None,
+    "low_confidence": True,
 }
+
+
+def _today() -> date:
+    """Reference date for the recency-weighted composition (UTC to match the
+    stored timestamps)."""
+    return _datetime.now(timezone.utc).date()
+
+
+def _scaled_macro(value, factor):
+    """Scale a per-100g macro to the purchased quantity, preserving None
+    (unknown) instead of turning it into a measured 0 g."""
+    return round(value * factor, 1) if value is not None else None
 
 
 def _targets_or_404(profile_id: int) -> dict:
@@ -69,12 +89,15 @@ def get_purchases(profile_id: int = Depends(require_profile_id)):
             factor = (
                 grams_for(row.get("quantity"), row.get("unit"), row.get("category"), row.get("name")) / 100.0
             )
+            # A missing macro is *unknown*, not 0 g -- scaling `or 0.0`
+            # would show "0.0 g protein" for an item we never resolved,
+            # which reads as a measured zero. Keep it None so the UI shows "—".
             actual = {
                 "calories_kcal": round(cal_per_100g * factor, 1),
-                "protein_g": round((row.get("protein_g") or 0.0) * factor, 1),
-                "fat_g": round((row.get("fat_g") or 0.0) * factor, 1),
-                "carbs_g": round((row.get("carbs_g") or 0.0) * factor, 1),
-                "fiber_g": round((row.get("fiber_g") or 0.0) * factor, 1),
+                "protein_g": _scaled_macro(row.get("protein_g"), factor),
+                "fat_g": _scaled_macro(row.get("fat_g"), factor),
+                "carbs_g": _scaled_macro(row.get("carbs_g"), factor),
+                "fiber_g": _scaled_macro(row.get("fiber_g"), factor),
             }
         items.append(
             {
@@ -103,7 +126,7 @@ def get_composition(profile_id: int = Depends(require_profile_id)):
     (confirmed) receipt to date."""
 
     items = repo.get_all_confirmed_receipt_items(profile_id)
-    composition = compute_basket_composition(items)
+    composition = compute_basket_composition(items, reference_date=_today())
     return composition or _EMPTY_COMPOSITION
 
 
@@ -114,7 +137,7 @@ def get_target_comparison(profile_id: int = Depends(require_profile_id)):
 
     target_pct = _targets_or_404(profile_id)
     items = repo.get_all_confirmed_receipt_items(profile_id)
-    composition = compute_basket_composition(items) or _EMPTY_COMPOSITION
+    composition = compute_basket_composition(items, reference_date=_today()) or _EMPTY_COMPOSITION
 
     deltas = {}
     diffs = []
@@ -158,7 +181,7 @@ def get_buckets(profile_id: int = Depends(require_profile_id)):
 
     target_pct = _targets_or_404(profile_id)
     items = repo.get_all_confirmed_receipt_items(profile_id)
-    composition = compute_basket_composition(items) or _EMPTY_COMPOSITION
+    composition = compute_basket_composition(items, reference_date=_today()) or _EMPTY_COMPOSITION
     actual_pct = {k: composition.get(k) for k in ("protein_pct", "fat_pct", "carb_pct")}
     return {"buckets": compute_buckets(items, actual_pct, target_pct)}
 

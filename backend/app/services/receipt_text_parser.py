@@ -109,6 +109,11 @@ _QTY_RE = re.compile(
     r"(\d+(?:[.,]\d+)?)\s*(kg|gr|g|ml|ltr|l|stk|stück|stueck|st|x|pack|packung|dose|flasche|bund|cl)\b",
     re.IGNORECASE,
 )
+# Canonical units that denote a real measured amount (mass/volume). A "×N"
+# multiplier next to one of these is folded into a total (Vorrat.md §6.3
+# via multiply): "Joghurt 4×150g" -> 600 g. "piece" is excluded -- a bare
+# count of pieces stays a count.
+_MEASURED_UNITS = {"g", "kg", "ml", "l"}
 _DATE_DMY = re.compile(r"(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})")
 _DATE_ISO = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
 
@@ -246,8 +251,21 @@ def _parse_inline(text: str) -> dict:
         quantity, unit, explicit_qty = 1.0, "piece", False
         mult = _QTY_MULT_RE.search(body)
         if mult:
-            quantity, explicit_qty = float(mult.group(1)), True
+            count, explicit_qty = float(mult.group(1)), True
             body = re.split(r"\d+[.,]\d{2}\s*€?\s*x", body)[0]
+            # If the name ALSO carries a measured pack size, fold count × size
+            # into a total mass/volume ("Joghurt 4×150g" -> 600 g, "Milch
+            # 3×1l" -> 3 l) instead of throwing the size away and keeping just
+            # the count. A pure count with no measured size (4× a piece good)
+            # stays a piece count, as before.
+            size_m = _QTY_RE.search(body)
+            size_unit = normalize_unit(size_m.group(2)) if size_m else "piece"
+            if size_m and size_unit in _MEASURED_UNITS:
+                size_qty = normalize_quantity(_to_float(size_m.group(1)) or 1.0, size_m.group(2))
+                quantity, unit = count * size_qty, size_unit
+                body = (body[: size_m.start()] + " " + body[size_m.end():])
+            else:
+                quantity = count
         else:
             qty_m = _QTY_RE.search(body)
             if qty_m:

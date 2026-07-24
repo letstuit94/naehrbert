@@ -1209,6 +1209,174 @@ a.btn {
   }
 }
 
+/* ── Basket / pantry (Vorrat.md) ───────────────────────────────────────── */
+
+/* Same card styling as .purchase-row, but a 4th column for the
+   eaten/removed actions (name · qty+date+store · macros · actions). */
+.basket-row {
+  /* name (+ macros subtitle) · quantity · actions -- macros moved under the
+     name, so no separate macros column. */
+  grid-template-columns: 2.5fr 1.75fr auto;
+}
+
+.basket-row__name-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Food-group emoji prefix on each lot -- a quick visual category cue. */
+.basket-row__cat-emoji {
+  flex: 0 0 auto;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.basket-row__macros-sub {
+  color: var(--text-muted, #888);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.basket-row__icon-btn {
+  border: none;
+  background: none;
+  padding: 2px 4px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.basket-row__icon-btn:hover {
+  opacity: 1;
+  color: var(--text-h);
+}
+
+.basket-row__icon-btn--active {
+  opacity: 1;
+  color: var(--accent, #2f7d5b);
+}
+
+.basket-row__edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.basket-row__edit input {
+  width: 100%;
+  max-width: 200px;
+}
+
+.basket-row__edit input[type='number'] {
+  width: 80px;
+}
+
+.basket-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* Emoji icon actions (🍴 eaten / 🗑️ removed): borderless, subtle hover, and
+   a highlighted background while their withdrawal panel is open. */
+.basket-row__action {
+  border: 1px solid var(--border);
+  background: none;
+  padding: 4px 8px;
+  font-size: 18px;
+  line-height: 1;
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.basket-row__action:hover {
+  opacity: 1;
+  background: var(--surface);
+}
+
+.basket-row__action--active {
+  opacity: 1;
+  background: rgba(47, 125, 91, 0.16);
+}
+
+.btn-secondary--active {
+  outline: 2px solid var(--accent, #2f7d5b);
+  outline-offset: 1px;
+}
+
+/* Inline "how much eaten/removed?" control, spanning the row's full width
+   below the primary cells. */
+.basket-row__panel {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.basket-row__panel-label {
+  color: var(--text-h);
+  font-size: 13px;
+}
+
+.basket-row__amount {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.basket-row__amount input {
+  width: 90px;
+}
+
+/* Piece control: a quarter-step slider (0 -> remaining), snapping to ¼ ½ ¾
+   and whole counts, with the chosen amount shown as a fraction glyph. */
+.basket-row__slider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 180px;
+}
+
+.basket-row__slider input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent, #2f7d5b);
+}
+
+.basket-row__slider-value {
+  min-width: 56px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-h);
+}
+
+.basket-row__panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .basket-row {
+    grid-template-columns: 1fr;
+  }
+
+  .basket-row__actions {
+    justify-content: flex-start;
+  }
+}
+
 /* ── Recipes ───────────────────────────────────────────────────────────── */
 
 .recipe-card {

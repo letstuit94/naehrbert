@@ -1492,18 +1492,20 @@ a.btn {
 /* ── Recipes ───────────────────────────────────────────────────────────── */
 
 .recipe-card {
+  position: relative;
   margin: 12px 0;
-  padding: 16px 22px;
+  padding: 16px 40px 16px 22px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 18px;
 }
 
+/* Two explicit rows -- title alone, then metrics/labels -- instead of one
+   wrapping row where long metadata could push the title around. */
 .recipe-card__summary {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 10px;
+  flex-direction: column;
+  gap: 4px;
   cursor: pointer;
   list-style: none;
 }
@@ -1512,14 +1514,20 @@ a.btn {
   display: none;
 }
 
-.recipe-card__summary::before {
+.recipe-card__title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.recipe-card__title-row::before {
   content: '▸';
   color: var(--text);
   font-size: 12px;
   flex-shrink: 0;
 }
 
-details[open] > .recipe-card__summary::before {
+details[open] > .recipe-card__summary .recipe-card__title-row::before {
   content: '▾';
 }
 
@@ -1529,10 +1537,29 @@ details[open] > .recipe-card__summary::before {
   font-size: 16px;
 }
 
+.recipe-card__meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-left: 20px; /* aligns under the title, past the triangle marker */
+}
+
 .recipe-card__meta {
   font-size: 13px;
   color: var(--text);
   font-variant-numeric: tabular-nums;
+}
+
+.recipe-card__label {
+  font-size: 12px;
+  padding: 3px 9px;
+  margin-left: auto; /* pins it to the bottom-right corner of the card header */
+  flex-shrink: 0;
+}
+
+.recipe-card__delete {
+  top: 14px;
 }
 
 .recipe-card__body {
@@ -1561,4 +1588,62 @@ details[open] > .recipe-card__summary::before {
 .recipe-card__estimate-note {
   margin-top: 4px;
   font-size: 13px;
+}
+
+.recipe-card__feedback {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+
+.recipe-card__feedback-btn {
+  font-size: 17px;
+  line-height: 1;
+  padding: 5px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: none;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.recipe-card__feedback-btn:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.recipe-card__feedback-btn:disabled {
+  cursor: not-allowed;
+}
+
+.recipe-card__feedback-btn--active {
+  opacity: 1;
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+}
+
+.recipe-generating-note {
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+/* ── Recipe search/filter (Recipes page) ──────────────────────────────── */
+
+.recipe-filters {
+  margin: 16px 0;
+}
+
+.recipe-search-input {
+  font: inherit;
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-h);
 }

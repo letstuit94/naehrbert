@@ -12,9 +12,11 @@ flow and get logged precisely there, same as any other purchase.
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
+
+from backend.app.models.profile import DietaryStyle
 
 
 class RecipeIngredient(BaseModel):
@@ -47,17 +49,30 @@ class GeminiRecipeSuggestion(BaseModel):
     carbs_g: float = Field(ge=0)
     fiber_g: float = Field(ge=0)
 
+    # Gemini classifies this itself from the ingredients it actually chose
+    # (not simply echoed back from the requested dietary style -- see
+    # services/recipe_engine.py's prompt) -- reuses profile.py's DietaryStyle
+    # since a recipe and a person are classified the same way here (recipe
+    # list filter/labels, TipsPage.tsx).
+    dietary_label: DietaryStyle
+
 
 class Recipe(GeminiRecipeSuggestion):
     """Stored/returned recipe, as persisted to the `recipes` table.
-    `servings` is overridden as optional here (unlike the required field on
-    GeminiRecipeSuggestion above) only because the `recipes.servings`
-    column was added after some real rows already existed -- those read
+    `servings`/`dietary_label` are overridden as optional here (unlike the
+    required fields on GeminiRecipeSuggestion above) only because those
+    columns were added after some real rows already existed -- those read
     back with no value rather than needing a backfill."""
 
     id: str
     created_at: Optional[datetime] = None
     servings: Optional[int] = Field(default=None, ge=1)
+    dietary_label: Optional[DietaryStyle] = None
+
+    # Thumbs up/down (recipe recommendations feature) -- set via
+    # PATCH /recipes/{id}/feedback, None until the user rates it.
+    feedback: Optional[Literal["up", "down"]] = None
+    archived_at: Optional[datetime] = None
 
 
 class RecipeGenerateRequest(BaseModel):
@@ -69,3 +84,21 @@ class RecipeGenerateRequest(BaseModel):
     cuisine: Optional[str] = None
     max_time_minutes: Optional[int] = Field(default=None, ge=1)
     servings: Optional[int] = Field(default=None, ge=1)
+
+
+class RecipeFeedbackUpdate(BaseModel):
+    """PATCH /recipes/{id}/feedback body -- thumbs up/down on this specific
+    recipe. `None` clears it (tapping the already-active thumb again)."""
+
+    feedback: Optional[Literal["up", "down"]] = None
+
+
+class DietaryLabelClassification(BaseModel):
+    """Gemini structured-output shape for classifying a recipe's dietary
+    label from its ingredient list alone (services/gemini_client.py's
+    classify_dietary_label) -- used by the one-off backfill script
+    (scripts/backfill_recipe_dietary_labels.py) for recipes generated
+    before GeminiRecipeSuggestion.dietary_label existed. New recipes get
+    their label directly from generation instead of this second call."""
+
+    dietary_label: DietaryStyle

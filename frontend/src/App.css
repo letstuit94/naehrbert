@@ -317,6 +317,82 @@
 
 /* ── Upload / review screen ───────────────────────────────────────────── */
 
+.upload-card {
+  margin: 20px 0;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+}
+
+.upload-card__label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.upload-card .tab-row {
+  background: var(--code-bg);
+}
+
+.upload-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 40px 20px;
+  text-align: center;
+  background: var(--code-bg);
+  border: 1px dashed var(--border);
+  border-radius: 16px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.upload-dropzone:hover,
+.upload-dropzone--active {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.upload-dropzone__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.upload-dropzone__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-h);
+  box-shadow: var(--shadow);
+}
+
+.upload-dropzone__title {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.upload-dropzone__subtitle {
+  font-size: 13px;
+  color: var(--text);
+}
+
 .tab-row {
   display: flex;
   gap: 2px;
@@ -353,6 +429,12 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 16px;
+}
+
+.upload-progress__filename {
+  margin: 0 0 10px;
+  font-weight: 600;
+  color: var(--text-h);
 }
 
 .upload-progress__steps {
@@ -622,6 +704,21 @@
   .review-row__field--name {
     flex-basis: 100%;
   }
+}
+
+.review-purchase-info {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.upload-confirmed-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 20px;
 }
 
 /* ── Callouts ──────────────────────────────────────────────────────────── */

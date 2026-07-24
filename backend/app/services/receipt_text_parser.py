@@ -49,8 +49,12 @@ _SKIP_KEYWORDS = (
     "summe", "total", "gesamt", "zwischensumme", "mwst", "steuer",
     "ec-", "ec ", "kundenbeleg",
     "geg.", "rückgeld", "ruckgeld", "datum", "uhrzeit", "beleg", "kasse", "vielen dank",
-    # store header / address / footer lines
-    "gmbh", "markt", "filiale", "straße", "strasse", "str.", "tel", "www", ".de",
+    # store header / address / footer lines. NOTE: no bare "tel" here on
+    # purpose -- same collision class as "ust" above: as a substring match
+    # it also fires on any product whose name contains "tel" -- Nutella,
+    # Kotelett, Tortellini, Stelze -- silently dropping those. _PHONE_LINE_RE
+    # below catches the same "Tel:"/"Telefon:" header lines without that.
+    "gmbh", "markt", "filiale", "straße", "strasse", "str.", "www", ".de",
     "rewe", "edeka", "aldi", "lidl", "penny", "netto", "norma", "uid", "steuernr",
     # receipt-tail noise that OCR picks up (payment, TSE signature, loyalty).
     # The totals-block break below removes most of it, these catch stragglers.
@@ -61,6 +65,12 @@ _SKIP_KEYWORDS = (
     "terminal", "autorisierung", "genehmigung", "emv", "vu-nummer", "vu-nr",
     "payback", "punkte", "posten", "preisvorteil", "gespart", "servicenummer",
 )
+# Replaces the bare "tel" keyword above (see the NOTE there): requires a word
+# boundary before "tel" -- which "Nutella"/"Kotelett"/"Tortellini"/"Stelze"
+# never have, since "tel" sits mid-word in all of them -- optionally extended
+# to "telefon", then the punctuation/whitespace and digits an actual phone
+# line always has right after the label ("Tel: 0221...", "Telefon: 0221...").
+_PHONE_LINE_RE = re.compile(r"\btel(?:efon)?\.?:?\s*\d", re.IGNORECASE)
 # "Geg." (short for "Gegeben" — cash handed over) followed by a payment
 # method, tolerating OCR reading the period as a comma ("Geg, BAR EUR 1,20"
 # — seen on a real receipt where this cash-tendered line was picked up as
@@ -174,16 +184,27 @@ def _detect_block_layout(text: str) -> bool:
     return lone >= 3 and lone >= inline
 
 
-def parse_receipt_text_offline(raw_text: str) -> dict:
+def parse_receipt_text_offline(raw_text: str, *, allow_plain_names: bool = False) -> dict:
     """Parse receipt text into the structured receipt schema — no LLM.
 
     Dispatches on the detected layout so the same function handles pasted
-    text, OCR'd images (inline) and eBon PDF text layers (block)."""
+    text, OCR'd images (inline) and eBon PDF text layers (block).
+
+    `allow_plain_names` is for the manual paste-text endpoint only (never
+    file/OCR uploads — a poor scan should still show "we couldn't find any
+    items" and point the user at manual entry, not have every garbled OCR
+    line turned into a fake item). When set and the priced parsers above
+    find nothing, falls back to `_parse_plain_names`, which accepts a bare
+    list of product names with no prices at all — see its docstring."""
 
     text = raw_text or ""
     if _detect_block_layout(text):
-        return _parse_block(text)
-    return _parse_inline(text)
+        result = _parse_block(text)
+    else:
+        result = _parse_inline(text)
+    if not result["items"] and allow_plain_names:
+        return _parse_plain_names(text)
+    return result
 
 
 def _clean_name(name: str) -> str:
@@ -230,7 +251,7 @@ def _parse_inline(text: str) -> dict:
         if any(k in low for k in _NONFOOD_KEYWORDS):
             non_food.append(line)
             continue
-        if any(k in low for k in _SKIP_KEYWORDS):
+        if any(k in low for k in _SKIP_KEYWORDS) or _PHONE_LINE_RE.search(low):
             continue
         if not re.search(r"[a-zäöüß]", low):
             continue  # no letters → not a product line
@@ -286,6 +307,103 @@ def _parse_inline(text: str) -> dict:
             "price": price,
             "category": _canonical_category(None, name),
             "uncertain": not explicit_qty,   # no explicit qty/unit → flag for review
+        })
+
+    return {
+        "store": store,
+        "date": date,
+        "scan_quality": "good" if items else "poor",
+        "items": items,
+        "non_food_items_ignored": non_food,
+        "items_count": len(items),
+    }
+
+
+# ── PLAIN NAME LIST (manual entry, no prices) ────────────────────────────
+# Splits on newlines AND commas, so both "one item per line" and a single
+# "Paprika, Apfel, Huhn" line work the same way. Unlike the priced parsers
+# above, a bare name with no price and no quantity is a valid item here --
+# there's no other structural signal to lean on once price is off the
+# table, so every non-noise token becomes an item.
+_PLAIN_NAME_SPLIT_RE = re.compile(r"[\n,]+")
+# The German decimal separator IS a comma ("1,19"), which collides with
+# comma as the list separator above ("Milch 1L 1,19, Apfel" would else
+# split into ".., 1", "19, Apfel"). Swapped for a placeholder before
+# splitting (and restored per-token after) wherever a comma sits between a
+# digit and exactly two digits — the shape a real price always has.
+_DECIMAL_COMMA_RE = re.compile(r"(?<=\d),(?=\d{2}(?!\d))")
+_DECIMAL_COMMA_PLACEHOLDER = chr(1)  # ASCII SOH -- never occurs in real receipt text
+
+
+def _parse_plain_names(text: str) -> dict:
+    """Fallback for manual paste-text entry that carries no prices at all
+    (or too few price-bearing lines for `_detect_block_layout` to
+    recognize it as a receipt) -- e.g. a user just typing "Paprika, Apfel,
+    Huhn". Reuses the same skip/non-food keyword filtering and qty/unit
+    extraction as `_parse_inline`, but never requires a price or a minimum
+    item count. If a token happens to carry its own trailing price
+    ("Milch 1L 1,19"), that price is kept; a price left on its own separate
+    line (as in a short, sub-3-line block-style paste) has no token to
+    attach to and is simply dropped -- the item's name still comes through,
+    just without a price, which is the whole point of this fallback."""
+
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    store = _detect_store(lines)
+    date = _detect_date(text)
+
+    protected = _DECIMAL_COMMA_RE.sub(_DECIMAL_COMMA_PLACEHOLDER, text)
+
+    items, non_food = [], []
+    for token in _PLAIN_NAME_SPLIT_RE.split(protected):
+        token = token.strip().replace(_DECIMAL_COMMA_PLACEHOLDER, ",")
+        if not token:
+            continue
+        low = token.lower()
+
+        if _TOTAL_RE.search(low) or _CASH_GIVEN_RE.search(low):
+            continue
+        if any(k in low for k in _NONFOOD_KEYWORDS):
+            non_food.append(token)
+            continue
+        if any(k in low for k in _SKIP_KEYWORDS) or _PHONE_LINE_RE.search(low):
+            continue
+        if not re.search(r"[a-zäöüß]", low):
+            continue  # no letters → a lone price/date/number, not a name
+
+        body = token
+        price = None
+        price_m = _PRICE_RE.search(body)
+        if price_m:
+            price = _to_float(price_m.group(1))
+            body = body[: price_m.start()].strip()
+            if price is not None and price <= 0:
+                continue  # a discount/coupon token, not a purchase
+
+        quantity, unit, explicit_qty = 1.0, "piece", False
+        mult = _QTY_MULT_RE.search(body)
+        if mult:
+            quantity, explicit_qty = float(mult.group(1)), True
+            body = re.split(r"\d+[.,]\d{2}\s*€?\s*x", body)[0]
+        else:
+            qty_m = _QTY_RE.search(body)
+            if qty_m:
+                explicit_qty = True
+                quantity = normalize_quantity(_to_float(qty_m.group(1)) or 1.0, qty_m.group(2))
+                unit = normalize_unit(qty_m.group(2))
+                body = body[: qty_m.start()] + " " + body[qty_m.end():]
+
+        name = _clean_name(body)
+        if not name or len(name) < 2:
+            continue
+
+        items.append({
+            "name": name,
+            "original_text": token,
+            "quantity": quantity,
+            "unit": unit,
+            "price": price if price is not None else 0.0,
+            "category": _canonical_category(None, name),
+            "uncertain": not explicit_qty,
         })
 
     return {
@@ -378,7 +496,7 @@ def _parse_block(text: str) -> dict:
 
         if len(line) <= 1 or line in ("B", "A", "EUR", "***"):
             continue
-        if any(k in low for k in _SKIP_KEYWORDS):   # header / address / footer noise
+        if any(k in low for k in _SKIP_KEYWORDS) or _PHONE_LINE_RE.search(low):  # header / address / footer noise
             name = None
             continue
         if not re.search(r"[a-zäöüß]", low):         # no letters → not a product name

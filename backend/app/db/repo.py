@@ -56,6 +56,48 @@ def update_dietary_preferences(profile_id: int, fields: dict) -> dict:
     return res.data[0]
 
 
+def delete_profile(profile_id: int) -> None:
+    """Erase a user and everything they own (account-deletion flow).
+
+    The FKs pointing at profiles(id) are RESTRICT (receipts, recipes,
+    user_feedback -- migrations 0007/0005/0004), so a bare
+    `delete().eq("id", profile_id)` on profiles would be blocked by those
+    children. We delete them explicitly, parents-before-children only where
+    a FK forces it:
+
+      * receipts    -> receipt_items (ON DELETE CASCADE, 0001) ->
+                       pantry_removals (ON DELETE CASCADE, 0008)
+        so deleting the receipts alone clears the whole receipt subtree.
+      * recipes, user_feedback   -- direct RESTRICT children, deleted here.
+      * pantry_shelf_life        -- already ON DELETE CASCADE (0010), so the
+        final profiles delete would clear it; we drop it up front anyway so
+        this function stays correct even if that FK is ever changed.
+
+    DELIBERATELY LEFT UNTOUCHED: `verified_matches` and `non_food_terms`.
+    They have no profile_id FK -- they're a global, shared correction cache
+    (see 0007_multi_user.sql). A user's verified matches must survive their
+    account deletion so the app doesn't have to re-learn the same
+    corrections, so we never touch those tables here.
+    """
+
+    client = get_client()
+
+    # Child subtrees first (RESTRICT FKs would otherwise block the profile).
+    receipts = (
+        client.table("receipts").select("id").eq("profile_id", profile_id).execute().data
+    ) or []
+    for receipt in receipts:
+        # cascades to receipt_items -> pantry_removals
+        client.table("receipts").delete().eq("id", receipt["id"]).execute()
+
+    client.table("recipes").delete().eq("profile_id", profile_id).execute()
+    client.table("user_feedback").delete().eq("profile_id", profile_id).execute()
+    client.table("pantry_shelf_life").delete().eq("profile_id", profile_id).execute()
+
+    # Finally the profile itself.
+    client.table("profiles").delete().eq("id", profile_id).execute()
+
+
 # ── receipts ────────────────────────────────────────────────────────────
 
 def create_receipt(profile_id: int, source: str, raw_text: Optional[str],

@@ -193,7 +193,7 @@
 }
 
 .form-error {
-  color: #d03b3b;
+  color: var(--danger);
   font-size: 15px;
 }
 
@@ -232,6 +232,20 @@
   padding: 7px 16px;
   border-radius: 999px;
   font-size: 14px;
+}
+
+.btn-danger {
+  background: var(--surface);
+  border-color: var(--danger);
+  color: var(--danger);
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: #fff;
 }
 
 .btn-link {
@@ -761,8 +775,9 @@
 }
 
 .callout--success {
-  background: rgba(12, 163, 12, 0.1);
-  border-color: rgba(12, 163, 12, 0.4);
+  background: var(--sage-soft);
+  border-color: var(--sage);
+  color: var(--sage-ink);
 }
 
 .callout--warning {
@@ -2019,4 +2034,143 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+/* ── Profile page · CI v2 ──────────────────────────────────────────────── */
+/* Card = surface + soft ring (no hard border), flat by default (§7/§3). */
+.profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-lead {
+  margin: 0 0 8px;
+  max-width: 56ch;
+}
+
+.card {
+  margin: 12px 0;
+  padding: 20px;
+  background: var(--surface);
+  border-radius: 20px;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+/* Eyebrow / section label (§4) */
+.eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.card .eyebrow {
+  margin-bottom: 12px;
+}
+
+/* Forms sit flush inside their card. */
+.card > .form {
+  margin-top: 0;
+  max-width: none;
+}
+
+/* Section label between cards (Bon history etc.). */
+.profile-section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 24px 2px 4px;
+}
+
+/* Header summary card: avatar + name + derived stats. */
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-avatar {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 999px;
+  background: var(--sage-soft);
+  color: var(--sage-ink);
+}
+
+.profile-avatar svg {
+  width: 28px;
+  height: 28px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.9;
+}
+
+.profile-header__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-header__name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.profile-header__meta {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A row of secondary actions (receipt history, log out). */
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.profile-note {
+  margin: 12px 0 24px;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Loading skeleton (§12) — soft pulse, disabled under reduced motion. */
+.skeleton {
+  background: var(--code-bg);
+  border-radius: 8px;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* Icon-button focus (§13) — always a visible ring. */
+.btn:focus-visible,
+.btn-link:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 2px;
 }

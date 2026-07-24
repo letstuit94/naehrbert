@@ -8,6 +8,7 @@ read time as purchases MINUS an append-only ledger of withdrawals
 consumption analytics that read the same receipt_items are never
 double-counted (Vorrat.md §2)."""
 
+from datetime import date
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -15,8 +16,11 @@ from pydantic import BaseModel
 
 from backend.app.core.auth import require_profile_id
 from backend.app.db import repo
+from backend.app.services import shelf_life, verified_matches
 from backend.app.services.fallback_categories import _canonical_category
+from backend.app.services.nutrition_mapping import matched_product_to_row
 from backend.app.services.nutrition_profile import grams_for
+from backend.app.services.resolver import resolve_item
 
 router = APIRouter(prefix="/pantry", tags=["pantry"])
 
@@ -31,6 +35,27 @@ class RemovalCreate(BaseModel):
     # 1 of 3 pieces). Omitted = the whole remaining amount. Over-shooting the
     # remaining is clamped, not rejected (see create_removal).
     quantity: Optional[float] = None
+
+
+class ManualItemMatch(BaseModel):
+    """A candidate the user picked in the fix-match search (GET
+    /match/candidates), attached to the new item so its verified name +
+    nutrition are used instead of the automatic resolver. Mirrors the
+    receipt ItemCorrection shape."""
+
+    matched_name: Optional[str] = None
+    off_id: Optional[str] = None
+    bls_code: Optional[str] = None
+    nutrition: dict = {}
+
+
+class ManualItemCreate(BaseModel):
+    name: str
+    # In the item's own unit; treated as both purchased and remaining amount.
+    quantity: float
+    unit: Optional[str] = None
+    # Optional -- a picked fix-match. Omitted = let the resolver match by name.
+    match: Optional[ManualItemMatch] = None
 
 
 def _scaled(value, factor):
@@ -61,6 +86,15 @@ def _pantry_item(row: dict) -> dict:
             "carbs_g": _scaled(row.get("carbs_g"), factor),
             "fiber_g": _scaled(row.get("fiber_g"), factor),
         }
+    # Canonical leaf category driving the Basket's food-group emoji, on EVERY
+    # lot (not just fallbacks). Derived from the best identity we have -- the
+    # verified matched_name first ("Tomate roh" -> fruiting_vegetables), else
+    # the raw parsed name. The stored `category` column is NOT used: it's
+    # computed at parse time from the raw receipt line, which is often an
+    # abbreviation the keyword table misses (so a verified tomato would fall
+    # back to "other"/📦).
+    category = _canonical_category(None, row.get("matched_name") or row.get("name") or "")
+    food_group = shelf_life.food_group_for(category)
     return {
         "id": row["id"],
         "receipt_id": row["receipt_id"],
@@ -75,16 +109,11 @@ def _pantry_item(row: dict) -> dict:
         "is_non_food": False,
         "match_type": row.get("match_type"),
         "matched_name": row.get("matched_name"),
-        # Canonical leaf category driving the Basket's food-group emoji, on
-        # EVERY lot (not just fallbacks). Derived from the best identity we
-        # have -- the verified matched_name first ("Tomate roh" ->
-        # fruiting_vegetables), else the raw parsed name. The stored `category`
-        # column is NOT used: it's computed at parse time from the raw receipt
-        # line, which is often an abbreviation the keyword table misses (so a
-        # verified tomato would fall back to "other"/📦).
-        "category": _canonical_category(
-            None, row.get("matched_name") or row.get("name") or ""
-        ),
+        "category": category,
+        # Coarse food group (services/shelf_life.py) driving the "by category"
+        # view, the category filter, and which shelf-life estimate applies.
+        "food_group": food_group,
+        "food_group_label": shelf_life.FOOD_GROUP_LABELS[food_group],
         "fallback_category": row.get("fallback_category"),
         "confidence": row.get("confidence"),
         **macros,
@@ -94,11 +123,137 @@ def _pantry_item(row: dict) -> dict:
 @router.get("")
 def get_pantry(profile_id: int = Depends(require_profile_id)):
     """Current stock: confirmed, food purchases with no withdrawal yet
-    (Vorrat.md §5, per-lot MVP). Newest purchase first."""
+    (Vorrat.md §5, per-lot MVP).
 
+    Default order is view A ("short use-by date"): ascending by ESTIMATED
+    expiry (purchased_at + shelf_life_days[food_group]), most urgent first,
+    with no-estimate lots (Other / unparseable date) trailing. That estimated
+    date is used only as an opaque sort key and to derive each lot's fuzzy
+    `urgency` bucket -- neither the date nor a day count is ever returned, so
+    the UI cannot present a guess as a fact."""
+
+    config = shelf_life.effective_shelf_life(repo.get_shelf_life_overrides(profile_id))
+    today = date.today()
     items = [_pantry_item(row) for row in repo.get_pantry(profile_id)]
-    items.sort(key=lambda i: i["purchased_at"] or "", reverse=True)
+    for item in items:
+        days = config.get(item["food_group"])
+        item["urgency"] = shelf_life.urgency_for(item["purchased_at"], days, today)
+        item["_sort"] = shelf_life.sort_key(item["purchased_at"], days)
+    items.sort(key=lambda i: i.pop("_sort"))
     return {"items": items}
+
+
+class ShelfLifeUpdate(BaseModel):
+    """One or more group overrides, {food_group: days_or_null}. A null value
+    opts a group out of urgency; an omitted group keeps the code default."""
+
+    days: dict[str, Optional[int]]
+
+
+@router.get("/shelf-life")
+def get_shelf_life(profile_id: int = Depends(require_profile_id)):
+    """The effective shelf-life config the urgency sort uses: every food
+    group with its days (code default merged with this profile's overrides),
+    plus a human label and whether the value is a user override. The Basket's
+    config panel renders and edits this."""
+
+    overrides = repo.get_shelf_life_overrides(profile_id)
+    effective = shelf_life.effective_shelf_life(overrides)
+    return {
+        "groups": [
+            {
+                "food_group": group,
+                "label": shelf_life.FOOD_GROUP_LABELS[group],
+                "shelf_life_days": effective[group],
+                "is_override": group in overrides,
+            }
+            for group in shelf_life.FOOD_GROUP_LABELS
+        ]
+    }
+
+
+@router.put("/shelf-life")
+def put_shelf_life(payload: ShelfLifeUpdate, profile_id: int = Depends(require_profile_id)):
+    """Save per-group overrides for this profile, then return the recomputed
+    effective config. Unknown groups are rejected (422) so a typo can't
+    create a phantom bucket; days must be a positive integer or null."""
+
+    for group, days in payload.days.items():
+        if group not in shelf_life.FOOD_GROUP_LABELS:
+            raise HTTPException(status_code=422, detail=f"Unknown food group: {group}")
+        if days is not None and (not isinstance(days, int) or days <= 0):
+            raise HTTPException(status_code=422, detail=f"Days for {group} must be a positive integer or null")
+        repo.upsert_shelf_life(profile_id, group, days)
+    return get_shelf_life(profile_id)
+
+
+@router.post("/items", status_code=201)
+def create_manual_item(payload: ManualItemCreate, profile_id: int = Depends(require_profile_id)):
+    """Manually add a food to the basket (Vorrat.md) without scanning a
+    receipt. Since every pantry/purchase row is a receipt_item on a confirmed
+    receipt, a manual add is a one-item, already-confirmed "Manuell" receipt
+    dated today -- so it shows up in the basket AND the purchases view with no
+    special-casing. Nutrition comes from the picked fix-match if any, else the
+    same tiered resolver used for scanned items."""
+
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Name must not be empty")
+    if payload.quantity <= 0:
+        raise HTTPException(status_code=422, detail="Quantity must be positive")
+
+    unit = (payload.unit or "").strip() or None
+    receipt = repo.create_receipt(
+        profile_id=profile_id,
+        source="pasted_text",
+        raw_text=None,
+        store="Manuell",
+        purchased_at=date.today().isoformat(),
+    )
+    repo.set_receipt_status(receipt["id"], "confirmed")
+    [item] = repo.insert_receipt_items(
+        receipt["id"],
+        [
+            {
+                "name": name,
+                "original_text": name,
+                "quantity": payload.quantity,
+                "unit": unit,
+                "is_non_food": False,
+            }
+        ],
+    )
+
+    match = payload.match
+    if match and match.matched_name:
+        # A picked fix-match: persist it exactly like the receipt correct
+        # endpoint (learned, conf 1.0) and remember it for future receipts.
+        row = {
+            "match_type": "learned",
+            "confidence": 1.0,
+            "identity_conf": 1.0,
+            "nutrition_conf": 1.0,
+            "unknown": False,
+            "data_source": "manual entry",
+            "matched_name": match.matched_name,
+            "off_id": match.off_id,
+            "bls_code": match.bls_code,
+            **match.nutrition,
+        }
+        item = repo.update_receipt_item(item["id"], row)
+        verified_matches.record_verified_match(
+            raw_text=name,
+            store="Manuell",
+            off_id=match.off_id,
+            bls_code=match.bls_code,
+            matched_name=match.matched_name,
+            nutrition=match.nutrition,
+        )
+    else:
+        # No pick -> resolve by name, same tiered matcher as a scanned item.
+        item = repo.update_receipt_item(item["id"], matched_product_to_row(resolve_item(item)))
+
+    return item
 
 
 @router.post("/removals", status_code=201)

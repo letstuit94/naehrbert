@@ -329,3 +329,33 @@ def remove_pantry_removal(removal_id: str) -> None:
     ledger row is gone."""
 
     get_client().table("pantry_removals").delete().eq("id", removal_id).execute()
+
+
+def get_shelf_life_overrides(profile_id: int) -> dict:
+    """This profile's per-group shelf-life overrides as {food_group: days}
+    (days may be None = group opted out of urgency). Empty when the user has
+    never tuned anything -- the caller merges these onto the code defaults
+    (services/shelf_life.effective_shelf_life)."""
+
+    res = (
+        get_client()
+        .table("pantry_shelf_life")
+        .select("food_group, shelf_life_days")
+        .eq("profile_id", profile_id)
+        .execute()
+    )
+    return {row["food_group"]: row["shelf_life_days"] for row in (res.data or [])}
+
+
+def upsert_shelf_life(profile_id: int, food_group: str, shelf_life_days: Optional[int]) -> None:
+    """Store one group's override for a profile (primary key is
+    (profile_id, food_group), so this overwrites any prior value)."""
+
+    get_client().table("pantry_shelf_life").upsert(
+        {
+            "profile_id": profile_id,
+            "food_group": food_group,
+            "shelf_life_days": shelf_life_days,
+        },
+        on_conflict="profile_id,food_group",
+    ).execute()

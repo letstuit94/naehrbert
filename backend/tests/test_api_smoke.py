@@ -659,11 +659,16 @@ def test_list_recipes_excludes_archived(monkeypatch):
 # ── Pantry / basket (Vorrat.md) ───────────────────────────────────────────
 
 
-def test_pantry_scales_macros_to_remaining_food_only_newest_first(monkeypatch):
+def test_pantry_scales_macros_to_remaining_food_only_urgency_first(monkeypatch):
     """GET /pantry returns v_pantry rows as basket lots: kcal/macros scaled to
     the amount STILL in stock (remaining_quantity, not the purchased quantity),
-    is_non_food always false, newest purchase first."""
+    is_non_food always false, ordered by ESTIMATED expiry ascending (most
+    urgent first -- view A). Here milk (dairy, ~10 days) is more urgent than
+    rice (grains, ~365 days) despite being bought later, so it leads. The
+    estimated date itself never appears in the response -- only a fuzzy
+    `urgency` bucket and the coarse `food_group`."""
 
+    monkeypatch.setattr(pantry_api.repo, "get_shelf_life_overrides", lambda profile_id: {})
     monkeypatch.setattr(
         pantry_api.repo,
         "get_pantry",
@@ -713,13 +718,61 @@ def test_pantry_scales_macros_to_remaining_food_only_newest_first(monkeypatch):
     resp = client.get("/pantry", headers=AUTH)
     assert resp.status_code == 200
     items = resp.json()["items"]
-    assert [i["name"] for i in items] == ["Vollmilch", "Reis"]  # newest first
+    assert [i["name"] for i in items] == ["Vollmilch", "Reis"]  # most urgent (earliest est. expiry) first
     assert all(i["is_non_food"] is False for i in items)
+    # Fuzzy urgency + coarse group are exposed; the estimated date/day count is not.
+    valid_urgency = {"expired", "soon", "week", "long", "unknown"}
+    assert all(i["urgency"] in valid_urgency for i in items)
+    assert all("expiry" not in i and "estimated_expiry" not in i for i in items)
     milk = items[0]
+    assert milk["food_group"] == "dairy_eggs"
+    assert items[1]["food_group"] == "grains_starches"
     assert milk["quantity"] == 250  # remaining shown, not the 500 bought
     assert milk["original_quantity"] == 500
     assert milk["calories_kcal"] == 160  # 64 kcal/100g * 250ml (=250g) / 100, scaled to remaining
     assert milk["protein_g"] == 8.2  # 3.3 * 2.5 = 8.25, rounded to 1 decimal
+
+
+def test_shelf_life_config_merges_defaults_with_overrides(monkeypatch):
+    """GET /pantry/shelf-life returns every food group with its effective days
+    (code default overlaid with the profile's overrides) and flags which are
+    custom. A group with no override keeps the conservative default."""
+
+    monkeypatch.setattr(
+        pantry_api.repo, "get_shelf_life_overrides", lambda profile_id: {"bread_bakery": 3}
+    )
+    resp = client.get("/pantry/shelf-life", headers=AUTH)
+    assert resp.status_code == 200
+    by_group = {g["food_group"]: g for g in resp.json()["groups"]}
+    assert by_group["bread_bakery"]["shelf_life_days"] == 3  # override wins
+    assert by_group["bread_bakery"]["is_override"] is True
+    assert by_group["fish_seafood"]["shelf_life_days"] == 3  # untouched default
+    assert by_group["fish_seafood"]["is_override"] is False
+    assert by_group["other"]["shelf_life_days"] is None  # no estimate -> sorts last
+
+
+def test_shelf_life_update_persists_and_rejects_unknown_group(monkeypatch):
+    """PUT /pantry/shelf-life upserts each override and returns the recomputed
+    config; an unknown group is a 422 so a typo can't create a phantom bucket."""
+
+    saved = {}
+    monkeypatch.setattr(
+        pantry_api.repo,
+        "upsert_shelf_life",
+        lambda profile_id, group, days: saved.__setitem__(group, days),
+    )
+    monkeypatch.setattr(
+        pantry_api.repo, "get_shelf_life_overrides", lambda profile_id: dict(saved)
+    )
+
+    ok = client.put("/pantry/shelf-life", headers=AUTH, json={"days": {"meat": 4, "other": None}})
+    assert ok.status_code == 200
+    assert saved == {"meat": 4, "other": None}
+    by_group = {g["food_group"]: g for g in ok.json()["groups"]}
+    assert by_group["meat"]["shelf_life_days"] == 4
+
+    bad = client.put("/pantry/shelf-life", headers=AUTH, json={"days": {"nope": 5}})
+    assert bad.status_code == 422
 
 
 def test_pantry_removal_whole_lot_applies_full_remaining(monkeypatch):

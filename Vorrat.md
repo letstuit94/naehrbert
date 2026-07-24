@@ -315,5 +315,47 @@ müsste. Ein einzelner „weg"-Button würde diese Information verschenken — d
   [`compute_basket_composition`](backend/app/services/basket_composition.py) — erst mit
   Phase 4 (Gap, [GapUndEmpfehlung.md](GapUndEmpfehlung.md)); sauber getrennt halten. Beide
   `reason`-Werte werden bereits getrennt gespeichert.
-- ⚠️ **Deploy:** Migrationen 0008 + 0009 müssen in Nicht-Dev-Umgebungen angewendet werden.
+- ⚠️ **Deploy:** Migrationen 0008 + 0009 + **0010** (`pantry_shelf_life`) müssen in
+  Nicht-Dev-Umgebungen angewendet werden.
 - ⏳ **IA-Feinschliff:** Purchases ist ausgeblendet; Bottom-Nav / Basket-als-Landing stehen aus.
+
+---
+
+## 10. Bestandsliste: Dringlichkeit (Schätzung vs. Tatsache)
+
+> Status: **umgesetzt** auf Branch `basket`. Migration
+> [`0010_pantry_shelf_life.sql`](supabase/migrations/0010_pantry_shelf_life.sql), Service
+> [`shelf_life.py`](backend/app/services/shelf_life.py).
+>
+> **Config-Ebene:** je grober **Food-Group** (13 Gruppen), nicht je Einzel-Artikel
+> (Entscheidung #1) und nicht je Blatt-Kategorie. Ein Override gilt also z. B. für „Meat"
+> gesamt, nicht nur für Hackfleisch. Editierbar pro Profil über `GET`/`PUT
+> /pantry/shelf-life`.
+>
+> **Bewusst nicht ausgespielt:** Das Edit-Panel
+> [`ShelfLifePanel.tsx`](frontend/src/components/ShelfLifePanel.tsx) ist gebaut, aber im
+> Frontend **nicht sichtbar** — Endnutzer sehen nur Ampel + Sortierung, nie eine Zahl. Die
+> Config bleibt serverseitig editierbar; das Panel kann fürs spätere **MHD-Feature** (echtes
+> Best-before-Datum als *Feld am Artikel*, das dann die Kategorie-Schätzung schlägt) wieder
+> eingeblendet werden.
+
+Artikel haben **kein** Haltbarkeitsdatum — nur ein echtes **Kaufdatum** und eine
+**Kategorie**. Die Dringlichkeit wird daraus **geschätzt** und ist deshalb strikt von den
+echten Werten getrennt:
+
+| Wert | Art | Sichtbar im UI? |
+|------|-----|-----------------|
+| Kaufdatum / Alter im Basket | **Tatsache** (Nutzer-/Boneingabe) | **Ja** |
+| Menge, Einheit, Kategorie | **Tatsache** | Ja |
+| Haltbarkeitstage je Kategorie | **Config-Schätzung** (Default + pro-Nutzer-Override) | Ja — aber nur im Config-Panel als Eingabewert |
+| Geschätztes Ablaufdatum = Kaufdatum + Haltbarkeitstage | **Schätzung** | **Nein — nie** |
+| Ampelfarbe / weiches Label (`urgency`) | abgeleitete **Unschärfe** | Ja |
+
+**Warum das geschätzte Datum nie als Datum/Zahl erscheint:** Es ist eine Kategorie-Faustregel,
+keine Messung — eine konkrete Zahl („noch 2 Tage", „läuft am 26.07. ab") würde eine Genauigkeit
+vortäuschen, die die Datenlage nicht hergibt. Deshalb bleibt das Schätzdatum **serverseitig**
+(nur Sortier-Schlüssel in `sort_key` und Eingang für `urgency_for`) und **verlässt die API nie**;
+nach außen geht ausschließlich der unscharfe Bucket `expired|soon|week|long|unknown`, der Ampel +
+Label treibt. Der „nächste 3 Tage"-Filter nutzt `expired|soon` — also ebenfalls **ohne** dass eine
+Tageszahl übertragen wird. „Other / Miscellaneous" hat **keinen** Schätzwert (`null`) und sortiert
+ans Listenende, statt eine falsche Dringlichkeit zu erzeugen.

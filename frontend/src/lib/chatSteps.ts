@@ -122,10 +122,27 @@ export const ONBOARDING_STEPS: StepDef[] = [
   },
   {
     key: 'goal',
-    prompt: 'And one last thing: which of these goals fits you best?',
+    prompt: 'Which of these goals fits you best?',
     hint: "Depending on your choice, we'll lower your daily target, keep it the same, or raise it.",
     kind: 'choice',
     options: GOAL_OPTIONS,
+  },
+  {
+    key: 'household_size',
+    prompt:
+      'Almost done — how many people do you typically shop for when you go grocery shopping?',
+    hint: "This helps us judge how much of what's bought is actually just for you.",
+    placeholder: 'e.g. 2',
+    kind: 'number',
+    feedback: 'Got it, thanks!',
+  },
+  {
+    key: 'consumption_share_pct',
+    prompt: 'And roughly what share of those groceries would you say you personally eat?',
+    hint: "A rough % estimate is fine — this helps us scale your results accurately if you're not the only one eating from what's bought.",
+    placeholder: 'e.g. 50',
+    kind: 'number',
+    feedback: "Perfect — that's everything I need!",
   },
 ]
 
@@ -263,6 +280,8 @@ export type Answers = {
   exercise_frequency: ExerciseFrequency | ''
   daily_movement: DailyMovement | ''
   goal: Goal | ''
+  household_size: string
+  consumption_share_pct: string
 }
 
 export const INITIAL_ANSWERS: Answers = {
@@ -274,11 +293,15 @@ export const INITIAL_ANSWERS: Answers = {
   exercise_frequency: '',
   daily_movement: '',
   goal: '',
+  household_size: '',
+  consumption_share_pct: '',
 }
 
 const NUMERIC_RANGES: Record<string, { min: number; max: number }> = {
   height_cm: { min: 100, max: 250 },
   weight_kg: { min: 30, max: 300 },
+  household_size: { min: 1, max: 20 },
+  consumption_share_pct: { min: 1, max: 100 },
 }
 
 export function rangeError(key: string, value: string): string | null {
@@ -290,10 +313,24 @@ export function rangeError(key: string, value: string): string | null {
   return null
 }
 
+// The <input type="date"> control always yields/expects ISO "YYYY-MM-DD"
+// (native browser behavior, locale-independent) -- that's what's stored in
+// Answers and sent to the backend unchanged. This is purely a display
+// concern: the chat bubble showing "what you answered" should read back in
+// the DD.MM.YYYY shape people actually typed, not the raw ISO string.
+function formatDateForDisplay(iso: string): string {
+  const [year, month, day] = iso.split('-')
+  if (!year || !month || !day) return iso
+  return `${day}.${month}.${year}`
+}
+
 export function answerLabel(step: StepDef, answers: Answers): string {
   const value = answers[step.key as keyof Answers]
   if (step.kind === 'choice') {
     return step.options?.find((o) => o.value === value)?.label ?? String(value || '—')
+  }
+  if (step.kind === 'date' && value) {
+    return formatDateForDisplay(value as string)
   }
   return (value as string) || '—'
 }

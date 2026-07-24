@@ -4,6 +4,20 @@
   min-height: 100svh;
 }
 
+/* A small qualifier riding on the same line as an <h1>, at body-text size
+   (matches index.css's base font-size / its 1024px breakpoint) instead of
+   the heading's own much larger size -- e.g. Results' "(calculated over
+   the last 28 days)". */
+.title-note {
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: var(--text);
+  @media (max-width: 1024px) {
+    font-size: 16px;
+  }
+}
+
 .nav-bar {
   display: flex;
   align-items: center;

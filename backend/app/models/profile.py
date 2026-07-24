@@ -86,6 +86,15 @@ class ProfileCreate(BaseModel):
     daily_movement: DailyMovement
     goal: Goal
 
+    # Konsum.md Stufe 4 -- collected at the end of onboarding, optional (not
+    # yet wired into any calculation -- see Konsum.md for the intended use:
+    # scaling absolute purchase-based estimates down to this profile's own
+    # share when groceries are shared with a household). Both None for
+    # profiles created before these fields existed, same convention as the
+    # other optional fields on Profile below.
+    household_size: Optional[int] = Field(default=None, ge=1, le=20)
+    consumption_share_pct: Optional[float] = Field(default=None, ge=1, le=100)
+
 
 class Profile(ProfileCreate):
     """Stored profile, as returned by the API.

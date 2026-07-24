@@ -165,13 +165,23 @@ def update_item(
     payload: ItemUpdate,
     profile_id: int = Depends(require_profile_id),
 ):
-    """Epic 3.4 — inline edit or mark-as-non-food before confirming."""
+    """Epic 3.4 — inline edit or mark-as-non-food before confirming.
+
+    Marking an item non-food also teaches non_food_terms.py (the opposite-
+    direction sibling of Epic 4.2's verified-match learning): the same line
+    is then auto-recognized and stripped out on every future upload, before
+    it's even inserted as a receipt_item -- see that module's docstring."""
 
     _owned_receipt_or_404(receipt_id, profile_id)
     fields = payload.model_dump(exclude_unset=True)
     if not fields:
         raise HTTPException(status_code=400, detail="No fields to update")
-    return repo.update_receipt_item(item_id, fields)
+    updated = repo.update_receipt_item(item_id, fields)
+    if fields.get("is_non_food") is True:
+        name = updated.get("name") or updated.get("original_text")
+        if name:
+            non_food_terms.record_non_food_term(name)
+    return updated
 
 
 @router.delete("/{receipt_id}/items/{item_id}", status_code=204)

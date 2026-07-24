@@ -267,6 +267,81 @@ def test_correct_item_records_verified_match_keyed_on_cleaned_name(monkeypatch):
     assert recorded["raw_text"] == "Bio Paprika Mix"  # the cleaned `name`, not `original_text`
 
 
+def test_update_item_marking_non_food_learns_the_term(monkeypatch):
+    """Regression: non_food_terms.py's read-side filter (filter_learned_non_food,
+    already wired into _persist_parsed) had no write side calling it --
+    marking an item "Not food" in review never actually taught the system,
+    so the same product kept needing the checkbox on every future receipt."""
+
+    monkeypatch.setattr(
+        receipts_api.repo, "get_receipt", lambda rid: {"id": rid, "store": "Netto", "profile_id": 1}
+    )
+    monkeypatch.setattr(
+        receipts_api.repo,
+        "update_receipt_item",
+        lambda item_id, fields: {
+            "id": item_id, "name": "Batterien AA", "original_text": "Batterien AA 4er", **fields
+        },
+    )
+    recorded = {}
+    monkeypatch.setattr(
+        receipts_api.non_food_terms,
+        "record_non_food_term",
+        lambda name: recorded.update(name=name),
+    )
+
+    resp = client.patch(
+        "/receipts/r1/items/item-1", json={"is_non_food": True}, headers=AUTH
+    )
+    assert resp.status_code == 200
+    assert recorded["name"] == "Batterien AA"  # the cleaned `name`, not `original_text`
+
+
+def test_update_item_editing_other_fields_does_not_learn_non_food(monkeypatch):
+    monkeypatch.setattr(
+        receipts_api.repo, "get_receipt", lambda rid: {"id": rid, "store": "Netto", "profile_id": 1}
+    )
+    monkeypatch.setattr(
+        receipts_api.repo,
+        "update_receipt_item",
+        lambda item_id, fields: {"id": item_id, "name": "Apfel", **fields},
+    )
+    called = {"recorded": False}
+    monkeypatch.setattr(
+        receipts_api.non_food_terms,
+        "record_non_food_term",
+        lambda name: called.__setitem__("recorded", True),
+    )
+
+    resp = client.patch("/receipts/r1/items/item-1", json={"quantity": 3}, headers=AUTH)
+    assert resp.status_code == 200
+    assert called["recorded"] is False
+
+
+def test_update_item_unmarking_non_food_does_not_learn(monkeypatch):
+    """Setting is_non_food back to False is just a correction -- it must not
+    also (re-)teach the term as if it had been marked non-food."""
+
+    monkeypatch.setattr(
+        receipts_api.repo, "get_receipt", lambda rid: {"id": rid, "store": "Netto", "profile_id": 1}
+    )
+    monkeypatch.setattr(
+        receipts_api.repo,
+        "update_receipt_item",
+        lambda item_id, fields: {"id": item_id, "name": "Apfel", **fields},
+    )
+    called = {"recorded": False}
+    monkeypatch.setattr(
+        receipts_api.non_food_terms,
+        "record_non_food_term",
+        lambda name: called.__setitem__("recorded", True),
+    )
+
+    resp = client.patch("/receipts/r1/items/item-1", json={"is_non_food": False}, headers=AUTH)
+    assert resp.status_code == 200
+    assert called["recorded"] is False
+
+
 def test_summary_counts_distinct_receipts_and_items(monkeypatch):
     monkeypatch.setattr(
         analysis_api.repo,

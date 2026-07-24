@@ -87,7 +87,9 @@ export function ResultsPage() {
 
   return (
     <section>
-      <h1>Your results</h1>
+      <h1>
+        Your results <span className="title-note">(calculated over the last 28 days)</span>
+      </h1>
 
       {!noReceiptsYet && composition.data && (
         <p className="muted">

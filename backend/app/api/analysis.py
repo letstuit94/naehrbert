@@ -22,6 +22,15 @@ from backend.app.services.plant_diversity import compute_plant_diversity
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
+# Konsum.md Stufe 1: results reflect current buying habits (~4 weekly
+# shops), not a lifetime sum. Same 28-day window plant_diversity.py already
+# uses -- the Results page's "(over the last 28 days)" heading text now
+# matches what's actually computed, rather than just describing it.
+# EWMA weighting (half_life_days, default 30) still applies *within* this
+# window on top of the hard cutoff -- see compute_basket_composition's
+# docstring for how the two combine.
+_RESULTS_WINDOW_DAYS = 28
+
 _EMPTY_COMPOSITION = {
     "protein_pct": None,
     "fat_pct": None,
@@ -123,11 +132,11 @@ def get_purchases(profile_id: int = Depends(require_profile_id)):
 
 @router.get("/composition")
 def get_composition(profile_id: int = Depends(require_profile_id)):
-    """Epic 5.1 — calorie-weighted macro split across every finalized
-    (confirmed) receipt to date."""
+    """Epic 5.1 — calorie-weighted macro split over the last
+    _RESULTS_WINDOW_DAYS (Konsum.md Stufe 1), not a lifetime sum."""
 
     items = repo.get_all_confirmed_receipt_items(profile_id)
-    composition = compute_basket_composition(items, reference_date=_today())
+    composition = compute_basket_composition(items, reference_date=_today(), window_days=_RESULTS_WINDOW_DAYS)
     return composition or _EMPTY_COMPOSITION
 
 
@@ -144,7 +153,7 @@ def get_target_comparison(profile_id: int = Depends(require_profile_id)):
 
     target_pct = _targets_or_404(profile_id)
     items = repo.get_all_confirmed_receipt_items(profile_id)
-    composition = compute_basket_composition(items, reference_date=_today()) or _EMPTY_COMPOSITION
+    composition = compute_basket_composition(items, reference_date=_today(), window_days=_RESULTS_WINDOW_DAYS) or _EMPTY_COMPOSITION
 
     deltas = {}
     diffs = []
@@ -188,7 +197,7 @@ def get_buckets(profile_id: int = Depends(require_profile_id)):
 
     target_pct = _targets_or_404(profile_id)
     items = repo.get_all_confirmed_receipt_items(profile_id)
-    composition = compute_basket_composition(items, reference_date=_today()) or _EMPTY_COMPOSITION
+    composition = compute_basket_composition(items, reference_date=_today(), window_days=_RESULTS_WINDOW_DAYS) or _EMPTY_COMPOSITION
     actual_pct = {k: composition.get(k) for k in ("protein_pct", "fat_pct", "carb_pct")}
     return {"buckets": compute_buckets(items, actual_pct, target_pct)}
 

@@ -389,6 +389,14 @@ export interface Recipe {
   fat_g: number
   carbs_g: number
   fiber_g: number
+  /** Gemini's own classification of what's actually in the recipe (not
+   * just the dietary style that was requested) -- reuses the same 4
+   * values as a profile's dietary_style. Null for recipes generated before
+   * this field existed. */
+  dietary_label: DietaryStyle | null
+  /** Thumbs up/down on this specific recipe -- separate from the app-wide
+   * NPS score submitted via submitFeedback(). Null until rated. */
+  feedback: 'up' | 'down' | null
   created_at?: string
 }
 
@@ -591,6 +599,23 @@ export function generateRecipe(input: RecipeGenerateInput = {}): Promise<Recipe>
 
 export function getRecipes(): Promise<Recipe[]> {
   return request<Recipe[]>('/recipes')
+}
+
+/** Thumbs up/down on a specific recipe; pass null to clear it. */
+export function setRecipeFeedback(
+  recipeId: string,
+  feedback: 'up' | 'down' | null,
+): Promise<Recipe> {
+  return request<Recipe>(`/recipes/${recipeId}/feedback`, {
+    method: 'PATCH',
+    body: JSON.stringify({ feedback }),
+  })
+}
+
+/** Soft-deletes ("archives") a recipe -- it stops showing up in
+ * getRecipes(), but isn't hard-deleted server-side. */
+export function archiveRecipe(recipeId: string): Promise<void> {
+  return request<void>(`/recipes/${recipeId}`, { method: 'DELETE' })
 }
 
 // ── Pantry / Basket (Vorrat.md) ───────────────────────────────────────────

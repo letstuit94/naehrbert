@@ -212,15 +212,32 @@ def insert_recipe(profile_id: int, row: dict) -> dict:
 
 
 def get_all_recipes(profile_id: int) -> List[dict]:
+    """Every non-archived recipe for `profile_id` -- an archived (soft-
+    deleted, migration 0010) recipe is excluded here, once, rather than in
+    every consumer of this list, same convention as
+    get_all_confirmed_receipt_items excluding is_non_food."""
+
     res = (
         get_client()
         .table("recipes")
         .select("*")
         .eq("profile_id", profile_id)
+        .is_("archived_at", "null")
         .order("created_at", desc=True)
         .execute()
     )
     return res.data or []
+
+
+def get_recipe(recipe_id: str) -> Optional[dict]:
+    res = get_client().table("recipes").select("*").eq("id", recipe_id).execute()
+    rows = res.data or []
+    return rows[0] if rows else None
+
+
+def update_recipe(recipe_id: str, fields: dict) -> dict:
+    res = get_client().table("recipes").update(fields).eq("id", recipe_id).execute()
+    return res.data[0]
 
 
 # ── pantry / basket (Vorrat.md) ──────────────────────────────────────────

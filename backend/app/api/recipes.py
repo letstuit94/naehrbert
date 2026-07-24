@@ -8,19 +8,32 @@ re-deriving the same macro-gap computation here -- one source of truth for
 "what's the current gap", same as every other consumer of that data.
 """
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.api.analysis import get_diversity, get_target_comparison
 from backend.app.core.auth import require_profile_id
 from backend.app.db import repo
 from backend.app.models.profile import Profile
-from backend.app.models.recipe import Recipe, RecipeGenerateRequest
+from backend.app.models.recipe import Recipe, RecipeFeedbackUpdate, RecipeGenerateRequest
 from backend.app.services.dietary_inference import infer_dietary_style
 from backend.app.services.gemini_client import GeminiNotConfigured
 from backend.app.services.recipe_engine import generate_and_assemble_recipe
 from backend.app.services.recipe_unlock import UNLOCK_THRESHOLD, count_matched_items
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
+
+
+def _owned_recipe_or_404(recipe_id: str, profile_id: int) -> dict:
+    """Every by-id endpoint below fetches the recipe anyway (to check
+    ownership) -- mirrors receipts.py's _owned_receipt_or_404 so recipe A's
+    owner can't act on recipe B by guessing its uuid."""
+
+    recipe = repo.get_recipe(recipe_id)
+    if not recipe or recipe.get("profile_id") != profile_id:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    return recipe
 
 
 @router.get("/unlock-status")
@@ -90,3 +103,29 @@ def generate_recipe(
 @router.get("")
 def list_recipes(profile_id: int = Depends(require_profile_id)):
     return [Recipe(**row) for row in repo.get_all_recipes(profile_id)]
+
+
+@router.patch("/{recipe_id}/feedback")
+def set_recipe_feedback(
+    recipe_id: str,
+    payload: RecipeFeedbackUpdate,
+    profile_id: int = Depends(require_profile_id),
+):
+    """Recipes page's thumbs up/down -- separate from user_feedback's NPS
+    score (see models/recipe.py's docstring): this is a per-recipe rating,
+    not a general app-satisfaction one. Tapping the already-active thumb
+    again sends feedback=None to clear it."""
+
+    _owned_recipe_or_404(recipe_id, profile_id)
+    updated = repo.update_recipe(recipe_id, {"feedback": payload.feedback})
+    return Recipe(**updated)
+
+
+@router.delete("/{recipe_id}", status_code=204)
+def archive_recipe(recipe_id: str, profile_id: int = Depends(require_profile_id)):
+    """Recipes page's "X" button -- soft-delete (archived_at), not a hard
+    row delete, so a rated/generated recipe isn't lost outright. Excluded
+    from get_all_recipes from then on."""
+
+    _owned_recipe_or_404(recipe_id, profile_id)
+    repo.update_recipe(recipe_id, {"archived_at": datetime.now(timezone.utc).isoformat()})

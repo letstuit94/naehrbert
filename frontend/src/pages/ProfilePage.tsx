@@ -5,6 +5,7 @@ import { setCurrentProfileId } from '../lib/session'
 import {
   ApiError,
   createProfile,
+  deleteProfile,
   getProfile,
   updateDietaryPreferences,
   type DailyMovement,
@@ -80,6 +81,10 @@ export function ProfilePage() {
   const [prefsSaved, setPrefsSaved] = useState(false)
   const [prefsError, setPrefsError] = useState<string | null>(null)
 
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
   useEffect(() => {
     getProfile()
       .then((profile) => {
@@ -145,6 +150,23 @@ export function ProfilePage() {
   function logOut() {
     setCurrentProfileId(null)
     navigate('/')
+  }
+
+  async function handleDeleteAccount() {
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteProfile()
+      // Account is gone -- clear the stored profile id and return to the
+      // login screen. (Verified matches stay in the DB by design.)
+      setCurrentProfileId(null)
+      navigate('/')
+    } catch (err) {
+      setDeleteError(
+        err instanceof ApiError ? err.message : 'Could not delete your account.',
+      )
+      setDeleting(false)
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -431,6 +453,50 @@ export function ProfilePage() {
           Log out
         </button>
       </div>
+
+      <h2>Delete account</h2>
+      <p>
+        Permanently deletes your profile and everything tied to it — receipts,
+        recipes and pantry data. This can't be undone.
+      </p>
+
+      {deleteError && (
+        <p className="form-error" role="alert">
+          {deleteError}
+        </p>
+      )}
+
+      {confirmingDelete ? (
+        <div className="section-divider">
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={handleDeleteAccount}
+            disabled={deleting}
+          >
+            {deleting ? 'Deleting…' : 'Yes, delete my account'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setConfirmingDelete(false)}
+            disabled={deleting}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="btn btn-danger"
+          onClick={() => {
+            setDeleteError(null)
+            setConfirmingDelete(true)
+          }}
+        >
+          Delete my account
+        </button>
+      )}
     </section>
   )
 }

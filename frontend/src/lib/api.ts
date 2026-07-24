@@ -457,6 +457,13 @@ export function getProfile(): Promise<Profile> {
   return request<Profile>('/profile')
 }
 
+/** Permanently deletes the caller's account and all data they own. Verified
+ * matches are kept server-side (global correction cache -- see backend
+ * repo.delete_profile). Caller should clear the session afterward. */
+export function deleteProfile(): Promise<void> {
+  return request<void>('/profile', { method: 'DELETE' })
+}
+
 // ── Targets (Epic 2) ──────────────────────────────────────────────────────
 
 export function getTargets(): Promise<TargetsResponse> {

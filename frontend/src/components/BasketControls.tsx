@@ -107,7 +107,7 @@ export function BasketControls({
             }
             onClick={() => changeView('urgency')}
           >
-            Short use-by date
+            Sort by date
           </button>
           <button
             type="button"

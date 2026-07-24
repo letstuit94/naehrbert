@@ -1401,6 +1401,11 @@ a.btn {
   width: 80px;
 }
 
+.basket-row__unit-select {
+  flex: none;
+  width: auto;
+}
+
 .basket-row__actions {
   display: flex;
   align-items: center;
@@ -1893,6 +1898,13 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 }
 
 /* ── Basket "by category" view: group headers ───────────────────────────── */
+/* Expand/collapse-all control, right-aligned above the collapsed group list. */
+.basket-group-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
 .basket-group + .basket-group {
   margin-top: 18px;
 }

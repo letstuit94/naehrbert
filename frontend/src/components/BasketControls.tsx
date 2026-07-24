@@ -7,7 +7,7 @@ import type { BasketFilters, BasketView } from '../lib/shelfLife'
  * ordering apart from filtering (the two must not be conflated):
  *
  *  - Row 1 (order): the A/B view toggle on the left, text search on the right.
- *    "Short use-by date" (A, urgency-first flat list) vs "By category" (B,
+ *    "Use first" (A, urgency-first flat list) vs "By category" (B,
  *    grouped). Changes ORDER/LAYOUT only.
  *  - Row 2 (filter): a "Categories (n/total)" popover of checkboxes (checked =
  *    shown), a "Next 3 days" pill, and a "Clear" that appears only when a
@@ -107,7 +107,7 @@ export function BasketControls({
             }
             onClick={() => changeView('urgency')}
           >
-            Sort by date
+            Use first
           </button>
           <button
             type="button"

@@ -23,6 +23,7 @@ import { MatchSearchPanel } from '../components/MatchSearchPanel'
 import { UrgencyBadge } from '../components/UrgencyBadge'
 import { categoryEmoji, EMOJI_GROUP_LABEL } from '../lib/categoryEmoji'
 import { formatFallbackCategory, matchInfo } from '../lib/matchInfo'
+import { getCurrentProfileId } from '../lib/session'
 import {
   quantityBasis,
   QUANTITY_BASIS_LABEL,
@@ -35,6 +36,23 @@ import {
   type BasketFilters,
   type BasketView,
 } from '../lib/shelfLife'
+
+// Persist the "by category" expand/collapse state across reloads, scoped per
+// profile so different users don't clobber each other. The stored value is
+// just the list of expanded food-group keys (a small, stable enum).
+function expandedGroupsKey(): string {
+  return `naehrbert.basket.expandedGroups.${getCurrentProfileId() ?? 'anon'}`
+}
+
+function loadExpandedGroups(): Set<PantryItem['food_group']> {
+  try {
+    const raw = localStorage.getItem(expandedGroupsKey())
+    const parsed = raw ? JSON.parse(raw) : null
+    return Array.isArray(parsed) ? new Set(parsed as PantryItem['food_group'][]) : new Set()
+  } catch {
+    return new Set()
+  }
+}
 
 type LoadState =
   | { status: 'loading' }
@@ -68,6 +86,12 @@ const REASON_CONFIRM: Record<PantryRemovalReason, string> = {
 // field; anything else is a discrete count -> a quarter-step slider (½ an
 // apple, whole eggs), since you also eat *part* of one piece.
 const MEASURED_UNITS = new Set(['g', 'kg', 'ml', 'l'])
+
+// Units offered when editing a lot's amount (same set as the manual-add form
+// in AddItemPanel): the mass/volume amounts plus a discrete piece count. The
+// lot's current unit is prepended at render time if it isn't one of these, so
+// an unusual scanned unit is never silently dropped from the dropdown.
+const UNIT_OPTIONS = ['g', 'kg', 'ml', 'l', 'piece'] as const
 
 // Step the piece slider snaps to: quarters cover the realistic partials
 // (¼ ½ ¾) and whole counts land exactly on integers.
@@ -135,14 +159,25 @@ export function BasketPage() {
   // View toggle (A/B) and filters are separate controls (see BasketControls).
   const [view, setView] = useState<BasketView>('urgency')
   const [filters, setFilters] = useState<BasketFilters>(NO_FILTERS)
-  // Which category groups are collapsed in the "by category" view. Default
-  // (absent) = expanded; local + transient (resets on reload).
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<PantryItem['food_group']>>(
-    () => new Set(),
+  // Which category groups are EXPANDED in the "by category" view. Default
+  // (absent) = collapsed, so the view opens as a compact table-of-contents
+  // (category + count) you scan and drill into, rather than one long scroll.
+  // Persisted per profile (see loadExpandedGroups) so the view stays the way
+  // the user last left it across reloads.
+  const [expandedGroups, setExpandedGroups] = useState<Set<PantryItem['food_group']>>(
+    loadExpandedGroups,
   )
 
-  function toggleGroupCollapsed(group: PantryItem['food_group']) {
-    setCollapsedGroups((prev) => {
+  useEffect(() => {
+    try {
+      localStorage.setItem(expandedGroupsKey(), JSON.stringify([...expandedGroups]))
+    } catch {
+      // Storage unavailable/full -- fall back to in-memory only (no persist).
+    }
+  }, [expandedGroups])
+
+  function toggleGroupExpanded(group: PantryItem['food_group']) {
+    setExpandedGroups((prev) => {
       const next = new Set(prev)
       if (next.has(group)) next.delete(group)
       else next.add(group)
@@ -359,34 +394,55 @@ export function BasketPage() {
       {visible.length === 0 ? (
         <p className="callout callout--muted">No items match the current filters.</p>
       ) : view === 'category' ? (
-        groupByCategory(visible).map((cat) => {
-          const collapsed = collapsedGroups.has(cat.group)
-          const listId = `basket-group-${cat.group}`
+        (() => {
+          const cats = groupByCategory(visible)
+          const allExpanded = cats.every((cat) => expandedGroups.has(cat.group))
           return (
-            <div key={cat.group} className="basket-group">
-              <h2 className="basket-group__head">
+            <>
+              <div className="basket-group-tools">
                 <button
                   type="button"
-                  className="basket-group__toggle"
-                  aria-expanded={!collapsed}
-                  aria-controls={listId}
-                  onClick={() => toggleGroupCollapsed(cat.group)}
+                  className="btn-link"
+                  onClick={() =>
+                    setExpandedGroups(
+                      allExpanded ? new Set() : new Set(cats.map((cat) => cat.group)),
+                    )
+                  }
                 >
-                  <span className="basket-group__caret" aria-hidden="true">
-                    {collapsed ? '▸' : '▾'}
-                  </span>
-                  <span className="basket-group__label">{cat.label}</span>
-                  <span className="basket-group__count">{cat.items.length}</span>
+                  {allExpanded ? 'Collapse all' : 'Expand all'}
                 </button>
-              </h2>
-              {!collapsed && (
-                <ul id={listId} className="purchase-list">
-                  {cat.items.map(renderRow)}
-                </ul>
-              )}
-            </div>
+              </div>
+              {cats.map((cat) => {
+                const expanded = expandedGroups.has(cat.group)
+                const listId = `basket-group-${cat.group}`
+                return (
+                  <div key={cat.group} className="basket-group">
+                    <h2 className="basket-group__head">
+                      <button
+                        type="button"
+                        className="basket-group__toggle"
+                        aria-expanded={expanded}
+                        aria-controls={listId}
+                        onClick={() => toggleGroupExpanded(cat.group)}
+                      >
+                        <span className="basket-group__caret" aria-hidden="true">
+                          {expanded ? '▾' : '▸'}
+                        </span>
+                        <span className="basket-group__label">{cat.label}</span>
+                        <span className="basket-group__count">{cat.items.length}</span>
+                      </button>
+                    </h2>
+                    {expanded && (
+                      <ul id={listId} className="purchase-list">
+                        {cat.items.map(renderRow)}
+                      </ul>
+                    )}
+                  </div>
+                )
+              })}
+            </>
           )
-        })
+        })()
       ) : (
         <ul className="purchase-list">{visible.map(renderRow)}</ul>
       )}
@@ -425,6 +481,7 @@ function BasketRow({
   const [searchingMatch, setSearchingMatch] = useState(false)
   const [editingQty, setEditingQty] = useState(false)
   const [qtyDraft, setQtyDraft] = useState('')
+  const [unitDraft, setUnitDraft] = useState('')
 
   function openPanel(reason: PantryRemovalReason) {
     setAmount(remaining)
@@ -446,7 +503,10 @@ function BasketRow({
 
   function saveQty() {
     const n = Number(qtyDraft)
-    if (!Number.isNaN(n) && n > 0 && n !== remaining) onEdit({ quantity: n })
+    const fields: ItemUpdate = {}
+    if (!Number.isNaN(n) && n > 0 && n !== remaining) fields.quantity = n
+    if (unitDraft && unitDraft !== (item.unit ?? '')) fields.unit = unitDraft
+    if (Object.keys(fields).length > 0) onEdit(fields)
     setEditingQty(false)
   }
 
@@ -522,7 +582,21 @@ function BasketRow({
               aria-label="Quantity"
               autoFocus
             />
-            <span className="muted">{item.unit}</span>
+            <select
+              className="basket-row__unit-select"
+              value={unitDraft}
+              onChange={(e) => setUnitDraft(e.target.value)}
+              aria-label="Unit"
+            >
+              {(UNIT_OPTIONS.includes(unitDraft as (typeof UNIT_OPTIONS)[number])
+                ? UNIT_OPTIONS
+                : [unitDraft, ...UNIT_OPTIONS]
+              ).map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
             <button type="button" className="basket-row__icon-btn" onClick={saveQty} aria-label="Save quantity">
               ✓
             </button>
@@ -550,10 +624,11 @@ function BasketRow({
               className="basket-row__icon-btn"
               onClick={() => {
                 setQtyDraft(String(remaining))
+                setUnitDraft(item.unit ?? 'piece')
                 setEditingQty(true)
               }}
-              aria-label="Edit quantity"
-              title="Edit quantity"
+              aria-label="Edit amount"
+              title="Edit amount"
             >
               ✎
             </button>

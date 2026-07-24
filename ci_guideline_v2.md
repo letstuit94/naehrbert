@@ -429,6 +429,14 @@ Elevation-Modell (§3).
 - Signal-Töne vor Umsetzung einmal mit echtem Kontrast-Check (AA) gegen die
   finalen soft-Flächen prüfen.
 
+### Bekannte Abweichungen (zu bereinigen)
+
+- **`.btn-danger` (App.css, Commit „delete profile"):** nutzt hartkodiertes
+  `#d1495b` statt des Token `--danger`. Verstößt gegen §16 (keine Hex in
+  Komponenten) und §2.2 (Funktionsfarben nur über Token). Zusätzlich weicht der
+  Ton vom CI-`--danger` (`#DC2626`) ab → zwei Rottöne für dieselbe Bedeutung.
+  **To do:** auf `--danger`-Token umstellen.
+
 ---
 
 ## Anhang · Changelog v1 → v2

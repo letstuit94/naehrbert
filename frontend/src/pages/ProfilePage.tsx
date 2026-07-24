@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { setCurrentProfileId } from '../lib/session'
@@ -52,6 +52,36 @@ const EMPTY_FORM: FormState = {
   goal: '',
 }
 
+/** Whole years from an ISO date of birth, or null if unset/unparseable.
+ * Mirrors the age logic in lib/chatSteps previewBmr(). */
+function ageFromDob(dob: string): number | null {
+  if (!dob) return null
+  const d = new Date(dob)
+  if (Number.isNaN(d.getTime())) return null
+  const now = new Date()
+  let age = now.getFullYear() - d.getFullYear()
+  const hadBirthday =
+    now.getMonth() > d.getMonth() ||
+    (now.getMonth() === d.getMonth() && now.getDate() >= d.getDate())
+  if (!hadBirthday) age -= 1
+  return age
+}
+
+type LabeledOption = { value: string; label: string }
+
+/** An option label with its leading emoji token stripped, for the read view
+ * (every option label in chatSteps/recipePrefsSteps starts with "<emoji> "). */
+function readableLabel(options: LabeledOption[], value: string): string {
+  const label = options.find((o) => o.value === value)?.label
+  return label ? label.replace(/^\S+\s+/, '') : '—'
+}
+
+/** Display name for a stored allergen value: known EU-14 value → its label,
+ * free-text "other" → itself. */
+function allergenLabel(value: string): string {
+  return ALLERGEN_OPTIONS.find((o) => o.value === value)?.label ?? value
+}
+
 function toForm(profile: Profile): FormState {
   return {
     name: profile.name ?? '',
@@ -85,13 +115,33 @@ export function ProfilePage() {
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  useEffect(() => {
+  // The last-saved profile drives the read view; the forms edit a working copy
+  // (`form`/prefs state) that's reset from here whenever editing starts or ends,
+  // so the read view never shows unsaved changes.
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [editing, setEditing] = useState(false)
+
+  // Load a profile's values into the editable working copy and clear any
+  // stale save/error flags.
+  const resetForm = useCallback((p: Profile) => {
+    setForm(toForm(p))
+    setDietaryStyle(p.dietary_style ?? 'omnivore')
+    setAllergies(p.allergies ?? [])
+    setDislikes(p.dislikes ?? [])
+    setSaved(false)
+    setPrefsSaved(false)
+    setError(null)
+    setPrefsError(null)
+  }, [])
+
+  // Async fetch only — no synchronous setState, so it's safe to run straight
+  // from the effect. The initial `state` is already 'loading'; the retry path
+  // (an event handler) resets it before re-fetching.
+  const fetchProfile = useCallback(() => {
     getProfile()
-      .then((profile) => {
-        setForm(toForm(profile))
-        setDietaryStyle(profile.dietary_style ?? 'omnivore')
-        setAllergies(profile.allergies ?? [])
-        setDislikes(profile.dislikes ?? [])
+      .then((loaded) => {
+        setProfile(loaded)
+        resetForm(loaded)
         setState({ status: 'ready' })
       })
       .catch((err) => {
@@ -100,11 +150,30 @@ export function ProfilePage() {
         } else {
           setState({
             status: 'error',
-            message: 'Could not load your profile. Please try again.',
+            message: "Couldn't load your profile. Check your connection and try again.",
           })
         }
       })
-  }, [])
+  }, [resetForm])
+
+  useEffect(() => {
+    fetchProfile()
+  }, [fetchProfile])
+
+  function retryLoad() {
+    setState({ status: 'loading' })
+    fetchProfile()
+  }
+
+  function startEdit() {
+    if (profile) resetForm(profile)
+    setEditing(true)
+  }
+
+  function stopEdit() {
+    if (profile) resetForm(profile)
+    setEditing(false)
+  }
 
   function toggleAllergy(value: string) {
     setAllergies((prev) =>
@@ -131,7 +200,12 @@ export function ProfilePage() {
     setPrefsError(null)
     setPrefsSaved(false)
     try {
-      await updateDietaryPreferences({ dietary_style: dietaryStyle, allergies, dislikes })
+      const updated = await updateDietaryPreferences({
+        dietary_style: dietaryStyle,
+        allergies,
+        dislikes,
+      })
+      setProfile(updated)
       setPrefsSaved(true)
     } catch (err) {
       setPrefsError(
@@ -175,7 +249,7 @@ export function ProfilePage() {
     setError(null)
     setSaved(false)
     try {
-      await createProfile({
+      const { profile: updated } = await createProfile({
         name: form.name.trim() || null,
         sex: form.sex as Sex,
         date_of_birth: form.date_of_birth,
@@ -185,6 +259,7 @@ export function ProfilePage() {
         daily_movement: form.daily_movement as DailyMovement,
         goal: form.goal as Goal,
       })
+      setProfile(updated)
       setSaved(true)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not save your profile.')
@@ -195,47 +270,112 @@ export function ProfilePage() {
 
   if (state.status === 'loading') {
     return (
-      <section>
+      <section className="profile-page" aria-busy="true">
         <h1>Profile</h1>
-        <p>Loading…</p>
+        <div className="card profile-header">
+          <span
+            className="skeleton"
+            style={{ width: 54, height: 54, borderRadius: 999 }}
+          />
+          <div className="profile-header__info">
+            <div className="skeleton" style={{ height: 16, width: '45%' }} />
+            <div
+              className="skeleton"
+              style={{ height: 12, width: '65%', marginTop: 10 }}
+            />
+          </div>
+        </div>
+        <div className="card">
+          <div className="skeleton" style={{ height: 12, width: '30%' }} />
+          <div
+            className="skeleton"
+            style={{ height: 40, width: '100%', marginTop: 12 }}
+          />
+          <div
+            className="skeleton"
+            style={{ height: 40, width: '100%', marginTop: 10 }}
+          />
+        </div>
+        <p className="muted">Loading your profile…</p>
       </section>
     )
   }
 
   if (state.status === 'no-profile') {
     return (
-      <section>
+      <section className="profile-page">
         <h1>Profile</h1>
-        <p>
-          You haven't completed onboarding yet.{' '}
-          <Link to="/onboarding">Start onboarding</Link> to create your profile.
-        </p>
+        <div className="card">
+          <p>
+            🌱 You haven't set up your profile yet. Let's find out what your body
+            needs — it takes under a minute.
+          </p>
+          <div className="profile-actions">
+            <Link to="/onboarding" className="btn btn-primary">
+              Start onboarding
+            </Link>
+          </div>
+        </div>
       </section>
     )
   }
 
   if (state.status === 'error') {
     return (
-      <section>
+      <section className="profile-page">
         <h1>Profile</h1>
-        <p className="form-error" role="alert">
-          {state.message}
-        </p>
+        <div className="card">
+          <p className="form-error" role="alert">
+            {state.message}
+          </p>
+          <div className="profile-actions">
+            <button type="button" className="btn btn-primary" onClick={retryLoad}>
+              Try again
+            </button>
+          </div>
+        </div>
       </section>
     )
   }
 
+  const age = ageFromDob(form.date_of_birth)
+  const headerMeta = [
+    age !== null ? `${age} y` : null,
+    form.height_cm ? `${form.height_cm} cm` : null,
+    form.weight_kg ? `${form.weight_kg} kg` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
-    <section>
+    <section className="profile-page">
       <h1>Profile</h1>
-      <p>
+
+      <div className="card profile-header">
+        <span className="profile-avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 20c0-3.31 3.58-6 8-6s8 2.69 8 6" strokeLinecap="round" />
+          </svg>
+        </span>
+        <div className="profile-header__info">
+          <div className="profile-header__name">{form.name.trim() || 'Your profile'}</div>
+          <div className="profile-header__meta">
+            {headerMeta || 'Add your details below to set your targets'}
+          </div>
+        </div>
+      </div>
+
+      <p className="profile-lead muted">
         Adjust your details any time — your targets recalculate the next time you view
         them.
       </p>
 
-      <form className="form" onSubmit={handleSubmit}>
-        <div className="form-field">
-          <label htmlFor="profile-name">Name</label>
+      <div className="card">
+        <h2 className="eyebrow">Your details</h2>
+        <form className="form" onSubmit={handleSubmit}>
+          <div className="form-field">
+            <label htmlFor="profile-name">Name</label>
           <input
             id="profile-name"
             type="text"
@@ -354,15 +494,18 @@ export function ProfilePage() {
         <button className="btn btn-primary" type="submit" disabled={saving}>
           {saving ? 'Saving…' : 'Save changes'}
         </button>
-      </form>
+        </form>
+      </div>
 
-      <h2>Dietary preferences</h2>
-      <p>
-        Used to generate your <Link to="/results#recipes">recipe recommendations</Link> --
-        never included in your calorie/macro targets above.
-      </p>
+      <div className="card">
+        <h2 className="eyebrow">Dietary preferences</h2>
+        <p className="profile-lead muted">
+          Used to generate your{' '}
+          <Link to="/results#recipes">recipe recommendations</Link> — never included in
+          your calorie/macro targets above.
+        </p>
 
-      <form className="form" onSubmit={handlePrefsSubmit}>
+        <form className="form" onSubmit={handlePrefsSubmit}>
         <div className="form-field">
           <label htmlFor="profile-dietary-style">How do you eat?</label>
           <select
@@ -443,9 +586,10 @@ export function ProfilePage() {
         <button className="btn btn-primary" type="submit" disabled={prefsSaving}>
           {prefsSaving ? 'Saving…' : 'Save preferences'}
         </button>
-      </form>
+        </form>
+      </div>
 
-      <div className="section-divider">
+      <div className="profile-actions">
         <Link to="/purchases" className="btn btn-secondary">
           Receipt history
         </Link>
@@ -454,49 +598,51 @@ export function ProfilePage() {
         </button>
       </div>
 
-      <h2>Delete account</h2>
-      <p>
-        Permanently deletes your profile and everything tied to it — receipts,
-        recipes and pantry data. This can't be undone.
-      </p>
-
-      {deleteError && (
-        <p className="form-error" role="alert">
-          {deleteError}
+      <div className="card">
+        <h2 className="eyebrow">Delete account</h2>
+        <p className="profile-lead muted">
+          Permanently deletes your profile and everything tied to it — receipts,
+          recipes and pantry data. This can't be undone.
         </p>
-      )}
 
-      {confirmingDelete ? (
-        <div className="section-divider">
+        {deleteError && (
+          <p className="form-error" role="alert">
+            {deleteError}
+          </p>
+        )}
+
+        {confirmingDelete ? (
+          <div className="profile-actions">
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={handleDeleteAccount}
+              disabled={deleting}
+            >
+              {deleting ? 'Deleting…' : 'Yes, delete my account'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setConfirmingDelete(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
           <button
             type="button"
             className="btn btn-danger"
-            onClick={handleDeleteAccount}
-            disabled={deleting}
+            onClick={() => {
+              setDeleteError(null)
+              setConfirmingDelete(true)
+            }}
           >
-            {deleting ? 'Deleting…' : 'Yes, delete my account'}
+            Delete my account
           </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setConfirmingDelete(false)}
-            disabled={deleting}
-          >
-            Cancel
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="btn btn-danger"
-          onClick={() => {
-            setDeleteError(null)
-            setConfirmingDelete(true)
-          }}
-        >
-          Delete my account
-        </button>
-      )}
+        )}
+      </div>
     </section>
   )
 }

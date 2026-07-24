@@ -13,6 +13,38 @@
   --social-bg: rgba(244, 244, 245, 0.6);
   --shadow: rgba(0, 0, 0, 0.06) 0 10px 15px -3px, rgba(0, 0, 0, 0.03) 0 4px 6px -2px;
 
+  /* ── CI v2 · Salbeigrün-Akzent (§2.1) ───────────────────────────────────
+     Die Guideline nennt Salbeigrün `--accent`; im Code ist `--accent` aber
+     bereits der Ink-Vollton (Buttons/Nav, §8). Salbeigrün liegt daher unter
+     `--sage*`, der Ink-Akzent bleibt unverändert. Mapping Guideline → Code:
+       Guideline --accent      → --sage
+       Guideline --accent-soft → --sage-soft
+       Guideline --accent-ink  → --sage-ink
+       Guideline --ink         → --accent / --text-h */
+  --sage: #7c9a6a;
+  --sage-soft: #eef2ea;
+  --sage-ink: #4f6b3c;
+
+  /* ── Funktions-/Signalebene (§2.2) ──────────────────────────────────────
+     Nur für Status, nie Deko. Text-Töne sind AA-abgedunkelt; die hellen
+     Original-Töne (*-bright) ausschließlich für nicht-textuelle Elemente
+     (Balken, Punkte, Ring-Füllungen). */
+  --ok: #4f6b3c;
+  --ok-soft: #eef2ea;
+  --warn: #a8522e;
+  --warn-soft: #f6e6de;
+  --warn-bright: #c2683f;
+  --caution: #8a6a15;
+  --caution-soft: #f6ecd6;
+  --caution-bright: #cf9a34;
+  --danger: #dc2626;
+  --danger-soft: #fbe8e8;
+
+  /* ── Elevation (§3) · Schatten ist Token, nicht Default ─────────────────
+     Stufe 0 (flach) = Ring; Stufe 1 = --shadow-raise; Stufe 2 = --shadow-float. */
+  --shadow-raise: 0 8px 22px -14px rgb(29 29 33 / 0.25);
+  --shadow-float: 0 1px 2px rgb(29 29 33 / 0.05), 0 10px 28px rgb(29 29 33 / 0.08);
+
   --sans: 'Instrument Sans', ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: 'Instrument Sans', ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
@@ -47,6 +79,25 @@
     --accent-border: rgba(255, 255, 255, 0.14);
     --social-bg: rgba(38, 38, 46, 0.6);
     --shadow: rgba(0, 0, 0, 0.5) 0 10px 15px -3px, rgba(0, 0, 0, 0.3) 0 4px 6px -2px;
+
+    /* CI v2 Signal-/Akzent-Tokens · Dark (vorläufig, §-Dark noch offen).
+       Werte aus dem Mockup-Dark-Set, damit der bestehende Dark-Mode nicht
+       bricht; final wird Dark als eigenes Token-Set nachgezogen (§17). */
+    --sage: #8fb079;
+    --sage-soft: #232a20;
+    --sage-ink: #adc79a;
+    --ok: #adc79a;
+    --ok-soft: #232a20;
+    --warn: #df8a63;
+    --warn-soft: #33241d;
+    --warn-bright: #df8a63;
+    --caution: #e0b158;
+    --caution-soft: #332a18;
+    --caution-bright: #e0b158;
+    --danger: #f87171;
+    --danger-soft: #3a1f1f;
+    --shadow-raise: 0 8px 22px -14px rgb(0 0 0 / 0.5);
+    --shadow-float: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 28px rgb(0 0 0 / 0.5);
   }
 }
 

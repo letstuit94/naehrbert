@@ -42,6 +42,11 @@ export interface ProfileInput {
   exercise_frequency: ExerciseFrequency
   daily_movement: DailyMovement
   goal: Goal
+  /** Konsum.md Stufe 4 -- collected at the end of onboarding. Not yet used
+   * in any calculation; both optional so existing profiles predating these
+   * fields keep working unchanged. */
+  household_size?: number | null
+  consumption_share_pct?: number | null
 }
 
 export interface Profile extends ProfileInput {

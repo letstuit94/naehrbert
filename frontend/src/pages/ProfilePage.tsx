@@ -38,6 +38,8 @@ type FormState = {
   exercise_frequency: ExerciseFrequency | ''
   daily_movement: DailyMovement | ''
   goal: Goal | ''
+  household_size: string
+  consumption_share_pct: string
 }
 
 const EMPTY_FORM: FormState = {
@@ -49,6 +51,8 @@ const EMPTY_FORM: FormState = {
   exercise_frequency: '',
   daily_movement: '',
   goal: '',
+  household_size: '',
+  consumption_share_pct: '',
 }
 
 function toForm(profile: Profile): FormState {
@@ -61,6 +65,9 @@ function toForm(profile: Profile): FormState {
     exercise_frequency: profile.exercise_frequency,
     daily_movement: profile.daily_movement,
     goal: profile.goal,
+    household_size: profile.household_size != null ? String(profile.household_size) : '',
+    consumption_share_pct:
+      profile.consumption_share_pct != null ? String(profile.consumption_share_pct) : '',
   }
 }
 
@@ -162,6 +169,10 @@ export function ProfilePage() {
         exercise_frequency: form.exercise_frequency as ExerciseFrequency,
         daily_movement: form.daily_movement as DailyMovement,
         goal: form.goal as Goal,
+        household_size: form.household_size ? Number(form.household_size) : null,
+        consumption_share_pct: form.consumption_share_pct
+          ? Number(form.consumption_share_pct)
+          : null,
       })
       setSaved(true)
     } catch (err) {
@@ -316,6 +327,36 @@ export function ProfilePage() {
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="profile-household-size">
+            People you typically shop for
+          </label>
+          <input
+            id="profile-household-size"
+            type="number"
+            min={1}
+            max={20}
+            placeholder="e.g. 2"
+            value={form.household_size}
+            onChange={(e) => update('household_size', e.target.value)}
+          />
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="profile-consumption-share">
+            Your share of those groceries (%)
+          </label>
+          <input
+            id="profile-consumption-share"
+            type="number"
+            min={1}
+            max={100}
+            placeholder="e.g. 50"
+            value={form.consumption_share_pct}
+            onChange={(e) => update('consumption_share_pct', e.target.value)}
+          />
         </div>
 
         {error && (

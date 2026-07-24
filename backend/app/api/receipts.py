@@ -139,9 +139,16 @@ async def upload_receipt_file(
 def upload_receipt_text(
     payload: PasteTextPayload, profile_id: int = Depends(require_profile_id)
 ):
-    """Epic 3.2 — pasted text bypasses OCR entirely."""
+    """Epic 3.2 — pasted text bypasses OCR entirely.
 
-    parsed = receipt_text_parser.parse_receipt_text_offline(payload.text)
+    allow_plain_names=True here (never for the file-upload path above): a
+    manually typed list like "Paprika, Apfel, Huhn" carries no prices at
+    all, which is fine for a human typing it in but would otherwise fail
+    every price-anchored heuristic in the parser."""
+
+    parsed = receipt_text_parser.parse_receipt_text_offline(
+        payload.text, allow_plain_names=True
+    )
     return _persist_parsed(parsed, "pasted_text", payload.text, profile_id)
 
 

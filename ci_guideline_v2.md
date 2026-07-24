@@ -11,6 +11,11 @@ dosiert eingebaut wird die *Wärme* aus dem UI-Mockup — aber nur dort, wo sie
 Frische-/Status-Signale werden farbig lesbar. Die *Ruhe* bleibt dort, wo sie
 zählt: Ink-Buttons, Ringe als Default, keine Hex-Werte in Komponenten.
 
+> **Sprache:** Dieses Guideline-Dokument ist die interne Arbeitsgrundlage und
+> bleibt auf **Deutsch**. Die **Produkt-/UI-Sprache ist Englisch** – alle
+> Beispiel-Texte, Button-Labels und Voice-&-Tone-Beispiele unten sind daher in
+> der Produktsprache (Englisch) notiert.
+
 > Quelle der Wahrheit sind die Design-Tokens in `index.css`. Werte hier nie
 > als Hex hart in Komponenten kopieren – immer die Token-Klassen benutzen
 > (`bg-accent`, `text-ink`, `ring-black/5`, `bg-warn-soft` …).
@@ -42,7 +47,8 @@ zählt: Ink-Buttons, Ringe als Default, keine Hex-Werte in Komponenten.
     Wortmarke: text-sm, font-medium, tracking-tight
 ```
 
-**Wortmarke:** immer „Nährbert", CamelCase, ein Wort.
+**Wortmarke:** immer „Nährbert", CamelCase, ein Wort (Markenname – **nicht**
+übersetzen, auch in der englischen UI).
 
 **Don'ts**
 - Blatt nicht verzerren, drehen oder mit Farbverlauf füllen.
@@ -81,11 +87,12 @@ signalisiert „gut/frisch/ok" – rechts daneben clay (Warnung) und amber (Acht
 | `--caution-soft` | `bg-caution-soft` | `#F6ECD6` | Achtung-Fläche/Badge |
 | `--danger` | `text-danger` / `bg-red-500` | `#DC2626` | Fehler · destruktive Aktion · Benachrichtigungs-Punkt |
 
-> **Kontrast-Hinweis (Barrierefreiheit):** Die *Text*-Töne `warn`/`caution`
-> sind gegenüber dem Mockup abgedunkelt (clay `#C2683F` → `#A8522E`, amber
-> `#CF9A34` → `#8A6A15`), damit sie auf `surface` **und** auf ihrer soft-Fläche
-> WCAG AA erreichen. Die *hellen* Originaltöne (`#C2683F`, `#CF9A34`) nur für
-> **nicht-textuelle** Elemente verwenden – Balken, Punkte, Ring-Füllungen.
+> **Kontrast-Hinweis (Barrierefreiheit, freigegeben):** Die *Text*-Töne
+> `warn`/`caution` sind gegenüber dem Mockup abgedunkelt (clay `#C2683F` →
+> `#A8522E`, amber `#CF9A34` → `#8A6A15`), damit sie auf `surface` **und** auf
+> ihrer soft-Fläche WCAG AA erreichen. Die *hellen* Originaltöne (`#C2683F`,
+> `#CF9A34`) nur für **nicht-textuelle** Elemente verwenden – Balken, Punkte,
+> Ring-Füllungen.
 
 **Grundsätze**
 - **Ein Marke-Akzent.** Salbeigrün ist der einzige Markenfarbton. Keine zweite
@@ -109,14 +116,13 @@ Elevation-Token** – kein Default. Fläche liegt flach; nur was *schwebt* oder
 |---|---|---|---|
 | **0 – flach** | `ring-1 ring-black/5` | (kein Schatten) | Standard: Karten, Zeilen, Inputs |
 | **1 – angehoben** | `shadow-raise` | `0 8px 22px -14px rgb(29 29 33/.25)` | aktive/fokussierte Karte, Rezept-Highlight |
-| **2 – schwebend** | `shadow-float` | `0 1px 2px rgb(29 29 33/.05), 0 10px 28px rgb(29 29 33/.08)` | FAB, Toast, Sheets, Dropdown-Overlays, Modals |
+| **2 – schwebend** | `shadow-float` | `0 1px 2px rgb(29 29 33/.05), 0 10px 28px rgb(29 29 33/.08)` | Toast, Sheets, Dropdown-Overlays, Modals |
 
 **Regeln**
 - **Default bleibt flach** (Ring + Flächenwechsel). Karten und Listenzeilen
   bekommen **keinen** Schatten.
 - Schatten signalisiert „liegt über dem Layout" – daher nur für Elemente, die
-  das auch tun (schwebender Button, Toast, Overlay) oder für einen einzelnen
-  hervorgehobenen Block.
+  das auch tun (Toast, Overlay) oder für einen einzelnen hervorgehobenen Block.
 - Nie Ring **und** Schatten der Stufe 2 zusammen als reine Deko stapeln.
 
 ---
@@ -144,8 +150,9 @@ Durchgängig: `font-medium` als Standardgewicht, `tracking-tight` bei
 
 **Zahlen *(neu in v2)*:** Alle Mess-/Nährwerte mit `tabular-nums`
 (`font-variant-numeric`), damit Mengen und Makros in Spalten sauber
-untereinander stehen. Deutsches Zahlenformat: Tausenderpunkt, Dezimalkomma
-(`2.431 kcal`, `1,5 l`). Einheiten mit schmalem Leerzeichen vom Wert trennen.
+untereinander stehen. **Zahlenformat folgt der aktiven Locale** – Produkt-Default
+ist aktuell Englisch (`en`): Tausender-Komma, Dezimalpunkt (`2,431 kcal`,
+`1.5 l`). Einheiten mit schmalem Leerzeichen vom Wert trennen.
 
 ---
 
@@ -171,7 +178,7 @@ inaktiv `bg-surface text-ink/55`, aktiv `bg-ink text-canvas`.
 
 ---
 
-## 6. Layout & Responsive *(erweitert in v2)*
+## 6. Layout & Navigation *(erweitert & entschieden in v2)*
 
 - **Content-Spalte:** zentriert, `mx-auto max-w-3xl`. Nav & Main teilen dieselbe
   Breite.
@@ -179,13 +186,29 @@ inaktiv `bg-surface text-ink/55`, aktiv `bg-ink text-canvas`.
   aber auf Desktop sauber hoch. Die zentrierte Spalte darf am Desktop **nicht**
   wie ein „Handy im Browser" wirken – Kopf-/Fußbereiche dürfen die volle
   Fensterbreite nutzen, der Content bleibt in der Lesespalte.
-- **Navigationsmodell (zu klären mit Team):** v1 beschrieb Tab-Pills oben; der
-  Mockup nutzt eine Bottom-Nav + FAB (mobil). **Empfehlung:** eine
-  responsive Navigation – Bottom-Nav + FAB auf schmalen Viewports (`< md`),
-  Tab-Pills in der Kopfzeile ab `md`. Wichtig ist **ein** Modell pro Breakpoint,
-  nicht beide gleichzeitig.
-- **Kopfzeile (Nav):** `flex items-center gap-3 px-6 py-6` – Logo links,
-  Tab-Pills + Icon-Buttons + Sprach-Toggle rechts.
+
+### Navigationsmodell — **entschieden: Sticky Top-Nav auf allen Breakpoints**
+
+Weil Nährbert eine **App im Webbrowser** ist (nicht nativ), liegt die Navigation
+auf **jedem** Breakpoint in einer klebrigen Kopfzeile:
+
+```
+Kopfzeile (sticky top, ein Modell für Mobile & Desktop):
+  Logo links · Tab-Pills (Basket / Tipp / Insights) · „+ Bon“ · Profil-Icon rechts
+  Content darunter in mx-auto max-w-3xl
+```
+
+**Begründung**
+- Kollidiert **nicht** mit der mobilen Browser-Chrome (URL-Leiste,
+  Home-Indicator, ein-/ausfahrende Safari-Toolbar), anders als eine fixe
+  Bottom-Nav.
+- **Ein** Nav-Modell für Mobile & Desktop → eine Komponente, weniger Wartung.
+- Passt zum Web-Mentalmodell (Zurück-Button, URL, Teilen).
+
+**Ausnahme:** Bottom-Nav + FAB nur, falls Nährbert später gezielt als
+**installierbare PWA** mit App-Feel positioniert wird – dann als bewusste
+Entscheidung inkl. `env(safe-area-inset-bottom)`-Handling.
+
 - **Abschnittslabel:** Bereiche mit `<SectionLabel>` (Eyebrow) einleiten statt
   mit großen Zwischenüberschriften.
 - **Vertikaler Rhythmus:** Gruppen über `flex`/`grid` + `gap` bzw. `space-y-*`
@@ -209,7 +232,7 @@ rounded-2xl bg-surface p-5 ring-1 ring-black/5
   als Standard-Trennung.
 - **Akzent-Box** (Hinweis/Highlight): `bg-accent-soft` mit `text-accent-ink`.
 - **Signal-Box** (Frische/Status): entsprechende soft-Fläche + Text-Ton, z. B.
-  `bg-warn-soft text-warn` für „läuft ab".
+  `bg-warn-soft text-warn` für „expiring soon“.
 - **Sekundär-Box** (eingebettet, ruhig): `bg-zinc-50 ring-1 ring-black/5`.
 
 ---
@@ -221,9 +244,10 @@ rounded-2xl bg-surface p-5 ring-1 ring-black/5
 w-full rounded-2xl bg-ink px-6 py-4 text-sm font-medium tracking-tight
 text-canvas transition-opacity disabled:opacity-40
 ```
+Beispiel-Label (Produktsprache Englisch): „Generate recipe“.
 
 **Akzent-Soft-Button** *(neu in v2)* – für leichte, positive Inline-Aktionen
-(z. B. „Gegessen", „Merken"):
+(Produkt-Labels z. B. „Eaten“, „Save“):
 ```
 rounded-full bg-accent-soft px-3 py-1.5 text-xs font-medium
 text-accent-ink ring-1 ring-black/5 transition
@@ -281,7 +305,7 @@ custom-gestylte Liste. Konsistent mit allen anderen Eingaben.
   ```
   <details open className="overflow-hidden rounded-2xl bg-surface ring-1 ring-black/5">
   ```
-- **Inline-Disclosure** („Warum?" / Details) dezent:
+- **Inline-Disclosure** („Why?“ / Details) dezent:
   ```
   <details className="text-xs text-ink/50">
     <summary className="cursor-pointer"> … </summary>
@@ -298,7 +322,7 @@ Bewegung ist funktional, nicht dekorativ – sie erklärt Zustandswechsel.
 - **Dauer:** kurz (`120–280 ms`), `ease`/`ease-out`. Micro-Feedback (Button
   gedrückt) `~50 ms scale(.97)`.
 - **Erlaubt:** Ein-/Ausblenden von Toasts & Sheets, „pop" neuer Chat-Bubbles,
-  sanftes Opacity-Fade beim „Gegessen"-Abhaken, Fortschrittsbalken.
+  sanftes Opacity-Fade beim Abhaken („Eaten“), Fortschrittsbalken.
 - **Tabu:** Dauer-Loops, parallaxe Deko, alles, was vom Inhalt ablenkt.
 - **`prefers-reduced-motion`: Pflicht.** Bei reduzierter Bewegung Transitions
   abschalten (`* { transition: none }`) und Animationen durch einfaches
@@ -310,14 +334,17 @@ Bewegung ist funktional, nicht dekorativ – sie erklärt Zustandswechsel.
 
 Jede datengetriebene Ansicht braucht drei Zustände neben dem Normalfall –
 in einer Vorrats-/Bon-App sind sie kein Sonderfall, sondern Alltag.
+Beispiel-Copy in Produktsprache (Englisch):
 
 - **Laden:** Skeleton-Platzhalter in `bg-zinc-50` mit dezentem Puls (respektiert
   `reduced-motion`). Kein blockierender Vollbild-Spinner.
 - **Leer:** freundlich und handlungsleitend im Nährbert-Ton – Blatt/Emoji,
-  ein Satz, **eine** klare Primäraktion (z. B. leerer Vorrat → „Ersten Bon
-  hinzufügen"). Nie nur „Keine Daten".
+  ein Satz, **eine** klare Primäraktion. Beispiel (leerer Vorrat):
+  *„No items yet — add your first receipt to get started.“* → Button *„Add receipt“*.
+  Nie nur „No data".
 - **Fehler:** sagt, *was* schiefging und *wie weiter* (`text-warn`/`text-danger`
-  + Wiederholen-Aktion). Keine Roh-Fehlercodes, keine Entschuldigungs-Floskeln.
+  + Wiederholen-Aktion). Beispiel: *„Couldn't read that receipt. Try another
+  photo or add items manually.“* Keine Roh-Fehlercodes, keine Floskeln.
 - **On-device-Kontext:** OCR/Parsing kann fehlschlagen → immer manueller
   Korrektur-/Wiederholungsweg, nie Sackgasse.
 
@@ -333,20 +360,26 @@ in einer Vorrats-/Bon-App sind sie kein Sonderfall, sondern Alltag.
   Reihenfolge.
 - **Semantik & Labels:** echte Buttons/Links, `aria-hidden` auf dekorativen
   Emoji, `aria-label` auf Icon-only-Buttons, `aria-live="polite"` auf Toasts.
+- **Sprache:** `<html lang="en">` setzen (Produktsprache), damit Screenreader
+  korrekt aussprechen.
 - **Touch-Ziele:** siehe §6 (≥ 44 px).
 
 ---
 
-## 14. Voice & Tone *(neu in v2)*
+## 14. Voice & Tone *(neu in v2 · Produktsprache Englisch)*
 
 Die Marke **ist** der Coach „Nährbert" – die Sprache trägt die Identität mit.
+Produkttexte sind **Englisch**.
 
-- **Warm, knapp, ermutigend.** Kleine Schritte feiern („Kleine Schritte zählen 🌱"),
-  nie moralisieren oder mit Kalorien drohen.
-- **Du-Ansprache**, aktiv, konkret: der Button sagt, was passiert.
-- **Ehrlich über Schätzungen:** „Trends, keine exakten Werte · keine
-  medizinische Beratung" – Vertrauen vor Präzisions-Behauptung.
+- **Warm, knapp, ermutigend.** Kleine Fortschritte feiern (*„Small steps
+  count 🌱“*), nie moralisieren oder mit Kalorien drohen.
+- **Direkte „you"-Ansprache**, aktiv, konkret: der Button sagt, was passiert
+  (*„Generate recipe“*, danach Toast *„Recipe ready“*).
+- **Ehrlich über Schätzungen:** *„Trends, not exact values · not medical
+  advice.“* – Vertrauen vor Präzisions-Behauptung.
 - **Sparsam mit Emoji** in Fließtext: 🌱 als Signatur, sonst zurückhaltend.
+- **Fehlermeldungen** erklären *was* und *wie weiter*, ohne Entschuldigung
+  oder Vagheit.
 
 ---
 
@@ -372,8 +405,10 @@ Elevation-Modell (§3).
 - Funktionsfarben **nur** für Status (Frische, Ziel-Abweichung, Fehler).
 - Abstufungen über `text-ink/NN`-Deckkraft.
 - Ringe als Default, Schatten bewusst nach Elevation-Modell.
+- Sticky Top-Nav als **einziges** Nav-Modell (Mobile & Desktop).
 - Jede Ansicht mit Lade-/Leer-/Fehler-Zustand denken.
 - Farbe immer mit Text/Icon doppeln (Barrierefreiheit).
+- Produkt-UI konsequent auf **Englisch**.
 
 **Don't**
 - Keine hart kodierten Hex-Werte in Komponenten (`#7c9a6a`/`#c2683f` etc.).
@@ -381,16 +416,16 @@ Elevation-Modell (§3).
 - Vollton-Akzentfarbe nicht für Standard-Buttons (nur soft-Variante).
 - Funktionsfarben nicht als Deko missbrauchen.
 - Schatten nicht als Standard-Trennung von Flächen.
+- Keine Bottom-Nav/FAB (außer bewusster PWA-Ausnahme, §6).
 - Keine externen Fonts/Icon-Libraries einführen.
 - Status nie nur über Farbe kommunizieren.
+- Markennamen „Nährbert" nicht übersetzen.
 
 ---
 
 ## 17. Offen / Nächste Schritte
 
 - **Dark Mode** als eigenes Token-Set nachziehen (v2 hält die Struktur bereit).
-- **Navigationsmodell** (Bottom-Nav vs. Tab-Pills je Breakpoint, §6) im Team
-  final entscheiden.
 - Signal-Töne vor Umsetzung einmal mit echtem Kontrast-Check (AA) gegen die
   finalen soft-Flächen prüfen.
 
@@ -398,14 +433,15 @@ Elevation-Modell (§3).
 
 ## Anhang · Changelog v1 → v2
 
-- **Neu:** Funktions-/Signalebene (§2.2) – clay/amber/sage-ok, abgedunkelt für AA.
+- **Neu:** Funktions-/Signalebene (§2.2) – clay/amber/sage-ok, abgedunkelt für AA (freigegeben).
 - **Neu:** Elevation & Schatten (§3) – Schatten ist Token, nicht mehr verboten.
 - **Neu:** Motion (§11), Zustände Laden/Leer/Fehler (§12), Barrierefreiheit (§13),
   Voice & Tone (§14).
+- **Entschieden:** Navigationsmodell (§6) – **Sticky Top-Nav** auf allen Breakpoints,
+  Bottom-Nav nur als PWA-Ausnahme.
 - **Geändert:** Icons (§5) – SVG für Struktur/Nav, Emoji für Inhalt, Web-Rendering-Begründung.
-- **Geändert:** Layout → „Layout & Responsive" (§6) – Web-App, Breakpoints,
-  Navigationsmodell, Touch-Ziele.
+- **Geändert:** Layout → „Layout & Navigation" (§6) – Web-App, Touch-Ziele.
 - **Geändert:** Buttons (§8) – neue Akzent-soft-Variante; Vollton-Akzent weiter tabu.
-- **Geändert:** Karten (§7) & Farben (§2.1) – `accent-ink`-Token, Signal-Box,
-  Schatten-Sprache an Elevation-Modell angepasst.
-- **Ergänzt:** Typografie (§4) – Zahlen/`tabular-nums`, deutsches Zahlenformat.
+- **Geändert:** Karten (§7) & Farben (§2.1) – `accent-ink`-Token, Signal-Box, Elevation-Sprache.
+- **Ergänzt:** Typografie (§4) – Zahlen/`tabular-nums`, Locale-Zahlenformat (en-Default).
+- **Sprache:** Doc bleibt Deutsch; **Produkt-/UI-Copy Englisch** (Beispiele durchgängig angepasst).

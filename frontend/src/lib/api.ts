@@ -506,6 +506,13 @@ export function searchCandidates(
   )
 }
 
+/** Same OFF + BLS search as searchCandidates, but not tied to an existing
+ * receipt item -- used by the manual "add to basket" flow, where the item
+ * doesn't exist yet (GET /match/candidates). */
+export function searchMatchCandidates(query: string): Promise<CandidatesResponse> {
+  return request<CandidatesResponse>(`/match/candidates?q=${encodeURIComponent(query)}`)
+}
+
 /** Persists a manually-picked candidate and remembers it as a verified match. */
 export function correctReceiptItem(
   receiptId: string,
@@ -599,6 +606,26 @@ export type PantryRemovalReason = 'eaten' | 'removed'
  * withdrawals); `original_quantity` is what was bought. kcal/macros are
  * scaled to the remaining amount. Pantry is food-only so there's no
  * is_non_food. */
+/** Fuzzy urgency buckets (see shelf_life.py). Ordered most -> least urgent. */
+export type Urgency = 'expired' | 'soon' | 'week' | 'long' | 'unknown'
+
+/** Stable keys of the coarse food groups (see shelf_life.FOOD_GROUP_LABELS). */
+export type FoodGroup =
+  | 'fruits'
+  | 'vegetables'
+  | 'dairy_eggs'
+  | 'meat'
+  | 'fish_seafood'
+  | 'bread_bakery'
+  | 'grains_starches'
+  | 'legumes_pantry'
+  | 'oils_condiments'
+  | 'sweets_snacks'
+  | 'beverages'
+  | 'nuts_seeds'
+  | 'frozen'
+  | 'other'
+
 export interface PantryItem {
   id: string
   receipt_id: string
@@ -618,6 +645,16 @@ export interface PantryItem {
   /** Canonical leaf category set for every lot at parse time (e.g.
    * "tropical_fruits") -- drives the Basket's food-group emoji. */
   category: string | null
+  /** Coarse food group (e.g. "fish_seafood") -- drives the "by category"
+   * view, the category filter, and which shelf-life estimate applies. */
+  food_group: FoodGroup
+  /** Human label for `food_group` ("Fish & Seafood"). */
+  food_group_label: string
+  /** Fuzzy urgency bucket from the ESTIMATED shelf life. The server never
+   * sends the estimated date or a day count -- only this bucket -- so the UI
+   * can show a traffic-light / soft label without presenting a guess as a
+   * fact. 'expired'+'soon' together are the "next 3 days" set. */
+  urgency: Urgency
   fallback_category: string | null
   confidence: number | null
   calories_kcal: number | null
@@ -672,6 +709,68 @@ export function addPantryRemoval(
 /** Undo a withdrawal -- the lot reappears in the pantry. */
 export function deletePantryRemoval(removalId: string): Promise<void> {
   return request<void>(`/pantry/removals/${removalId}`, { method: 'DELETE' })
+}
+
+/** One food group's effective shelf-life estimate: the days the urgency sort
+ * uses (code default merged with this profile's override), plus whether the
+ * current value is a user override. `shelf_life_days` is null for groups with
+ * no estimate (Other) or ones the user opted out. */
+export interface ShelfLifeGroup {
+  food_group: FoodGroup
+  label: string
+  shelf_life_days: number | null
+  is_override: boolean
+}
+
+export interface ShelfLifeConfig {
+  groups: ShelfLifeGroup[]
+}
+
+/** The effective per-group shelf-life config driving the basket's urgency. */
+export function getShelfLife(): Promise<ShelfLifeConfig> {
+  return request<ShelfLifeConfig>('/pantry/shelf-life')
+}
+
+/** Save per-group overrides ({food_group: days|null}) for this profile and
+ * get the recomputed effective config back. A null value opts a group out of
+ * urgency; omit a group to keep its current value. */
+export function updateShelfLife(
+  days: Partial<Record<FoodGroup, number | null>>,
+): Promise<ShelfLifeConfig> {
+  return request<ShelfLifeConfig>('/pantry/shelf-life', {
+    method: 'PUT',
+    body: JSON.stringify({ days }),
+  })
+}
+
+/** A candidate picked in the fix-match search, attached to a manual add so
+ * its verified name + nutrition are used instead of the auto-resolver. */
+export interface ManualItemMatch {
+  matched_name: string
+  off_id?: string | null
+  bls_code?: string | null
+  nutrition: CandidateNutrition
+}
+
+/** Manually add a food to the basket (POST /pantry/items). Creates a one-item
+ * confirmed "Manuell" receipt dated today, so the item appears in both the
+ * basket and the purchases view. Omit `match` to let the server resolve
+ * nutrition from the name; pass one to use a fix-match pick. */
+export function createPantryItem(input: {
+  name: string
+  quantity: number
+  unit: string | null
+  match?: ManualItemMatch | null
+}): Promise<ReceiptItem> {
+  return request<ReceiptItem>('/pantry/items', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: input.name,
+      quantity: input.quantity,
+      unit: input.unit,
+      ...(input.match ? { match: input.match } : {}),
+    }),
+  })
 }
 
 // ── Feedback (recipe recommendations feature) ─────────────────────────────

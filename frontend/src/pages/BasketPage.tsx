@@ -12,7 +12,15 @@ import {
   type PantryItem,
   type PantryRemovalReason,
 } from '../lib/api'
+import { AddItemPanel } from '../components/AddItemPanel'
+import { BasketControls } from '../components/BasketControls'
 import { MatchSearchPanel } from '../components/MatchSearchPanel'
+// ShelfLifePanel (per-category shelf-life editor) is intentionally NOT
+// surfaced to end users yet: the estimate stays a conservative default and
+// the basket shows only the fuzzy urgency, never a number. The config is
+// still editable server-side (GET/PUT /pantry/shelf-life) so a later
+// best-before-date (MHD) feature can turn the panel back on.
+import { UrgencyBadge } from '../components/UrgencyBadge'
 import { categoryEmoji, EMOJI_GROUP_LABEL } from '../lib/categoryEmoji'
 import { formatFallbackCategory, matchInfo } from '../lib/matchInfo'
 import {
@@ -20,6 +28,13 @@ import {
   QUANTITY_BASIS_LABEL,
   type QuantityBasis,
 } from '../lib/quantityBasis'
+import {
+  applyFilters,
+  groupByCategory,
+  NO_FILTERS,
+  type BasketFilters,
+  type BasketView,
+} from '../lib/shelfLife'
 
 type LoadState =
   | { status: 'loading' }
@@ -116,6 +131,24 @@ export function BasketPage() {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [actionError, setActionError] = useState<string | null>(null)
   const [lastAction, setLastAction] = useState<LastAction | null>(null)
+  const [adding, setAdding] = useState(false)
+  // View toggle (A/B) and filters are separate controls (see BasketControls).
+  const [view, setView] = useState<BasketView>('urgency')
+  const [filters, setFilters] = useState<BasketFilters>(NO_FILTERS)
+  // Which category groups are collapsed in the "by category" view. Default
+  // (absent) = expanded; local + transient (resets on reload).
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<PantryItem['food_group']>>(
+    () => new Set(),
+  )
+
+  function toggleGroupCollapsed(group: PantryItem['food_group']) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(group)) next.delete(group)
+      else next.add(group)
+      return next
+    })
+  }
 
   function load() {
     return getPantry()
@@ -206,6 +239,14 @@ export function BasketPage() {
     }
   }
 
+  // The AddItemPanel already created the lot server-side; just close and
+  // reload so it appears (an empty basket flips to 'ready').
+  function handleAdded() {
+    setAdding(false)
+    setActionError(null)
+    void load()
+  }
+
   if (state.status === 'loading') {
     return (
       <section>
@@ -237,18 +278,61 @@ export function BasketPage() {
     </p>
   )
 
+  // Manually add a lot (Vorrat.md): a toggle button, or the open panel. Shown
+  // in both the empty and populated states so an empty basket can be filled by
+  // hand, not only from a receipt.
+  const addControls = adding ? (
+    <AddItemPanel onAdded={handleAdded} onClose={() => setAdding(false)} />
+  ) : (
+    <button type="button" className="btn-secondary basket-add-btn" onClick={() => setAdding(true)}>
+      ＋ Add item manually
+    </button>
+  )
+
   if (state.status === 'empty') {
     return (
       <section>
         <h1>Basket</h1>
         {undoBanner}
         <p>
-          Your basket is empty. It fills up as you <Link to="/upload">upload receipts</Link>,
-          and empties as you mark things eaten or removed.
+          Your basket is empty. It fills up as you <Link to="/upload">upload receipts</Link> or add
+          items by hand, and empties as you mark things eaten or removed.
         </p>
+        {addControls}
       </section>
     )
   }
+
+  // Server already returns view-A order (ascending estimated expiry, most
+  // urgent first). Filters never reorder; grouping (view B) preserves order.
+  // The category filter is a view-A concept only -- in "by category" the
+  // groups are the headers, so we drop hiddenGroups there (the control is
+  // hidden too, see BasketControls) while keeping search + next-3-days.
+  const effectiveFilters =
+    view === 'category' ? { ...filters, hiddenGroups: new Set<PantryItem['food_group']>() } : filters
+  const visible = applyFilters(state.items, effectiveFilters, displayName)
+
+  // Distinct food groups present in the FULL basket (not the filtered set),
+  // in first-seen (urgency) order, so hiding a category doesn't remove its
+  // own toggle chip.
+  const availableGroups: { group: (typeof state.items)[number]['food_group']; label: string }[] = []
+  const seenGroups = new Set<string>()
+  for (const item of state.items) {
+    if (!seenGroups.has(item.food_group)) {
+      seenGroups.add(item.food_group)
+      availableGroups.push({ group: item.food_group, label: item.food_group_label })
+    }
+  }
+
+  const renderRow = (item: PantryItem) => (
+    <BasketRow
+      key={item.id}
+      item={item}
+      onWithdraw={(reason, quantity) => void handleWithdraw(item, reason, quantity)}
+      onEdit={(fields) => void handleEdit(item, fields)}
+      onCorrect={(correction) => void handleCorrect(item, correction)}
+    />
+  )
 
   return (
     <section>
@@ -262,17 +346,50 @@ export function BasketPage() {
         </p>
       )}
 
-      <ul className="purchase-list">
-        {state.items.map((item) => (
-          <BasketRow
-            key={item.id}
-            item={item}
-            onWithdraw={(reason, quantity) => void handleWithdraw(item, reason, quantity)}
-            onEdit={(fields) => void handleEdit(item, fields)}
-            onCorrect={(correction) => void handleCorrect(item, correction)}
-          />
-        ))}
-      </ul>
+      {addControls}
+
+      <BasketControls
+        view={view}
+        onViewChange={setView}
+        filters={filters}
+        onFiltersChange={setFilters}
+        availableGroups={availableGroups}
+      />
+
+      {visible.length === 0 ? (
+        <p className="callout callout--muted">No items match the current filters.</p>
+      ) : view === 'category' ? (
+        groupByCategory(visible).map((cat) => {
+          const collapsed = collapsedGroups.has(cat.group)
+          const listId = `basket-group-${cat.group}`
+          return (
+            <div key={cat.group} className="basket-group">
+              <h2 className="basket-group__head">
+                <button
+                  type="button"
+                  className="basket-group__toggle"
+                  aria-expanded={!collapsed}
+                  aria-controls={listId}
+                  onClick={() => toggleGroupCollapsed(cat.group)}
+                >
+                  <span className="basket-group__caret" aria-hidden="true">
+                    {collapsed ? '▸' : '▾'}
+                  </span>
+                  <span className="basket-group__label">{cat.label}</span>
+                  <span className="basket-group__count">{cat.items.length}</span>
+                </button>
+              </h2>
+              {!collapsed && (
+                <ul id={listId} className="purchase-list">
+                  {cat.items.map(renderRow)}
+                </ul>
+              )}
+            </div>
+          )
+        })
+      ) : (
+        <ul className="purchase-list">{visible.map(renderRow)}</ul>
+      )}
     </section>
   )
 }
@@ -384,7 +501,10 @@ function BasketRow({
             ✎
           </button>
         </span>
-        {macrosLine}
+        <span className="basket-row__meta-line">
+          <UrgencyBadge urgency={item.urgency} />
+          {macrosLine}
+        </span>
       </div>
       <span className="purchase-row__qty">
         {editingQty ? (
@@ -480,23 +600,7 @@ function BasketRow({
                 onChange={(e) => setAmount(clampAmount(Number(e.target.value)))}
                 aria-label={`Amount ${REASON_VERB[panel]} (${item.unit ?? ''})`}
               />
-              <div className="basket-row__amount">
-                <input
-                  type="number"
-                  min={0}
-                  max={remaining}
-                  step="any"
-                  value={amount}
-                  onChange={(e) => setAmount(clampAmount(Number(e.target.value)))}
-                  aria-label={`Amount ${REASON_VERB[panel]} (${item.unit ?? ''})`}
-                />
-                <span className="muted">{item.unit}</span>
-                {partial && (
-                  <button type="button" className="btn-link" onClick={() => setAmount(remaining)}>
-                    All ({formatAmount(remaining, item.unit)})
-                  </button>
-                )}
-              </div>
+              <span className="basket-row__slider-value">{amountLabel}</span>
             </div>
           ) : (
             <div className="basket-row__slider">

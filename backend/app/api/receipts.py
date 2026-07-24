@@ -7,14 +7,13 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from backend.app.analytics.match_quality import compute_match_quality
+from backend.app.api import match
 from backend.app.core.auth import require_profile_id
 from backend.app.db import repo
 from backend.app.models.nutrition import MatchedProduct
 from backend.app.services import (
-    bls_matcher,
     local_extractor,
     non_food_terms,
-    off_api,
     receipt_text_parser,
     verified_matches,
 )
@@ -205,59 +204,17 @@ def confirm_receipt(receipt_id: str, profile_id: int = Depends(require_profile_i
     }
 
 
-_CANDIDATE_POOL_SIZE = 15  # over-fetch so filtering out incomplete macros still leaves _CANDIDATE_RESULT_SIZE
-_CANDIDATE_RESULT_SIZE = 5
-_MACRO_FIELDS = ("calories_kcal", "protein_g", "fat_g", "carbs_g")
-
-
-def _has_macros(nutrition: dict) -> bool:
-    return all(nutrition.get(f) is not None for f in _MACRO_FIELDS)
-
-
 @router.get("/{receipt_id}/items/{item_id}/candidates")
 def search_candidates(
     receipt_id: str, item_id: str, q: str, profile_id: int = Depends(require_profile_id)
 ):
     """Epic 4.2 — search OFF + BLS for a manual pick, for items flagged
-    below the confidence threshold in review. Restricted to the top 5
-    candidates per source that carry a complete macro profile — a match
-    missing calories/protein/fat/carbs isn't a usable pick."""
+    below the confidence threshold in review. The receipt-scoped twin of
+    GET /match/candidates: same search, plus an ownership check on the item
+    being corrected."""
 
     _owned_receipt_or_404(receipt_id, profile_id)
-
-    off_candidates = []
-    for p in off_api.search_products(q, page_size=_CANDIDATE_POOL_SIZE):
-        nutrition = off_api.extract_nutrition(p).model_dump()
-        if not _has_macros(nutrition):
-            continue
-        off_candidates.append(
-            {
-                "source": "off",
-                "off_id": str(p.get("code")) if p.get("code") else None,
-                "matched_name": off_api.product_display_name(p),
-                "nutrition": nutrition,
-            }
-        )
-        if len(off_candidates) >= _CANDIDATE_RESULT_SIZE:
-            break
-
-    bls_candidates = []
-    for rec in bls_matcher.search_bls(q, page_size=_CANDIDATE_POOL_SIZE):
-        nutrition = bls_matcher.record_nutrition(rec)
-        if not _has_macros(nutrition):
-            continue
-        bls_candidates.append(
-            {
-                "source": "bls",
-                "bls_code": rec["code"],
-                "matched_name": rec["name_de"],
-                "nutrition": nutrition,
-            }
-        )
-        if len(bls_candidates) >= _CANDIDATE_RESULT_SIZE:
-            break
-
-    return {"candidates": off_candidates + bls_candidates}
+    return {"candidates": match.search_candidates(q)}
 
 
 @router.post("/{receipt_id}/items/{item_id}/correct")

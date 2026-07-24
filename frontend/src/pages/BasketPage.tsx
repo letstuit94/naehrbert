@@ -566,9 +566,9 @@ function BasketRow({
           type="button"
           className={panel === 'eaten' ? 'basket-row__action basket-row__action--active' : 'basket-row__action'}
           onClick={() => openPanel('eaten')}
-          aria-label="Gegessen"
+          aria-label="Eaten"
           aria-pressed={panel === 'eaten'}
-          title="Gegessen"
+          title="Eaten"
         >
           🍴
         </button>
@@ -576,9 +576,9 @@ function BasketRow({
           type="button"
           className={panel === 'removed' ? 'basket-row__action basket-row__action--active' : 'basket-row__action'}
           onClick={() => openPanel('removed')}
-          aria-label="Löschen"
+          aria-label="Remove"
           aria-pressed={panel === 'removed'}
-          title="Löschen (nicht gegessen — verdorben, verschenkt, Fehlscan)"
+          title="Remove (not eaten — spoiled, given away, scan error)"
         >
           🗑️
         </button>

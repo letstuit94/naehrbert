@@ -24,13 +24,13 @@ const URGENCY_LIGHT: Record<Urgency, Light> = {
   unknown: 'grey',
 }
 
-// Soft, non-numeric labels (task: "bald verbrauchen" / "diese Woche" /
-// "lange haltbar"). 'unknown' has no label -- no estimate, nothing to say.
+// Soft, non-numeric labels ("use soon" / "this week" / "lasting").
+// 'unknown' has no label -- no estimate, nothing to say.
 const URGENCY_LABEL: Record<Urgency, string | null> = {
-  expired: 'bald verbrauchen',
-  soon: 'bald verbrauchen',
-  week: 'diese Woche',
-  long: 'lange haltbar',
+  expired: 'use soon',
+  soon: 'use soon',
+  week: 'this week',
+  long: 'lasting',
   unknown: null,
 }
 

@@ -13,6 +13,7 @@ import {
   type PantryRemovalReason,
 } from '../lib/api'
 import { MatchSearchPanel } from '../components/MatchSearchPanel'
+import { categoryEmoji, EMOJI_GROUP_LABEL } from '../lib/categoryEmoji'
 import { formatFallbackCategory, matchInfo } from '../lib/matchInfo'
 import {
   quantityBasis,
@@ -337,6 +338,14 @@ function BasketRow({
     <li className="purchase-row basket-row">
       <div className="purchase-row__name-cell">
         <span className="basket-row__name-line">
+          <span
+            className="basket-row__cat-emoji"
+            title={EMOJI_GROUP_LABEL[categoryEmoji(item)]}
+            aria-label={EMOJI_GROUP_LABEL[categoryEmoji(item)]}
+            role="img"
+          >
+            {categoryEmoji(item)}
+          </span>
           <span
             className={
               match?.lowConfidence

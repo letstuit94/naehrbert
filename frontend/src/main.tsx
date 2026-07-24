@@ -9,17 +9,20 @@ import { OnboardingPage } from './pages/OnboardingPage.tsx'
 import { ProfilePage } from './pages/ProfilePage.tsx'
 import { UploadPage } from './pages/UploadPage.tsx'
 import { BasketPage } from './pages/BasketPage.tsx'
+import { PurchasesPage } from './pages/PurchasesPage.tsx'
 import { ResultsPage } from './pages/ResultsPage.tsx'
+import { TipsPage } from './pages/TipsPage.tsx'
 import { RecipeChatPage } from './pages/RecipeChatPage.tsx'
 
 // v1 flow: Login (pick a user or sign up) -> Onboarding -> Upload ->
 // Basket / Results (Epic 0.1 / Epic 7.3 / multi-user feature), plus Profile
 // (edit an existing profile directly). The Purchases page (browse everything
 // uploaded) is currently hidden -- its route + nav link were removed; the
-// page component is kept for easy restore. Targets and the standalone Recipes
-// page were folded into Results (targets/macro comparison, recipe generation,
-// and the recipe list all live there now). Everything except Login/
-// Onboarding requires a logged-in profile (RequireProfile).
+// page component is kept for easy restore. Results holds the analysis view
+// (targets/macro comparison); recipe generation, the recipe list, and the
+// "unlock recipes" gate live on the separate Tips page (nav label "Recipes",
+// route /tips). Everything except Login/Onboarding requires a logged-in
+// profile (RequireProfile).
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
@@ -31,7 +34,9 @@ createRoot(document.getElementById('root')!).render(
             <Route path="profile" element={<ProfilePage />} />
             <Route path="upload" element={<UploadPage />} />
             <Route path="basket" element={<BasketPage />} />
+            <Route path="purchases" element={<PurchasesPage />} />
             <Route path="results" element={<ResultsPage />} />
+            <Route path="tips" element={<TipsPage />} />
             <Route path="recipes/new" element={<RecipeChatPage />} />
           </Route>
         </Route>

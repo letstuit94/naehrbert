@@ -1226,6 +1226,13 @@ a.btn {
   min-width: 0;
 }
 
+/* Food-group emoji prefix on each lot -- a quick visual category cue. */
+.basket-row__cat-emoji {
+  flex: 0 0 auto;
+  font-size: 16px;
+  line-height: 1;
+}
+
 .basket-row__macros-sub {
   color: var(--text-muted, #888);
   font-size: 12px;

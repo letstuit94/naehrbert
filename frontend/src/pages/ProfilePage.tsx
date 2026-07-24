@@ -424,6 +424,9 @@ export function ProfilePage() {
       </form>
 
       <div className="section-divider">
+        <Link to="/purchases" className="btn btn-secondary">
+          Receipt history
+        </Link>
         <button type="button" className="btn btn-secondary" onClick={logOut}>
           Log out
         </button>

@@ -590,6 +590,9 @@ export interface PantryItem {
   is_non_food: boolean
   match_type: MatchType | null
   matched_name: string | null
+  /** Canonical leaf category set for every lot at parse time (e.g.
+   * "tropical_fruits") -- drives the Basket's food-group emoji. */
+  category: string | null
   fallback_category: string | null
   confidence: number | null
   calories_kcal: number | null

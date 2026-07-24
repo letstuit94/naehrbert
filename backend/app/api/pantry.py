@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from backend.app.core.auth import require_profile_id
 from backend.app.db import repo
+from backend.app.services.fallback_categories import _canonical_category
 from backend.app.services.nutrition_profile import grams_for
 
 router = APIRouter(prefix="/pantry", tags=["pantry"])
@@ -74,6 +75,16 @@ def _pantry_item(row: dict) -> dict:
         "is_non_food": False,
         "match_type": row.get("match_type"),
         "matched_name": row.get("matched_name"),
+        # Canonical leaf category driving the Basket's food-group emoji, on
+        # EVERY lot (not just fallbacks). Derived from the best identity we
+        # have -- the verified matched_name first ("Tomate roh" ->
+        # fruiting_vegetables), else the raw parsed name. The stored `category`
+        # column is NOT used: it's computed at parse time from the raw receipt
+        # line, which is often an abbreviation the keyword table misses (so a
+        # verified tomato would fall back to "other"/📦).
+        "category": _canonical_category(
+            None, row.get("matched_name") or row.get("name") or ""
+        ),
         "fallback_category": row.get("fallback_category"),
         "confidence": row.get("confidence"),
         **macros,

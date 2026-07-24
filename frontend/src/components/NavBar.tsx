@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { to: '/upload', label: 'Upload' },
   { to: '/basket', label: 'Basket' },
   { to: '/results', label: 'Results' },
+  { to: '/tips', label: 'Recipes' },
 ]
 
 export function NavBar() {

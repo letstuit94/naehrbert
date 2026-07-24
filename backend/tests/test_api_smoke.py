@@ -431,6 +431,7 @@ def test_generate_recipe_endpoint(monkeypatch):
         fat_g=10,
         carbs_g=60,
         fiber_g=12,
+        dietary_label="vegan",
     )
     captured_kwargs = {}
 
@@ -481,6 +482,7 @@ def test_generate_recipe_without_body_uses_no_cuisine_or_time_limit(monkeypatch)
         fat_g=1,
         carbs_g=65,
         fiber_g=2,
+        dietary_label="vegan",
     )
     captured_kwargs = {}
 
@@ -551,6 +553,107 @@ def test_list_recipes_endpoint(monkeypatch):
     resp = client.get("/recipes", headers=AUTH)
     assert resp.status_code == 200
     assert resp.json()[0]["title"] == "Lentil bowl"
+
+
+_STORED_RECIPE_ROW = {
+    "id": "r1",
+    "profile_id": 1,
+    "title": "Lentil bowl",
+    "ingredients": [{"name": "lentils", "quantity": "200 g"}],
+    "steps": ["Simmer."],
+    "prep_minutes": 5,
+    "cook_minutes": 20,
+    "servings": 2,
+    "calories_kcal": 450,
+    "protein_g": 25,
+    "fat_g": 10,
+    "carbs_g": 60,
+    "fiber_g": 12,
+    "dietary_label": "vegan",
+    "feedback": None,
+    "archived_at": None,
+    "created_at": "2026-07-21T00:00:00+00:00",
+}
+
+
+def test_set_recipe_feedback_endpoint(monkeypatch):
+    monkeypatch.setattr(recipes_api.repo, "get_recipe", lambda rid: _STORED_RECIPE_ROW)
+    captured = {}
+    monkeypatch.setattr(
+        recipes_api.repo,
+        "update_recipe",
+        lambda rid, fields: captured.update(id=rid, fields=fields)
+        or {**_STORED_RECIPE_ROW, **fields},
+    )
+    resp = client.patch("/recipes/r1/feedback", json={"feedback": "up"}, headers=AUTH)
+    assert resp.status_code == 200
+    assert resp.json()["feedback"] == "up"
+    assert captured == {"id": "r1", "fields": {"feedback": "up"}}
+
+
+def test_set_recipe_feedback_clears_with_null(monkeypatch):
+    monkeypatch.setattr(
+        recipes_api.repo, "get_recipe", lambda rid: {**_STORED_RECIPE_ROW, "feedback": "up"}
+    )
+    monkeypatch.setattr(
+        recipes_api.repo,
+        "update_recipe",
+        lambda rid, fields: {**_STORED_RECIPE_ROW, **fields},
+    )
+    resp = client.patch("/recipes/r1/feedback", json={"feedback": None}, headers=AUTH)
+    assert resp.status_code == 200
+    assert resp.json()["feedback"] is None
+
+
+def test_set_recipe_feedback_404_for_another_profiles_recipe(monkeypatch):
+    monkeypatch.setattr(
+        recipes_api.repo, "get_recipe", lambda rid: {**_STORED_RECIPE_ROW, "profile_id": 2}
+    )
+    resp = client.patch("/recipes/r1/feedback", json={"feedback": "down"}, headers=AUTH)
+    assert resp.status_code == 404
+
+
+def test_set_recipe_feedback_401_without_login(monkeypatch):
+    resp = client.patch("/recipes/r1/feedback", json={"feedback": "up"})
+    assert resp.status_code == 401
+
+
+def test_archive_recipe_endpoint(monkeypatch):
+    monkeypatch.setattr(recipes_api.repo, "get_recipe", lambda rid: _STORED_RECIPE_ROW)
+    captured = {}
+    monkeypatch.setattr(
+        recipes_api.repo,
+        "update_recipe",
+        lambda rid, fields: captured.update(id=rid, fields=fields),
+    )
+    resp = client.delete("/recipes/r1", headers=AUTH)
+    assert resp.status_code == 204
+    assert captured["id"] == "r1"
+    assert "archived_at" in captured["fields"]  # soft-delete, not a hard row delete
+
+
+def test_archive_recipe_404_for_another_profiles_recipe(monkeypatch):
+    monkeypatch.setattr(
+        recipes_api.repo, "get_recipe", lambda rid: {**_STORED_RECIPE_ROW, "profile_id": 2}
+    )
+    resp = client.delete("/recipes/r1", headers=AUTH)
+    assert resp.status_code == 404
+
+
+def test_archive_recipe_401_without_login(monkeypatch):
+    resp = client.delete("/recipes/r1")
+    assert resp.status_code == 401
+
+
+def test_list_recipes_excludes_archived(monkeypatch):
+    """get_all_recipes itself does the archived_at filtering (repo.py) --
+    this just confirms the endpoint returns whatever the repo hands back,
+    i.e. it doesn't re-include archived rows some other way."""
+
+    monkeypatch.setattr(recipes_api.repo, "get_all_recipes", lambda profile_id: [])
+    resp = client.get("/recipes", headers=AUTH)
+    assert resp.status_code == 200
+    assert resp.json() == []
 
 
 # ── Pantry / basket (Vorrat.md) ───────────────────────────────────────────

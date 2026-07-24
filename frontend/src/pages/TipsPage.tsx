@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ApiError,
+  archiveRecipe,
   generateRecipe,
   getRecipes,
   getUnlockStatus,
+  setRecipeFeedback,
+  type DietaryStyle,
   type Recipe,
   type RecipeGenerateInput,
   type UnlockStatus,
@@ -17,6 +20,64 @@ function settledSlice<T>(result: PromiseSettledResult<T>): Slice<T> {
   return result.status === 'fulfilled'
     ? { data: result.value, unavailable: false }
     : { data: null, unavailable: true }
+}
+
+// Filter chip labels intentionally plainer than the badge text on the card
+// itself (DIETARY_LABEL_DISPLAY below) -- "Meat"/"Fish"/"Veggie" read faster
+// as quick filter toggles than the more precise "Omnivore"/"Pescatarian".
+const LABEL_FILTERS: { value: DietaryStyle; label: string }[] = [
+  { value: 'omnivore', label: 'Meat' },
+  { value: 'pescatarian', label: 'Fish' },
+  { value: 'vegetarian', label: 'Veggie' },
+  { value: 'vegan', label: 'Vegan' },
+]
+
+const DIETARY_LABEL_DISPLAY: Record<DietaryStyle, string> = {
+  omnivore: 'Omnivore',
+  pescatarian: 'Pescatarian',
+  vegetarian: 'Vegetarian',
+  vegan: 'Vegan',
+}
+
+// Restrictiveness order (fewer animal products -> higher rank) -- mirrors
+// backend/app/services/recipe_engine.py's _DIET_RANK, which uses the exact
+// same hierarchy to check a generated recipe against the requested diet.
+// vegan/vegetarian/pescatarian nest: a vegan recipe (zero animal products)
+// is *also*, definitionally, vegetarian (no meat/fish) and pescatarian (no
+// meat) -- so selecting "Veggie" alone must still surface vegan recipes,
+// not just ones explicitly labeled vegetarian. "Meat" (omnivore) is
+// deliberately NOT part of that widening: it's a "this recipe contains
+// meat" tag, not a restriction level with a looser tier below it -- if it
+// widened the same way (rank 0 matching everything), selecting only
+// "Meat" would show every recipe instead of just the ones with meat in
+// them, making it a no-op filter.
+const DIET_RANK: Record<DietaryStyle, number> = {
+  omnivore: 0,
+  pescatarian: 1,
+  vegetarian: 2,
+  vegan: 3,
+}
+
+function matchesLabelFilters(recipe: Recipe, activeLabels: Set<DietaryStyle>): boolean {
+  // A recipe with no label (generated before dietary_label existed) always
+  // shows -- filtering out data we simply don't have would silently hide
+  // older recipes rather than just not classifying them.
+  if (!recipe.dietary_label) return true
+
+  if (recipe.dietary_label === 'omnivore') return activeLabels.has('omnivore')
+
+  const recipeRank = DIET_RANK[recipe.dietary_label]
+  for (const filter of activeLabels) {
+    if (filter !== 'omnivore' && DIET_RANK[filter] <= recipeRank) return true
+  }
+  return false
+}
+
+function matchesSearch(recipe: Recipe, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  if (recipe.title.toLowerCase().includes(q)) return true
+  return recipe.ingredients.some((ing) => ing.name.toLowerCase().includes(q))
 }
 
 // Recipe generation + the recipe list (and the "unlock recipes" gate that
@@ -33,6 +94,10 @@ export function TipsPage() {
     unavailable: false,
   })
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [activeLabels, setActiveLabels] = useState<Set<DietaryStyle>>(
+    new Set(LABEL_FILTERS.map((f) => f.value)),
+  )
 
   useEffect(() => {
     Promise.allSettled([getUnlockStatus(), getRecipes()]).then(([u, r]) => {
@@ -44,6 +109,29 @@ export function TipsPage() {
 
   function prependRecipe(recipe: Recipe) {
     setRecipes((prev) => ({ data: [recipe, ...(prev.data ?? [])], unavailable: false }))
+  }
+
+  function removeRecipe(id: string) {
+    setRecipes((prev) => ({
+      data: (prev.data ?? []).filter((r) => r.id !== id),
+      unavailable: false,
+    }))
+  }
+
+  function replaceRecipe(updated: Recipe) {
+    setRecipes((prev) => ({
+      data: (prev.data ?? []).map((r) => (r.id === updated.id ? updated : r)),
+      unavailable: false,
+    }))
+  }
+
+  function toggleLabelFilter(value: DietaryStyle) {
+    setActiveLabels((prev) => {
+      const next = new Set(prev)
+      if (next.has(value)) next.delete(value)
+      else next.add(value)
+      return next
+    })
   }
 
   useEffect(() => {
@@ -61,6 +149,11 @@ export function TipsPage() {
     )
   }
 
+  const allRecipes = recipes.data ?? []
+  const visibleRecipes = allRecipes.filter(
+    (r) => matchesSearch(r, search) && matchesLabelFilters(r, activeLabels),
+  )
+
   return (
     <section>
       <h1>Recipes</h1>
@@ -71,14 +164,57 @@ export function TipsPage() {
           <RecipeGenerationForm onGenerated={prependRecipe} />
 
           <h2>Recipes</h2>
-          {recipes.data && recipes.data.length === 0 && (
+          {allRecipes.length === 0 && (
             <p>
               No recipes yet — fill in the form above (or leave it blank) and generate
               one.
             </p>
           )}
-          {recipes.data?.map((recipe) => (
-            <RecipeSummaryCard key={recipe.id} recipe={recipe} />
+
+          {allRecipes.length > 0 && (
+            <div className="recipe-filters">
+              <input
+                type="search"
+                className="recipe-search-input"
+                placeholder="Search recipes or ingredients…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Search recipes"
+              />
+              <div
+                className="filter-bar"
+                role="group"
+                aria-label="Filter by dietary label"
+              >
+                {LABEL_FILTERS.map((filter) => (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    className={
+                      activeLabels.has(filter.value)
+                        ? 'filter-chip filter-chip--active'
+                        : 'filter-chip'
+                    }
+                    onClick={() => toggleLabelFilter(filter.value)}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {allRecipes.length > 0 && visibleRecipes.length === 0 && (
+            <p className="muted">No recipes match your search or filter.</p>
+          )}
+
+          {visibleRecipes.map((recipe) => (
+            <RecipeSummaryCard
+              key={recipe.id}
+              recipe={recipe}
+              onArchived={() => removeRecipe(recipe.id)}
+              onFeedback={replaceRecipe}
+            />
           ))}
         </>
       ) : (
@@ -128,6 +264,17 @@ function UnlockRecipesSection({ status }: { status: UnlockStatus }) {
   )
 }
 
+// Purely cosmetic while the one Gemini call is in flight -- there's no
+// discrete backend phase to reflect (unlike Upload's OCR->parse->match
+// steps), so these just rotate on a timer to keep the wait from feeling
+// like a frozen "Generating..." button.
+const FUN_GENERATING_PHRASES = [
+  "Digging through Grandma's cookbook for something you'll love…",
+  'Double-checking it fits your targets and your taste…',
+  'Adding a little Nährbert magic…',
+] as const
+const PHRASE_ROTATE_MS = 2500
+
 function RecipeGenerationForm({
   onGenerated,
 }: {
@@ -138,11 +285,31 @@ function RecipeGenerationForm({
   const [servings, setServings] = useState('')
   const [generating, setGenerating] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
+  const [phraseIndex, setPhraseIndex] = useState(0)
+  const phraseTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  function startPhraseRotation() {
+    setPhraseIndex(0)
+    if (phraseTimerRef.current) clearInterval(phraseTimerRef.current)
+    phraseTimerRef.current = setInterval(() => {
+      setPhraseIndex((i) => (i + 1) % FUN_GENERATING_PHRASES.length)
+    }, PHRASE_ROTATE_MS)
+  }
+
+  function stopPhraseRotation() {
+    if (phraseTimerRef.current) {
+      clearInterval(phraseTimerRef.current)
+      phraseTimerRef.current = null
+    }
+  }
+
+  useEffect(() => stopPhraseRotation, [])
 
   async function handleGenerate(e: FormEvent) {
     e.preventDefault()
     setGenerating(true)
     setGenerateError(null)
+    startPhraseRotation()
     try {
       const input: RecipeGenerateInput = {}
       const trimmedCuisine = cuisine.trim()
@@ -167,6 +334,7 @@ function RecipeGenerationForm({
       )
     } finally {
       setGenerating(false)
+      stopPhraseRotation()
     }
   }
 
@@ -218,6 +386,10 @@ function RecipeGenerationForm({
       <button className="btn btn-primary" type="submit" disabled={generating}>
         {generating ? 'Generating…' : 'Generate recipe'}
       </button>
+
+      {generating && (
+        <p className="muted recipe-generating-note">{FUN_GENERATING_PHRASES[phraseIndex]}</p>
+      )}
     </form>
   )
 }
@@ -237,25 +409,91 @@ function macroShare(
   }
 }
 
-function RecipeSummaryCard({ recipe }: { recipe: Recipe }) {
+function RecipeSummaryCard({
+  recipe,
+  onArchived,
+  onFeedback,
+}: {
+  recipe: Recipe
+  onArchived: () => void
+  onFeedback: (updated: Recipe) => void
+}) {
   const totalMinutes = recipe.prep_minutes + recipe.cook_minutes
   const share = macroShare(recipe)
   const kcalPerServing =
     recipe.servings && recipe.servings > 0
       ? Math.round(recipe.calories_kcal / recipe.servings)
       : null
+  const [archiving, setArchiving] = useState(false)
+  const [feedbackBusy, setFeedbackBusy] = useState(false)
+
+  async function handleDelete() {
+    if (!window.confirm(`Delete "${recipe.title}"? This can't be undone.`)) return
+    setArchiving(true)
+    try {
+      await archiveRecipe(recipe.id)
+      onArchived()
+    } catch {
+      window.alert('Could not delete that recipe. Please try again.')
+      setArchiving(false)
+    }
+  }
+
+  // Tapping the already-active thumb again clears it (sends null) rather
+  // than being a one-way rating.
+  async function handleFeedback(value: 'up' | 'down') {
+    if (feedbackBusy) return
+    const next = recipe.feedback === value ? null : value
+    setFeedbackBusy(true)
+    try {
+      const updated = await setRecipeFeedback(recipe.id, next)
+      onFeedback(updated)
+    } catch {
+      // best-effort -- a rating that fails to save isn't worth an error banner
+    } finally {
+      setFeedbackBusy(false)
+    }
+  }
 
   return (
     <details className="recipe-card">
       <summary className="recipe-card__summary">
-        <span className="recipe-card__title">{recipe.title}</span>
-        <span className="recipe-card__meta">
-          {totalMinutes} min · Serves {recipe.servings ?? '—'} ·{' '}
-          {kcalPerServing !== null
-            ? `${kcalPerServing} kcal/serving`
-            : `${Math.round(recipe.calories_kcal)} kcal total`}
-          {share && ` · P ${share.protein}% F ${share.fat}% C ${share.carb}%`}
-        </span>
+        {/* Native <details> only renders/hit-tests <summary>'s own subtree
+            while closed -- everything else in a closed <details> is
+            unclickable regardless of position:absolute, so the delete
+            button has to live inside <summary>, not beside it. Its click
+            handler calls preventDefault()/stopPropagation() so pressing it
+            doesn't also toggle the card open (summary's native behavior). */}
+        <button
+          type="button"
+          className="review-row__delete recipe-card__delete"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            void handleDelete()
+          }}
+          disabled={archiving}
+          aria-label={`Delete ${recipe.title}`}
+        >
+          ×
+        </button>
+        <div className="recipe-card__title-row">
+          <span className="recipe-card__title">{recipe.title}</span>
+        </div>
+        <div className="recipe-card__meta-row">
+          <span className="recipe-card__meta">
+            {totalMinutes} min · Serves {recipe.servings ?? '—'} ·{' '}
+            {kcalPerServing !== null
+              ? `${kcalPerServing} kcal/serving`
+              : `${Math.round(recipe.calories_kcal)} kcal total`}
+            {share && ` · P ${share.protein}% F ${share.fat}% C ${share.carb}%`}
+          </span>
+          {recipe.dietary_label && (
+            <span className="chip recipe-card__label">
+              {DIETARY_LABEL_DISPLAY[recipe.dietary_label]}
+            </span>
+          )}
+        </div>
       </summary>
 
       <div className="recipe-card__body">
@@ -284,6 +522,38 @@ function RecipeSummaryCard({ recipe }: { recipe: Recipe }) {
           Estimated by Nährbert — shop these ingredients and upload the receipt to log the
           exact numbers.
         </p>
+
+        <div className="recipe-card__feedback">
+          <span className="muted">What did you think of this recipe?</span>
+          <button
+            type="button"
+            className={
+              recipe.feedback === 'up'
+                ? 'recipe-card__feedback-btn recipe-card__feedback-btn--active'
+                : 'recipe-card__feedback-btn'
+            }
+            onClick={() => handleFeedback('up')}
+            disabled={feedbackBusy}
+            aria-pressed={recipe.feedback === 'up'}
+            aria-label="Thumbs up"
+          >
+            👍
+          </button>
+          <button
+            type="button"
+            className={
+              recipe.feedback === 'down'
+                ? 'recipe-card__feedback-btn recipe-card__feedback-btn--active'
+                : 'recipe-card__feedback-btn'
+            }
+            onClick={() => handleFeedback('down')}
+            disabled={feedbackBusy}
+            aria-pressed={recipe.feedback === 'down'}
+            aria-label="Thumbs down"
+          >
+            👎
+          </button>
+        </div>
       </div>
     </details>
   )

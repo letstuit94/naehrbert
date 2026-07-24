@@ -18,11 +18,14 @@ this module needs a key, the same anti-pattern db/supabase.py's docstring
 already calls out for the Supabase client.
 """
 
+from typing import List
+
 from google import genai
 from google.genai import types
 
 from backend.app.core.config import get_settings
-from backend.app.models.recipe import GeminiRecipeSuggestion
+from backend.app.models.profile import DietaryStyle
+from backend.app.models.recipe import DietaryLabelClassification, GeminiRecipeSuggestion
 
 
 class GeminiNotConfigured(RuntimeError):
@@ -66,3 +69,52 @@ def generate_recipe_suggestion(prompt: str, temperature: float = 0.6) -> GeminiR
         # rather than silently returning something malformed.
         raise ValueError("Gemini did not return a valid recipe suggestion.")
     return response.parsed
+
+
+def classify_dietary_label(ingredient_names: List[str]) -> DietaryStyle:
+    """Classifies an EXISTING recipe's dietary label from its ingredient
+    list alone -- the one-off backfill script's use of this (recipes
+    generated before GeminiRecipeSuggestion.dietary_label existed) is the
+    only caller; a newly generated recipe gets its label directly from
+    generate_recipe_suggestion instead of a second call like this one."""
+
+    settings = get_settings()
+    if not settings.gemini_api_key:
+        raise GeminiNotConfigured(
+            "GEMINI_API_KEY is not set -- recipe generation isn't configured yet."
+        )
+
+    prompt = f"""Classify this recipe's dietary category based ONLY on its
+ingredient list below -- not any dietary intent, just what's literally in it.
+
+Ingredients:
+{chr(10).join(f"- {name}" for name in ingredient_names)}
+
+Return exactly one dietary_label, the most specific/restrictive one that's
+still true for these exact ingredients:
+- "vegan": zero animal-derived ingredients (no meat, poultry, fish,
+  seafood, dairy, eggs, or honey/gelatin/etc.).
+- "vegetarian": no meat, poultry, fish, or seafood, but dairy and/or eggs
+  are present.
+- "pescatarian": contains fish or seafood, but no meat or poultry.
+- "omnivore": contains meat or poultry.
+"""
+
+    client = genai.Client(api_key=settings.gemini_api_key)
+    response = client.models.generate_content(
+        model=settings.gemini_model,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=DietaryLabelClassification,
+            temperature=0.0,  # a factual classification, not creative -- no variety wanted
+            http_options=types.HttpOptions(
+                retry_options=types.HttpRetryOptions(
+                    attempts=3, initial_delay=1.0, max_delay=6.0
+                )
+            ),
+        ),
+    )
+    if not isinstance(response.parsed, DietaryLabelClassification):
+        raise ValueError("Gemini did not return a valid dietary label classification.")
+    return response.parsed.dietary_label

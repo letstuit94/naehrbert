@@ -58,6 +58,17 @@ const MEASURED_UNITS = new Set(['g', 'kg', 'ml', 'l'])
 // (¼ ½ ¾) and whole counts land exactly on integers.
 const PIECE_STEP = 0.25
 
+// Step the measured slider (g/kg/ml/l) snaps to. Fine-grained volumes (kg/l)
+// slide in small decimal steps; bulk units (g/ml) slide in whole steps sized
+// to the amount left, so the whole range stays reachable with one drag.
+function measuredStep(remaining: number, unit: string | null): number {
+  const u = (unit ?? '').toLowerCase()
+  if (u === 'kg' || u === 'l') return 0.01
+  if (remaining <= 50) return 1
+  if (remaining <= 500) return 5
+  return 10
+}
+
 const QUARTER_GLYPH: Record<string, string> = { '0.25': '¼', '0.5': '½', '0.75': '¾' }
 
 // Render a quarter-step piece amount with fraction glyphs: 0.5 -> "½",
@@ -459,22 +470,33 @@ function BasketRow({
             How much {REASON_VERB[panel]}?
           </span>
           {measured ? (
-            <div className="basket-row__amount">
+            <div className="basket-row__slider">
               <input
-                type="number"
+                type="range"
                 min={0}
                 max={remaining}
-                step="any"
+                step={measuredStep(remaining, item.unit)}
                 value={amount}
                 onChange={(e) => setAmount(clampAmount(Number(e.target.value)))}
                 aria-label={`Amount ${REASON_VERB[panel]} (${item.unit ?? ''})`}
               />
-              <span className="muted">{item.unit}</span>
-              {partial && (
-                <button type="button" className="btn-link" onClick={() => setAmount(remaining)}>
-                  All ({formatAmount(remaining, item.unit)})
-                </button>
-              )}
+              <div className="basket-row__amount">
+                <input
+                  type="number"
+                  min={0}
+                  max={remaining}
+                  step="any"
+                  value={amount}
+                  onChange={(e) => setAmount(clampAmount(Number(e.target.value)))}
+                  aria-label={`Amount ${REASON_VERB[panel]} (${item.unit ?? ''})`}
+                />
+                <span className="muted">{item.unit}</span>
+                {partial && (
+                  <button type="button" className="btn-link" onClick={() => setAmount(remaining)}>
+                    All ({formatAmount(remaining, item.unit)})
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="basket-row__slider">

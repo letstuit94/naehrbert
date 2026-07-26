@@ -424,6 +424,13 @@ export function UploadPage() {
   return (
     <section>
       <h1>Upload a receipt</h1>
+      <p className="muted">
+        A photo only needs to clearly show the store name, the purchase date, and the
+        purchased items with their prices (quantities help too) — everything else on the
+        receipt is irrelevant and can be blurry or cut off. Even better: if your store has
+        a loyalty app, download the digital receipt from there instead of a photo — it
+        scans far more reliably.
+      </p>
       <div className="upload-card">
         <p className="upload-card__label">Add a new receipt</p>
         <div className="tab-row">

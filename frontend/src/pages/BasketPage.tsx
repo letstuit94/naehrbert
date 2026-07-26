@@ -372,7 +372,7 @@ export function BasketPage() {
   return (
     <section>
       <h1>Basket</h1>
-      <p>What you've bought and not yet used up. Mark a lot eaten or removed to clear it.</p>
+      <p>All the products in your home pantry. Update what you have eaten or thrown away.</p>
 
       {undoBanner}
       {actionError && (

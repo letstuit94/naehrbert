@@ -2233,6 +2233,15 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   background: var(--code-bg);
 }
 
+.profile-field--locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.profile-field--locked:hover {
+  background: none;
+}
+
 .profile-field:focus-visible {
   outline: none;
   background: var(--code-bg);

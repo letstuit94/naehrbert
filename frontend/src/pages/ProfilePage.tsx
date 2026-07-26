@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { setCurrentProfileId } from '../lib/session'
@@ -22,7 +22,7 @@ import {
   SEX_OPTIONS,
 } from '../lib/chatSteps'
 import { ALLERGEN_OPTIONS, DIETARY_STYLE_OPTIONS } from '../lib/recipePrefsSteps'
-import { ChipListInput } from '../components/ChipListInput'
+import { ChipListInput, type ChipListInputHandle } from '../components/ChipListInput'
 
 type LoadState =
   | { status: 'loading' }
@@ -79,7 +79,10 @@ function allergenLabel(value: string): string {
   return ALLERGEN_OPTIONS.find((o) => o.value === value)?.label ?? value
 }
 
-/** ISO date → "12 Jul 1994" (product locale). Falls back to the raw string. */
+/** ISO date → "12 Jul 1994" (product locale). Falls back to the raw string.
+ * A date-only ISO string parses as UTC midnight, so we format in Europe/Berlin
+ * (the product timezone) to avoid it rolling back a day for viewers west of
+ * UTC. */
 function formatDob(iso: string): string {
   if (!iso) return 'Not set'
   const d = new Date(iso)
@@ -88,6 +91,7 @@ function formatDob(iso: string): string {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
+    timeZone: 'Europe/Berlin',
   })
 }
 
@@ -118,6 +122,7 @@ export function ProfilePage() {
   const [allergies, setAllergies] = useState<string[]>([])
   const [allergyDraft, setAllergyDraft] = useState('')
   const [dislikes, setDislikes] = useState<string[]>([])
+  const dislikesRef = useRef<ChipListInputHandle>(null)
 
   // One field edits at a time (inline). Save/Cancel are explicit, so nothing
   // is ever persisted or discarded silently.
@@ -249,10 +254,23 @@ export function ProfilePage() {
     setFieldError(null)
     try {
       if (PREFS_FIELDS.has(key)) {
+        // Commit any unconfirmed draft text (typed but not added via +/Enter)
+        // so it isn't silently dropped on Save. The dislikes draft lives inside
+        // ChipListInput, reached through its imperative `flush`; the allergy
+        // "Other" draft lives here.
+        const finalDislikes = dislikesRef.current?.flush() ?? dislikes
+        const draftAllergy = allergyDraft.trim()
+        const finalAllergies =
+          draftAllergy &&
+          !allergies.some((v) => v.toLowerCase() === draftAllergy.toLowerCase())
+            ? [...allergies, draftAllergy]
+            : allergies
+        setAllergies(finalAllergies)
+        setAllergyDraft('')
         const updated = await updateDietaryPreferences({
           dietary_style: dietaryStyle,
-          allergies,
-          dislikes,
+          allergies: finalAllergies,
+          dislikes: finalDislikes,
         })
         setProfile(updated)
         resetForm(updated)
@@ -343,12 +361,16 @@ export function ProfilePage() {
         </div>
       )
     }
+    // While another field is being edited, lock the remaining rows so a stray
+    // click can't silently discard the in-progress edit -- Save/Cancel first.
+    const locked = editingField !== null && editingField !== key
     return (
       <button
         key={label}
         type="button"
-        className="profile-field"
+        className={locked ? 'profile-field profile-field--locked' : 'profile-field'}
         onClick={() => beginEditField(key)}
+        disabled={locked}
         aria-label={`Edit ${label.toLowerCase()}`}
       >
         <span className="profile-field__label">{label}</span>
@@ -645,6 +667,7 @@ export function ProfilePage() {
                   ? profile.dislikes.join(', ')
                   : 'None',
                 <ChipListInput
+                  ref={dislikesRef}
                   value={dislikes}
                   onChange={setDislikes}
                   placeholder="e.g. mushrooms"

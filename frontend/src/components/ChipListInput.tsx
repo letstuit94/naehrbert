@@ -1,27 +1,41 @@
-import { useState } from 'react'
+import { forwardRef, useCallback, useImperativeHandle, useState } from 'react'
+
+/** Imperative handle: lets a parent commit an unconfirmed draft before it
+ * reads `value` (e.g. on a "Save" click), so typed-but-not-added text isn't
+ * silently dropped. `flush` returns the resulting list synchronously. */
+export type ChipListInputHandle = { flush: () => string[] }
 
 // Reusable free-text add/remove-chip control -- used for "dislikes" (an
 // unbounded list, unlike allergies' small enumerable set) both in the
 // recipe-preferences chat and on the Profile page.
-export function ChipListInput({
-  value,
-  onChange,
-  placeholder = 'Add a food...',
-}: {
-  value: string[]
-  onChange: (next: string[]) => void
-  placeholder?: string
-}) {
+export const ChipListInput = forwardRef<
+  ChipListInputHandle,
+  {
+    value: string[]
+    onChange: (next: string[]) => void
+    placeholder?: string
+  }
+>(function ChipListInput({ value, onChange, placeholder = 'Add a food...' }, ref) {
   const [draft, setDraft] = useState('')
 
-  function add() {
+  // Commit the current draft (if any) into the list; returns the resulting
+  // list so callers can use it without waiting for the onChange state update.
+  const commit = useCallback((): string[] => {
     const trimmed = draft.trim()
     if (!trimmed || value.some((v) => v.toLowerCase() === trimmed.toLowerCase())) {
       setDraft('')
-      return
+      return value
     }
-    onChange([...value, trimmed])
+    const next = [...value, trimmed]
+    onChange(next)
     setDraft('')
+    return next
+  }, [draft, value, onChange])
+
+  useImperativeHandle(ref, () => ({ flush: commit }), [commit])
+
+  function add() {
+    commit()
   }
 
   function remove(item: string) {
@@ -66,4 +80,4 @@ export function ChipListInput({
       </div>
     </div>
   )
-}
+})

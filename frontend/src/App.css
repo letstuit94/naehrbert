@@ -2044,9 +2044,18 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   gap: 4px;
 }
 
+/* Padding stays inside declared widths — full-width buttons/inputs never
+   overhang their card. */
+.profile-page,
+.profile-page * {
+  box-sizing: border-box;
+}
+
 .profile-lead {
   margin: 0 0 8px;
   max-width: 56ch;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .card {
@@ -2173,4 +2182,226 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 .btn-link:focus-visible {
   outline: 2px solid var(--sage);
   outline-offset: 2px;
+}
+
+/* Accent-soft button (§8) — light positive inline actions (Edit, My data).
+   Muted sage fill, never the full-tone accent. */
+.btn-soft {
+  background: var(--sage-soft);
+  color: var(--sage-ink);
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.btn-soft:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+/* Read-view fields: every row is a tappable button (label · value · pencil)
+   that opens the edit form on that field, so editability is obvious per field
+   — not only via the header button. */
+.profile-fields {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 0 -10px;
+  padding: 12px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 10px;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.profile-fields .profile-field:last-child {
+  border-bottom: 0;
+}
+
+.profile-field:hover {
+  background: var(--code-bg);
+}
+
+.profile-field--locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.profile-field--locked:hover {
+  background: none;
+}
+
+.profile-field:focus-visible {
+  outline: none;
+  background: var(--code-bg);
+  box-shadow: inset 0 0 0 2px var(--sage);
+}
+
+.profile-field__label {
+  flex: 0 0 42%;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.profile-field__value {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* Pencil affordance: faintly present at rest so touch users see it too,
+   full on hover/focus. */
+.profile-field__edit {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  color: var(--text);
+  opacity: 0.5;
+  transition: opacity 0.12s ease;
+}
+
+.profile-field:hover .profile-field__edit,
+.profile-field:focus-visible .profile-field__edit {
+  opacity: 1;
+  color: var(--sage-ink);
+}
+
+/* ── Inline field editor · row-wise editing (§4/§9) ─────────────────────── */
+/* The tapped row expands in place: label on top, control, then Save/Cancel.
+   A highlighted background marks the one active row. */
+.profile-field--editing {
+  display: block;
+  cursor: default;
+  background: var(--code-bg);
+}
+
+.profile-field--editing .profile-field__label {
+  display: block;
+  flex: none;
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text);
+}
+
+.profile-field__editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Editor controls share one look (§9) with a sage focus ring. Surface fill so
+   they read against the highlighted active row. */
+.profile-field__editor input,
+.profile-field__editor select,
+.profile-field__editor textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text-h);
+}
+
+.profile-field__editor input:focus,
+.profile-field__editor select:focus,
+.profile-field__editor textarea:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--sage);
+}
+
+.profile-field__editor .chip-input-row input {
+  width: auto;
+  flex: 1;
+}
+
+.profile-field__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+/* Compact "+" add button, replacing the old text "Add" (allergens, dislikes). */
+.chip-add-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  font-size: 22px;
+  line-height: 1;
+  border: 0;
+  border-radius: 12px;
+  background: var(--sage-soft);
+  color: var(--sage-ink);
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: pointer;
+  transition: filter 0.12s ease;
+}
+
+.chip-add-btn:hover {
+  filter: brightness(0.97);
+}
+
+.chip-add-btn:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 2px;
+}
+
+/* Links (not buttons) use a token colour, never the UA blue (§2/§16). */
+.profile-page a:not(.btn) {
+  color: var(--sage-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Account action cards · Receipt history, Log out ────────────────────── */
+/* Each sits in its own card; the button fills the card's content width and
+   stays inside it (box-sizing above). Emphasis via colour, not size — Log out
+   filled (sage-soft), Receipt history quiet (surface + ring). */
+.profile-action-card .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px 22px;
+  border-radius: 16px;
+  font-size: 15px;
+}
+
+.profile-logout {
+  font-weight: 600;
+}
+
+.profile-logout__icon {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
 }

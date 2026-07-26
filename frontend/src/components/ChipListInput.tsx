@@ -60,8 +60,8 @@ export function ChipListInput({
             }
           }}
         />
-        <button type="button" className="btn-link" onClick={add}>
-          Add
+        <button type="button" className="chip-add-btn" aria-label="Add" onClick={add}>
+          +
         </button>
       </div>
     </div>

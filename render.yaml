@@ -1,0 +1,39 @@
+# Render Blueprint für das FastAPI-Backend (Docker).
+#
+# Deploy: Render Dashboard → "New +" → "Blueprint" → dieses Repo wählen.
+# Render liest diese Datei und legt den Service an. Die als `sync: false`
+# markierten Secrets müssen danach einmalig im Dashboard eingetragen werden
+# (Environment-Tab) — sie werden bewusst NICHT ins Repo committet.
+#
+# Warum Docker statt "native runtime": Das Backend braucht die
+# System-Binaries tesseract-ocr + tesseract-ocr-deu + libglib2.0-0
+# (siehe backend/Dockerfile), die auf einem reinen Python-Buildpack fehlen.
+
+services:
+  - type: web
+    name: nutriwise-backend
+    runtime: docker
+    plan: free
+    region: frankfurt # EU — kürzeste Latenz + DSGVO-näher
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: . # Repo-Root: der Dockerfile kopiert `backend` UND `BLS_data`
+    # Render setzt $PORT selbst und erwartet, dass der Prozess darauf lauscht.
+    # Der Dockerfile-CMD hardcodet Port 8000 (gut für lokales docker-compose),
+    # hier überschreiben wir ihn, ohne den Dockerfile anzufassen.
+    dockerCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # Muss die Vercel-Frontend-URL(s) enthalten, kommagetrennt, z. B.
+      # https://nutriwise.vercel.app,https://nutriwise-git-main-...vercel.app
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # Optional: nur nötig für POST /recipes/generate. Ohne Key liefert
+      # der Endpoint 503, der Rest der App läuft normal weiter.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash

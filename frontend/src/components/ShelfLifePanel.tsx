@@ -8,11 +8,11 @@ import {
 } from '../lib/api'
 
 /**
- * Editor for the per-profile shelf-life config that drives basket urgency.
+ * Editor for the per-profile shelf-life config that drives pantry urgency.
  * The estimated shelf life is deliberately CONFIG, not a per-item field: here
  * a user tunes the days per food group (e.g. "my bread lasts 3 days"). This
  * is the one place a number is shown/edited -- the config input itself -- as
- * opposed to the basket list, which never shows an estimated date.
+ * opposed to the pantry list, which never shows an estimated date.
  *
  * A blank field means "no estimate" (the group opts out of urgency and its
  * lots sort to the end), which is exactly how "Other" ships.

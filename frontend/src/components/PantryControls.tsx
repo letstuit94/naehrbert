@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FoodGroup } from '../lib/api'
-import type { BasketFilters, BasketView } from '../lib/shelfLife'
+import type { PantryFilters, PantryView } from '../lib/shelfLife'
 
 /**
- * Basket toolbar, laid out as two clearly separate rows so the user can tell
+ * Pantry toolbar, laid out as two clearly separate rows so the user can tell
  * ordering apart from filtering (the two must not be conflated):
  *
  *  - Row 1 (order): the A/B view toggle on the left, text search on the right.
@@ -17,17 +17,17 @@ import type { BasketFilters, BasketView } from '../lib/shelfLife'
  * a checkbox reads as "included when ticked", which matches how people expect
  * a filter to work, and the "n/total" count makes an active filter obvious.
  */
-export function BasketControls({
+export function PantryControls({
   view,
   onViewChange,
   filters,
   onFiltersChange,
   availableGroups,
 }: {
-  view: BasketView
-  onViewChange: (view: BasketView) => void
-  filters: BasketFilters
-  onFiltersChange: (filters: BasketFilters) => void
+  view: PantryView
+  onViewChange: (view: PantryView) => void
+  filters: PantryFilters
+  onFiltersChange: (filters: PantryFilters) => void
   availableGroups: { group: FoodGroup; label: string }[]
 }) {
   const [catsOpen, setCatsOpen] = useState(false)
@@ -37,13 +37,13 @@ export function BasketControls({
   // "by category" view the groups are already the section headers, so the
   // filter would be redundant -- and applying it there could hide a whole
   // section with no visible control to bring it back. So it is hidden and
-  // NOT applied in view B (BasketPage drops hiddenGroups there); the user's
+  // NOT applied in view B (PantryPage drops hiddenGroups there); the user's
   // selection stays in state and takes effect again on the way back to A.
   const showCategoryFilter = view === 'urgency'
 
   // Switching view is the only way the category filter can disappear, so
   // close its popover here rather than reacting to the view in an effect.
-  function changeView(next: BasketView) {
+  function changeView(next: PantryView) {
     setCatsOpen(false)
     onViewChange(next)
   }
@@ -94,16 +94,16 @@ export function BasketControls({
     filters.search.trim() !== ''
 
   return (
-    <div className="basket-controls">
+    <div className="pantry-controls">
       {/* ── Row 1: order (view toggle) + search ─────────────────── */}
-      <div className="basket-toolbar">
-        <div className="basket-controls__views" role="radiogroup" aria-label="Sort order">
+      <div className="pantry-toolbar">
+        <div className="pantry-controls__views" role="radiogroup" aria-label="Sort order">
           <button
             type="button"
             role="radio"
             aria-checked={view === 'urgency'}
             className={
-              view === 'urgency' ? 'basket-toggle basket-toggle--active' : 'basket-toggle'
+              view === 'urgency' ? 'pantry-toggle pantry-toggle--active' : 'pantry-toggle'
             }
             onClick={() => changeView('urgency')}
           >
@@ -114,7 +114,7 @@ export function BasketControls({
             role="radio"
             aria-checked={view === 'category'}
             className={
-              view === 'category' ? 'basket-toggle basket-toggle--active' : 'basket-toggle'
+              view === 'category' ? 'pantry-toggle pantry-toggle--active' : 'pantry-toggle'
             }
             onClick={() => changeView('category')}
           >
@@ -124,7 +124,7 @@ export function BasketControls({
 
         <input
           type="search"
-          className="basket-search"
+          className="pantry-search"
           placeholder="Search items…"
           value={filters.search}
           onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
@@ -133,7 +133,7 @@ export function BasketControls({
       </div>
 
       {/* ── Row 2: filters (independent of the view) ────────────── */}
-      <div className="basket-filterbar">
+      <div className="pantry-filterbar">
         {showCategoryFilter && totalCount > 1 && (
           <div className="cat-filter" ref={catsRef}>
             <button
@@ -194,7 +194,7 @@ export function BasketControls({
         </button>
 
         {hasActiveFilters && (
-          <button type="button" className="btn-link basket-clear" onClick={clearFilters}>
+          <button type="button" className="btn-link pantry-clear" onClick={clearFilters}>
             ✕ Clear filters
           </button>
         )}

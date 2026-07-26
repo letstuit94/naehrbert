@@ -30,7 +30,7 @@ export function LoginPage() {
 
   return (
     <section className="login-screen">
-      <span className="login-logo">naehrbert</span>
+      <span className="login-logo">NutriWise</span>
 
       {state.status === 'loading' && <p className="muted">Loading…</p>}
 

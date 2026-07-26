@@ -15,10 +15,10 @@ function formatMacro(value: number | null): string {
   return value === null ? '?' : String(Math.round(value))
 }
 
-// Manually add a food to the basket (Vorrat.md): a name (optionally pinned to
+// Manually add a food to the pantry (Vorrat.md): a name (optionally pinned to
 // an OFF/BLS product via the same fix-match search used elsewhere) plus an
 // amount + unit. On success the parent reloads the pantry, so the new lot
-// shows up in the basket (and the Purchases view) right away.
+// shows up in the pantry (and the Purchases view) right away.
 export function AddItemPanel({
   onAdded,
   onClose,
@@ -152,7 +152,7 @@ export function AddItemPanel({
         >
           🔍 Search product
         </button>
-        {/* Before a product is selected there's no "Add to basket" yet, so
+        {/* Before a product is selected there's no "Add to pantry" yet, so
             Cancel lives next to the search button. */}
         {!picked && (
           <button type="button" className="btn-link" onClick={onClose}>
@@ -208,11 +208,11 @@ export function AddItemPanel({
         </p>
       )}
 
-      {/* "Add to basket" only appears once a search result is selected. */}
+      {/* "Add to pantry" only appears once a search result is selected. */}
       {picked && (
         <div className="add-item-panel__actions">
           <button type="button" className="btn-primary" onClick={() => void submit()} disabled={busy}>
-            Add to basket
+            Add to pantry
           </button>
           <button type="button" className="btn-link" onClick={onClose}>
             Cancel

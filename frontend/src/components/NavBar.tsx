@@ -9,8 +9,8 @@ import { getCurrentProfileId } from '../lib/session'
 // "Profile" lives as its own icon on the far right, not in this list.
 const NAV_LINKS = [
   { to: '/upload', label: 'Upload' },
-  { to: '/basket', label: 'Basket' },
   { to: '/results', label: 'Results' },
+  { to: '/pantry', label: 'Pantry' },
   { to: '/tips', label: 'Recipes' },
 ]
 
@@ -27,7 +27,7 @@ export function NavBar() {
 
   return (
     <nav className="nav-bar">
-      <span className="nav-logo" role="img" aria-label="naehrbert">
+      <span className="nav-logo" role="img" aria-label="NutriWise">
         N
       </span>
 

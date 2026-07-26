@@ -1,12 +1,12 @@
 /**
- * Basket urgency: display + view/filter helpers.
+ * Pantry urgency: display + view/filter helpers.
  *
  * The backend estimates each lot's urgency from category + purchase date and
  * sends ONLY a fuzzy bucket (`urgency`) -- never an estimated date or a day
  * count. This module turns that bucket into the traffic-light + soft label
  * (architecture: sort-value and display-value are strictly separated; a guess
  * is never shown as a number), and holds the pure view/filter logic the
- * BasketPage composes. It intentionally knows nothing about days.
+ * PantryPage composes. It intentionally knows nothing about days.
  */
 
 import type { FoodGroup, PantryItem, Urgency } from './api'
@@ -64,12 +64,12 @@ export function isWithinNext3Days(item: PantryItem): boolean {
   return NEXT_3_DAYS.has(item.urgency)
 }
 
-/** The two basket views. A = flat, urgency-first (default); B = grouped by
+/** The two pantry views. A = flat, urgency-first (default); B = grouped by
  * food category. This is the SORT/layout toggle -- separate from the filters
  * below. */
-export type BasketView = 'urgency' | 'category'
+export type PantryView = 'urgency' | 'category'
 
-export interface BasketFilters {
+export interface PantryFilters {
   /** Food groups hidden by the user (empty = show all). */
   hiddenGroups: Set<FoodGroup>
   /** Only show lots within the next 3 days (see isWithinNext3Days). */
@@ -78,7 +78,7 @@ export interface BasketFilters {
   search: string
 }
 
-export const NO_FILTERS: BasketFilters = {
+export const NO_FILTERS: PantryFilters = {
   hiddenGroups: new Set(),
   onlyNext3Days: false,
   search: '',
@@ -90,7 +90,7 @@ export const NO_FILTERS: BasketFilters = {
  * ascending by estimated expiry, and filtering never reorders. */
 export function applyFilters(
   items: PantryItem[],
-  filters: BasketFilters,
+  filters: PantryFilters,
   nameOf: (item: PantryItem) => string,
 ): PantryItem[] {
   const needle = filters.search.trim().toLowerCase()

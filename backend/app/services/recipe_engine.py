@@ -4,11 +4,13 @@ Recipe generation orchestration (recipe-recommendations feature).
 Builds the Gemini prompt from the user's dietary profile and current
 macro gap (the same actual/target/delta shape backend/app/api/analysis.py's
 get_target_comparison already computes, plus diversity recommendations),
-calls services/gemini_client.py, and enforces the one hard rule Gemini's
-own instructions can't be trusted alone to honor: never suggest an
-ingredient the user is allergic to or dislikes. Nutrition numbers are
-Gemini's own estimate, not backend-recomputed -- see models/recipe.py's
-docstring for why.
+calls services/gemini_client.py, and enforces the hard rules Gemini's own
+instructions can't be trusted alone to honor: never suggest an ingredient
+the user is allergic to or dislikes, and never return a recipe less
+restrictive than the requested dietary style (checked via Gemini's own
+self-classified `dietary_label` -- see _DIET_RANK below). Nutrition
+numbers are Gemini's own estimate, not backend-recomputed -- see
+models/recipe.py's docstring for why.
 """
 
 from typing import List, Optional
@@ -24,6 +26,21 @@ _DIET_INSTRUCTIONS = {
     DietaryStyle.PESCATARIAN: "Pescatarian: no meat or poultry. Fish and seafood are fine, as are dairy/eggs.",
     DietaryStyle.VEGETARIAN: "Vegetarian: no meat, poultry, fish, or seafood. Dairy and eggs are fine.",
     DietaryStyle.VEGAN: "Vegan: no meat, poultry, fish, seafood, dairy, eggs, or any other animal-derived ingredient.",
+}
+
+# Restrictiveness order (most animal products excluded -> least): a recipe
+# is compatible with the requested diet_style iff its own self-classified
+# rank is >= the requested one -- e.g. a vegetarian request accepts a
+# vegan OR vegetarian result (both have no meat/fish), but not pescatarian
+# (has fish) or omnivore (has meat). This is the one diet_style check that
+# didn't exist before dietary_label: the allergy/dislike check below never
+# covered the diet_style restriction itself, only the two things layered
+# on top of it.
+_DIET_RANK = {
+    DietaryStyle.OMNIVORE: 0,
+    DietaryStyle.PESCATARIAN: 1,
+    DietaryStyle.VEGETARIAN: 2,
+    DietaryStyle.VEGAN: 3,
 }
 
 # Deliberately low-ish: this is a factual/estimation task (a recipe that
@@ -127,6 +144,18 @@ Return the recipe title, the full ingredient list (each with a name and
 a natural quantity like "200 g" or "1 tbsp" or "2 cloves"), numbered
 preparation steps, prep time and cook time in minutes, how many servings/
 portions it makes, and the total calorie/macro estimate.
+
+Also classify dietary_label based on what the ingredient list you actually
+chose contains -- NOT simply the dietary constraint above (a vegetarian
+request can still yield a recipe that happens to be vegan if you didn't
+use any dairy/eggs; always report the most specific/restrictive label
+that's still true for these exact ingredients):
+- "vegan": zero animal-derived ingredients (no meat, poultry, fish,
+  seafood, dairy, eggs, or honey/gelatin/etc.).
+- "vegetarian": no meat, poultry, fish, or seafood, but dairy and/or eggs
+  are present.
+- "pescatarian": contains fish or seafood, but no meat or poultry.
+- "omnivore": contains meat or poultry.
 """
 
 
@@ -134,10 +163,13 @@ def _find_violation(
     suggestion: GeminiRecipeSuggestion,
     restricted_terms: List[str],
     max_time_minutes: Optional[int],
+    diet_style: DietaryStyle,
 ) -> Optional[str]:
     """Case-insensitive substring check of every restricted term against
-    every ingredient name, plus the requested time budget if one was
-    given. Returns a description of the first violation found, if any."""
+    every ingredient name, the requested time budget if one was given, and
+    now that Gemini self-classifies dietary_label, whether that label is
+    actually at least as restrictive as the diet_style that was requested.
+    Returns a description of the first violation found, if any."""
 
     names = [ing.name.lower() for ing in suggestion.ingredients]
     for term in restricted_terms:
@@ -152,6 +184,12 @@ def _find_violation(
         if total > max_time_minutes:
             return f"total time {total} min exceeds the {max_time_minutes} min budget"
 
+    if _DIET_RANK[suggestion.dietary_label] < _DIET_RANK[diet_style]:
+        return (
+            f"dietary_label '{suggestion.dietary_label.value}' is less restrictive than "
+            f"the requested '{diet_style.value}' diet"
+        )
+
     return None
 
 
@@ -164,10 +202,11 @@ def generate_and_assemble_recipe(
     servings: Optional[int] = None,
 ) -> GeminiRecipeSuggestion:
     restricted_terms = [*profile.allergies, *profile.dislikes]
+    diet_style = profile.dietary_style or DietaryStyle.OMNIVORE
     prompt = build_prompt(profile, gap, diversity_recs, cuisine, max_time_minutes, servings)
 
     suggestion = generate_recipe_suggestion(prompt, temperature=_TEMPERATURE)
-    violation = _find_violation(suggestion, restricted_terms, max_time_minutes)
+    violation = _find_violation(suggestion, restricted_terms, max_time_minutes, diet_style)
     if violation is not None:
         # One retry with a sharper, violation-specific instruction before
         # giving up -- a single miss shouldn't silently persist an unsafe
@@ -178,7 +217,7 @@ def generate_and_assemble_recipe(
             f"({violation}). Fix this in your next suggestion."
         )
         suggestion = generate_recipe_suggestion(reinforced_prompt, temperature=_TEMPERATURE)
-        violation = _find_violation(suggestion, restricted_terms, max_time_minutes)
+        violation = _find_violation(suggestion, restricted_terms, max_time_minutes, diet_style)
         if violation is not None:
             raise ValueError(
                 f"Gemini kept violating a hard constraint ({violation}) despite explicit "

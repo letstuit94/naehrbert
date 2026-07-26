@@ -1,35 +1,23 @@
 import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ApiError,
-  generateRecipe,
   getComposition,
+  getPlantDiversity,
   getProfile,
-  getRecipes,
   getSummary,
   getTargetComparison,
   getTargets,
-  getUnlockStatus,
   type CompositionResult,
   type Goal,
-  type Recipe,
-  type RecipeGenerateInput,
+  type PlantDiversityItem,
+  type PlantDiversityResult,
   type SummaryResult,
   type TargetComparisonResult,
   type TargetsResponse,
-  type UnlockStatus,
 } from '../lib/api'
 import { GOAL_LABEL } from '../lib/chatSteps'
 
 type Slice<T> = { data: T | null; unavailable: boolean }
-
-const MACROS = ['protein', 'fat', 'carb'] as const
-const MACRO_LABEL: Record<(typeof MACROS)[number], string> = {
-  protein: 'Protein',
-  fat: 'Fat',
-  carb: 'Carbs',
-}
 
 function settledSlice<T>(result: PromiseSettledResult<T>): Slice<T> {
   return result.status === 'fulfilled'
@@ -54,15 +42,11 @@ export function ResultsPage() {
     data: null,
     unavailable: false,
   })
+  const [plantDiversity, setPlantDiversity] = useState<Slice<PlantDiversityResult>>({
+    data: null,
+    unavailable: false,
+  })
   const [profileGoal, setProfileGoal] = useState<Goal | null>(null)
-  const [unlockStatus, setUnlockStatus] = useState<Slice<UnlockStatus>>({
-    data: null,
-    unavailable: false,
-  })
-  const [recipes, setRecipes] = useState<Slice<Recipe[]>>({
-    data: null,
-    unavailable: false,
-  })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -72,23 +56,17 @@ export function ResultsPage() {
       getTargetComparison(),
       getTargets(),
       getProfile(),
-      getUnlockStatus(),
-      getRecipes(),
-    ]).then(([s, c, t, tg, p, u, r]) => {
+      getPlantDiversity(),
+    ]).then(([s, c, t, tg, p, pd]) => {
       setSummary(settledSlice(s))
       setComposition(settledSlice(c))
       setComparison(settledSlice(t))
       setTargets(settledSlice(tg))
       setProfileGoal(p.status === 'fulfilled' ? p.value.goal : null)
-      setUnlockStatus(settledSlice(u))
-      setRecipes(settledSlice(r))
+      setPlantDiversity(settledSlice(pd))
       setLoading(false)
     })
   }, [])
-
-  function prependRecipe(recipe: Recipe) {
-    setRecipes((prev) => ({ data: [recipe, ...(prev.data ?? [])], unavailable: false }))
-  }
 
   useEffect(() => {
     if (!loading && window.location.hash) {
@@ -109,17 +87,27 @@ export function ResultsPage() {
 
   return (
     <section>
-      <h1>Your results</h1>
+      <h1>
+        Your results <span className="title-note">(calculated over the last 28 days)</span>
+      </h1>
+
+      {!noReceiptsYet && composition.data && (
+        <p className="muted">
+          Based on what you've <strong>bought</strong>, weighted toward your recent
+          purchases — not necessarily what you eat. Purchases are a proxy for your diet,
+          not a food log.
+        </p>
+      )}
 
       {noReceiptsYet && (
         <p className="callout">
           No confirmed receipts yet. <Link to="/upload">Upload one</Link> to see your
-          macro split.
+          purchase macro split.
         </p>
       )}
 
       {comparison.data && !noReceiptsYet && (
-        <ClosenessScore score={comparison.data.closeness_score} />
+        <ClosenessScore comparison={comparison.data} />
       )}
 
       {summary.data && summary.data.receipts_count > 0 && (
@@ -141,16 +129,15 @@ export function ResultsPage() {
           targets={targets.data.targets}
           targetsPct={targets.data.targets_pct}
           goal={profileGoal}
+          comparison={comparison.data}
         />
       )}
 
-      {comparison.data && !noReceiptsYet ? (
-        <MacroComparisonChart comparison={comparison.data} />
-      ) : composition.data && !noReceiptsYet ? (
+      {composition.data && !noReceiptsYet && !targets.data?.targets && (
         <p className="callout">
           Set up your <Link to="/">profile</Link> to compare this against a target.
         </p>
-      ) : null}
+      )}
 
       {composition.data &&
         composition.data.unaccounted_pct !== null &&
@@ -161,24 +148,34 @@ export function ResultsPage() {
           </p>
         )}
 
-      {unlockStatus.data?.unlocked && unlockStatus.data.prefs_completed ? (
-        <>
-          <h2 id="recipes">Recipe generation</h2>
-          <RecipeGenerationForm onGenerated={prependRecipe} />
+      {!noReceiptsYet && composition.data && composition.data.low_confidence && (
+        <p className="callout callout--warning">
+          <strong>These numbers are still shaky.</strong>{' '}
+          {composition.data.receipts_considered < 3 &&
+            `Only ${composition.data.receipts_considered} confirmed receipt${
+              composition.data.receipts_considered === 1 ? '' : 's'
+            } so far. `}
+          {composition.data.match_coverage_pct !== null &&
+            composition.data.match_coverage_pct < 60 &&
+            `${composition.data.match_coverage_pct}% of the calories are category estimates rather than identified products. `}
+          They'll sharpen as you upload more receipts.
+        </p>
+      )}
 
-          <h2>Recipes</h2>
-          {recipes.data && recipes.data.length === 0 && (
-            <p>
-              No recipes yet — fill in the form above (or leave it blank) and generate
-              one.
-            </p>
-          )}
-          {recipes.data?.map((recipe) => (
-            <RecipeSummaryCard key={recipe.id} recipe={recipe} />
-          ))}
-        </>
-      ) : (
-        unlockStatus.data && <UnlockRecipesSection status={unlockStatus.data} />
+      {!noReceiptsYet &&
+        composition.data &&
+        !composition.data.low_confidence &&
+        composition.data.match_coverage_pct !== null &&
+        composition.data.match_coverage_pct < 80 && (
+          <p className="callout callout--muted">
+            {composition.data.match_coverage_pct}% of these calories come from confidently
+            identified products; the rest are category estimates. Treat the split as a
+            rough guide.
+          </p>
+        )}
+
+      {plantDiversity.data && !noReceiptsYet && (
+        <PlantDiversitySection diversity={plantDiversity.data} />
       )}
     </section>
   )
@@ -188,10 +185,12 @@ function TargetsSection({
   targets,
   targetsPct,
   goal,
+  comparison,
 }: {
   targets: NonNullable<TargetsResponse['targets']>
   targetsPct: NonNullable<TargetsResponse['targets_pct']>
   goal: Goal | null
+  comparison: TargetComparisonResult | null
 }) {
   // Derived rather than hardcoded from the goal->adjustment mapping, so this
   // stays correct even if the backend's constants change -- see
@@ -217,18 +216,34 @@ function TargetsSection({
       )}
 
       <div className="macro-grid">
-        <MacroTargetTile
+        <MacroRingTile
           label="Protein"
           grams={targets.protein_g}
-          pct={targetsPct.protein_pct}
+          targetValue={targetsPct.protein_pct}
+          actualValue={comparison?.actual_pct.protein ?? null}
+          unit="pct"
         />
-        <MacroTargetTile label="Fat" grams={targets.fat_g} pct={targetsPct.fat_pct} />
-        <MacroTargetTile
+        <MacroRingTile
+          label="Fat"
+          grams={targets.fat_g}
+          targetValue={targetsPct.fat_pct}
+          actualValue={comparison?.actual_pct.fat ?? null}
+          unit="pct"
+        />
+        <MacroRingTile
           label="Carbs"
           grams={targets.carbs_g}
-          pct={targetsPct.carb_pct}
+          targetValue={targetsPct.carb_pct}
+          actualValue={comparison?.actual_pct.carb ?? null}
+          unit="pct"
         />
-        <MacroTargetTile label="Fiber" grams={targets.fiber_g} pct={null} />
+        <MacroRingTile
+          label="Fiber"
+          grams={targets.fiber_g}
+          targetValue={comparison?.fiber_target_per_1000kcal ?? null}
+          actualValue={comparison?.fiber_actual_per_1000kcal ?? null}
+          unit="density"
+        />
       </div>
 
       <details className="details-panel">
@@ -267,288 +282,206 @@ function TargetsSection({
   )
 }
 
-function MacroTargetTile({
+// Ring color reflects how far actual is from target in EITHER direction --
+// being well under is just as much a signal as being well over, so this is
+// symmetric around 100% rather than only escalating above it.
+function ringTierColor(ratioPct: number): string {
+  const distance = Math.abs(ratioPct - 100)
+  if (distance > 30) return '#d03b3b' // red
+  if (distance > 20) return '#e07b1f' // orange
+  if (distance > 10) return '#d1a300' // yellow
+  if (distance > 5) return '#5cab1e' // bright green
+  return '#0ca30c' // green
+}
+
+function MacroRingTile({
   label,
   grams,
-  pct,
+  targetValue,
+  actualValue,
+  unit,
 }: {
   label: string
   grams: number
-  pct: number | null
+  targetValue: number | null
+  actualValue: number | null
+  /** "pct" for Protein/Fat/Carbs (%-of-calories vs. their target %).
+   * "density" for Fiber (g/1000kcal vs. its fixed 14g/1000kcal target) --
+   * see ideal_profile.py's FIBER_G_PER_1000KCAL for why fiber isn't a
+   * %-of-calories figure like the other three. */
+  unit: 'pct' | 'density'
 }) {
+  const hasTracking = actualValue !== null && targetValue !== null && targetValue > 0
+  const ratioPct = hasTracking ? Math.round((actualValue / targetValue) * 100) : null
+  const color = ratioPct !== null ? ringTierColor(ratioPct) : 'var(--code-bg)'
+  const fillPct = ratioPct !== null ? Math.min(100, ratioPct) : 0
+  // More than 10% over/under target -> act on it; within that band, on track.
+  const action =
+    ratioPct === null ? null : ratioPct > 110 ? 'REDUCE' : ratioPct < 90 ? 'INCREASE' : 'KEEP'
+
   return (
-    <div className="stat-tile">
-      <span className="stat-tile__label">{label}</span>
-      <span className="stat-tile__value">{grams} g</span>
-      {pct !== null && <span className="stat-tile__sub">{pct}% of calories</span>}
+    <div className="macro-ring-tile">
+      <span className="macro-ring-tile__label">{label}</span>
+      <div className="macro-ring">
+        <div
+          className="macro-ring__fill"
+          style={{ background: `conic-gradient(${color} ${fillPct}%, var(--code-bg) 0)` }}
+        />
+        <div className="macro-ring__hole">
+          <span className="macro-ring__value">{grams} g</span>
+          {ratioPct !== null && (
+            <span className="macro-ring__ratio" style={{ color }}>
+              {ratioPct}%
+            </span>
+          )}
+        </div>
+      </div>
+      <span className="macro-ring-tile__caption">
+        {hasTracking
+          ? unit === 'pct'
+            ? `${actualValue}% of cal.`
+            : `${actualValue} g/1000kcal`
+          : 'No tracking data yet'}
+      </span>
+      {action !== null && <span className="macro-ring-tile__action">{action}</span>}
     </div>
   )
 }
 
-function UnlockRecipesSection({ status }: { status: UnlockStatus }) {
-  const pct = Math.min(
-    100,
-    Math.round((status.matched_items_count / status.threshold) * 100),
-  )
+const CLOSENESS_MACRO_ROWS: { label: string; macro: 'protein' | 'fat' | 'carb' }[] = [
+  { label: 'Protein', macro: 'protein' },
+  { label: 'Fat', macro: 'fat' },
+  { label: 'Carbs', macro: 'carb' },
+]
 
-  return (
-    <div className="unlock-recipes">
-      <h2>Unlock recipes</h2>
-      {status.unlocked ? (
-        <>
-          <p className="callout callout--success">
-            You've uploaded {status.matched_items_count} matched food items -- recipe
-            recommendations are unlocked.
-          </p>
-          <Link to="/recipes/new" className="btn btn-primary">
-            Get recipe recommendations to close your gaps
-          </Link>
-        </>
-      ) : (
-        <>
-          <p>To unlock recipe recommendations upload 50+ food items.</p>
-          <div
-            className="progress-bar"
-            role="progressbar"
-            aria-valuenow={status.matched_items_count}
-            aria-valuemin={0}
-            aria-valuemax={status.threshold}
-          >
-            <div className="progress-bar__fill" style={{ width: `${pct}%` }} />
-          </div>
-          <p className="muted">
-            {status.matched_items_count} / {status.threshold} matched items
-          </p>
-        </>
-      )}
-    </div>
-  )
-}
-
-function ClosenessScore({ score }: { score: number | null }) {
+function ClosenessScore({ comparison }: { comparison: TargetComparisonResult }) {
+  const score = comparison.closeness_score
   if (score === null) return null
   const status = score >= 80 ? 'good' : score >= 50 ? 'warning' : 'critical'
-  return (
-    <div className={`stat-tile stat-tile--hero stat-tile--${status}`}>
-      <span className="stat-tile__label">Closeness to target</span>
-      <span className="stat-tile__value">{score}/100</span>
-    </div>
-  )
-}
 
-function MacroComparisonChart({ comparison }: { comparison: TargetComparisonResult }) {
+  // Same 3 per-macro |actual% - target%| differences the backend sums (see
+  // analysis.py's get_target_comparison) -- shown individually so the final
+  // score isn't just asserted, only the sum-then-subtract-from-100 step is
+  // redone here, from these same already-rounded numbers.
+  const diffs = CLOSENESS_MACRO_ROWS.map((row) => comparison.delta_pct[row.macro]).filter(
+    (d): d is number => d !== null,
+  )
+  const totalDiff = diffs.length
+    ? diffs.reduce((sum, d) => sum + Math.abs(d), 0)
+    : null
+
   return (
-    <div className="viz-root macro-chart">
-      <div className="macro-chart__legend">
-        <span>
-          <i className="swatch swatch--actual" /> Actual
-        </span>
-        <span>
-          <i className="swatch swatch--target" /> Target
-        </span>
+    <div>
+      <div className={`stat-tile stat-tile--hero stat-tile--${status}`}>
+        <span className="stat-tile__label">Purchases vs. target</span>
+        <span className="stat-tile__value">{score}/100</span>
       </div>
-      {MACROS.map((macro) => {
-        const actual = comparison.actual_pct[macro]
-        const target =
-          comparison.target_pct[`${macro}_pct` as keyof typeof comparison.target_pct]
-        const delta = comparison.delta_pct[macro]
-        return (
-          <div className="macro-chart__row" key={macro}>
-            <div className="macro-chart__row-label">
-              {MACRO_LABEL[macro]}
-              {delta !== null && (
-                <span className="macro-chart__delta">
-                  {delta > 0 ? `+${delta}` : delta}pp
-                </span>
-              )}
-            </div>
-            <div className="macro-chart__bars">
-              <MacroBar variant="actual" value={actual} />
-              <MacroBar variant="target" value={target} />
-            </div>
+
+      <details className="details-panel">
+        <summary>How this was calculated</summary>
+        <dl className="kv-list">
+          {CLOSENESS_MACRO_ROWS.map(({ label, macro }) => {
+            const actual = comparison.actual_pct[macro]
+            const target = comparison.target_pct[`${macro}_pct`]
+            const delta = comparison.delta_pct[macro]
+            return (
+              <div key={macro}>
+                <dt>
+                  {label}: {actual ?? '—'}% actual vs {target ?? '—'}% target
+                </dt>
+                <dd>
+                  {delta === null ? '—' : `${delta > 0 ? '+' : ''}${delta} pts off`}
+                </dd>
+              </div>
+            )
+          })}
+          <div>
+            <dt>Total absolute difference</dt>
+            <dd>{totalDiff === null ? '—' : `${totalDiff.toFixed(1)} pts`}</dd>
           </div>
-        )
-      })}
+          <div>
+            <dt>= 100 − total difference</dt>
+            <dd>{score}/100</dd>
+          </div>
+        </dl>
+      </details>
     </div>
   )
 }
 
-function MacroBar({
-  variant,
-  value,
-}: {
-  variant: 'actual' | 'target'
-  value: number | null
-}) {
-  const pct = value ?? 0
-  return (
-    <div className="macro-chart__bar-track">
-      <div
-        className={`macro-chart__bar-fill macro-chart__bar-fill--${variant}`}
-        style={{ width: `${Math.min(100, pct)}%` }}
-      />
-      <span className="macro-chart__bar-label">{value === null ? '—' : `${value}%`}</span>
-    </div>
-  )
+// Same 4-color scale as ringTierColor above, re-purposed for an absolute
+// count instead of a %-of-target ratio: red under 10 distinct plants,
+// orange under 20, yellow under the 28-30 target range, green at/above it.
+function plantDiversityColor(count: number): string {
+  if (count < 10) return '#d03b3b' // red
+  if (count < 20) return '#e07b1f' // orange
+  if (count < 28) return '#d1a300' // yellow
+  return '#0ca30c' // green
 }
 
-function RecipeGenerationForm({
-  onGenerated,
-}: {
-  onGenerated: (recipe: Recipe) => void
-}) {
-  const [cuisine, setCuisine] = useState('')
-  const [maxTimeMinutes, setMaxTimeMinutes] = useState('')
-  const [servings, setServings] = useState('')
-  const [generating, setGenerating] = useState(false)
-  const [generateError, setGenerateError] = useState<string | null>(null)
+function PlantDiversitySection({ diversity }: { diversity: PlantDiversityResult }) {
+  const { count, target, items } = diversity
+  const color = plantDiversityColor(count)
+  const pct = Math.min(100, Math.round((count / target) * 100))
 
-  async function handleGenerate(e: FormEvent) {
-    e.preventDefault()
-    setGenerating(true)
-    setGenerateError(null)
-    try {
-      const input: RecipeGenerateInput = {}
-      const trimmedCuisine = cuisine.trim()
-      if (trimmedCuisine) input.cuisine = trimmedCuisine
-      const parsedTime = Number(maxTimeMinutes)
-      if (maxTimeMinutes.trim() && Number.isFinite(parsedTime) && parsedTime > 0) {
-        input.max_time_minutes = parsedTime
-      }
-      const parsedServings = Number(servings)
-      if (servings.trim() && Number.isFinite(parsedServings) && parsedServings > 0) {
-        input.servings = parsedServings
-      }
-
-      const recipe = await generateRecipe(input)
-      onGenerated(recipe)
-      setCuisine('')
-      setMaxTimeMinutes('')
-      setServings('')
-    } catch (err) {
-      setGenerateError(
-        err instanceof ApiError ? err.message : 'Could not generate a recipe right now.',
-      )
-    } finally {
-      setGenerating(false)
+  // Items already arrive grouped+sorted by the backend (fixed group order,
+  // alphabetical within group) -- just fold consecutive same-group entries
+  // together rather than re-deriving the grouping here.
+  const groups: { label: string; items: PlantDiversityItem[] }[] = []
+  for (const item of items) {
+    const current = groups[groups.length - 1]
+    if (current && current.label === item.group) {
+      current.items.push(item)
+    } else {
+      groups.push({ label: item.group, items: [item] })
     }
   }
 
   return (
-    <form className="recipe-generate-form" onSubmit={handleGenerate}>
-      <div className="form-row">
-        <div className="form-field">
-          <label htmlFor="recipe-cuisine">Cuisine (optional)</label>
-          <input
-            id="recipe-cuisine"
-            type="text"
-            placeholder="e.g. Italian, Thai, Mexican..."
-            value={cuisine}
-            onChange={(e) => setCuisine(e.target.value)}
-          />
-        </div>
-
-        <div className="form-field">
-          <label htmlFor="recipe-max-time">Max. cooking time (minutes)</label>
-          <input
-            id="recipe-max-time"
-            type="number"
-            min={1}
-            placeholder="e.g. 30"
-            value={maxTimeMinutes}
-            onChange={(e) => setMaxTimeMinutes(e.target.value)}
-          />
-        </div>
-
-        <div className="form-field">
-          <label htmlFor="recipe-servings">Servings / portions </label>
-          <input
-            id="recipe-servings"
-            type="number"
-            min={1}
-            placeholder="e.g. 2"
-            value={servings}
-            onChange={(e) => setServings(e.target.value)}
-          />
-        </div>
+    <div className="section-divider">
+      <h2>Plant diversity</h2>
+      <p className="muted">
+        Eat 30 different plants regularly to maximize gut
+        microbiome diversity, improve immune function, and lower the risk of
+        chronic diseases.
+      </p>
+      <div
+        className="progress-bar"
+        role="progressbar"
+        aria-valuenow={count}
+        aria-valuemin={0}
+        aria-valuemax={target}
+      >
+        <div
+          className="progress-bar__fill"
+          style={{ width: `${pct}%`, background: color }}
+        />
       </div>
+      <p className="muted">
+        <strong style={{ color }}>{count}</strong> / {target} different plants
+      </p>
 
-      {generateError && (
-        <p className="form-error" role="alert">
-          {generateError}
-        </p>
-      )}
-
-      <button className="btn btn-primary" type="submit" disabled={generating}>
-        {generating ? 'Generating…' : 'Generate recipe'}
-      </button>
-    </form>
-  )
-}
-
-function macroShare(
-  recipe: Recipe,
-): { protein: number; fat: number; carb: number } | null {
-  const proteinKcal = recipe.protein_g * 4
-  const fatKcal = recipe.fat_g * 9
-  const carbKcal = recipe.carbs_g * 4
-  const total = proteinKcal + fatKcal + carbKcal
-  if (total <= 0) return null
-  return {
-    protein: Math.round((proteinKcal / total) * 100),
-    fat: Math.round((fatKcal / total) * 100),
-    carb: Math.round((carbKcal / total) * 100),
-  }
-}
-
-function RecipeSummaryCard({ recipe }: { recipe: Recipe }) {
-  const totalMinutes = recipe.prep_minutes + recipe.cook_minutes
-  const share = macroShare(recipe)
-  const kcalPerServing =
-    recipe.servings && recipe.servings > 0
-      ? Math.round(recipe.calories_kcal / recipe.servings)
-      : null
-
-  return (
-    <details className="recipe-card">
-      <summary className="recipe-card__summary">
-        <span className="recipe-card__title">{recipe.title}</span>
-        <span className="recipe-card__meta">
-          {totalMinutes} min · Serves {recipe.servings ?? '—'} ·{' '}
-          {kcalPerServing !== null
-            ? `${kcalPerServing} kcal/serving`
-            : `${Math.round(recipe.calories_kcal)} kcal total`}
-          {share && ` · P ${share.protein}% F ${share.fat}% C ${share.carb}%`}
-        </span>
-      </summary>
-
-      <div className="recipe-card__body">
-        <h3>Ingredients</h3>
-        <ul className="recipe-card__ingredients">
-          {recipe.ingredients.map((ing, i) => (
-            <li key={i}>
-              {ing.quantity} {ing.name}
-            </li>
-          ))}
-        </ul>
-
-        <h3>Steps</h3>
-        <ol className="recipe-card__steps">
-          {recipe.steps.map((step, i) => (
-            <li key={i}>{step}</li>
-          ))}
-        </ol>
-
-        <p className="recipe-card__macros">
-          {Math.round(recipe.calories_kcal)} kcal · P {Math.round(recipe.protein_g)}g · F{' '}
-          {Math.round(recipe.fat_g)}g · C {Math.round(recipe.carbs_g)}g · Fiber{' '}
-          {Math.round(recipe.fiber_g)}g
-        </p>
-        <p className="muted recipe-card__estimate-note">
-          Estimated by Nährbert — shop these ingredients and upload the receipt to log the
-          exact numbers.
-        </p>
-      </div>
-    </details>
+      <details className="details-panel">
+        <summary>See what counted ({count})</summary>
+        {groups.length === 0 ? (
+          <p className="muted">Nothing purchased in this window yet.</p>
+        ) : (
+          groups.map((group) => (
+            <div key={group.label} className="plant-diversity-group">
+              <h3 className="plant-diversity-group__label">
+                {group.label} ({group.items.length})
+              </h3>
+              <ul className="chip-list">
+                {group.items.map((item) => (
+                  <li key={item.name} className="chip">
+                    {item.name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        )}
+      </details>
+    </div>
   )
 }

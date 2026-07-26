@@ -44,14 +44,12 @@ FALLBACK_CONFIDENCE = 0.30
 # processed_score/iron_mg/calcium_mg are left unset (None), matching the
 # current calories-and-macros-first focus.
 #
-# NOTE: `_canonical_category` / `_GERMAN_CATEGORY_MAP` / `_NAME_KEYWORDS`
-# below still only resolve to the OLD 8 coarse keys (dairy/grain/vegetable/
-# fruit/protein/snack/drink/other) — none of which exist in this dict
-# anymore except "other". Until that matching logic is updated to select
-# among these 87 categories, every fallback lookup misses and falls
-# through to the generic "other" bucket. Deliberately deferred, not an
-# oversight — flagged the same way after the previous (8-category) version
-# of this table.
+# `_canonical_category` / `_GERMAN_CATEGORY_MAP` / `_NAME_KEYWORDS` below
+# resolve directly to these 87 leaf categories (see the tests in
+# tests/test_fallback_categories.py, which assert e.g. Banane ->
+# tropical_fruits, Gouda -> hard_and_semi_hard_cheese). "other" is only the
+# genuine catch-all for items no keyword matches — not, as an earlier
+# revision of this note warned, the place every lookup silently collapsed to.
 CATEGORY_NUTRITION = {
     # ── Vegetables ────────────────────────────────────────────────────
     "leafy_greens": NutritionValues(calories_kcal=18, carbs_g=0.9, protein_g=2.1, fat_g=0.3, fiber_g=1.8),  # BLS: "Spinat roh"

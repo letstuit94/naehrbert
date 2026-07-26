@@ -30,6 +30,12 @@ from backend.app.models.profile import (
 # ── BR-M6 energy densities (kcal/g) ──────────────────────────────────────
 KCAL_PER_G = {"protein": 4.0, "carb": 4.0, "fat": 9.0}
 
+# Fiber's RDA scales with how much you eat, not with the calories fiber
+# itself provides -- unlike protein/fat/carb (sized as %-of-calories so the
+# three sum to ~100% of energy), fiber is a fixed density guideline layered
+# on top: 14g per 1000 kcal, independent of the macro energy split.
+FIBER_G_PER_1000KCAL = 14.0
+
 # ── BR-E3 NEAT: BMR × movement% ──────────────────────────────────────────
 _NEAT_PCT = {
     DailyMovement.MOSTLY_SITTING: 0.00,
@@ -141,7 +147,7 @@ def compute_ideal_profile(profile: ProfileCreate) -> Optional[IdealProfile]:
             constrained = True
             remaining = 0.0
     carbs_g = remaining / KCAL_PER_G["carb"]
-    fiber_g = 14.0 * calories / 1000.0
+    fiber_g = FIBER_G_PER_1000KCAL * calories / 1000.0
 
     if constrained:
         notes.append(

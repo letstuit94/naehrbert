@@ -45,6 +45,22 @@ def read_profile(profile_id: int = Depends(require_profile_id)):
     return Profile(**stored)
 
 
+@router.delete("", status_code=204)
+def delete_profile(profile_id: int = Depends(require_profile_id)):
+    """Account deletion: erase the caller's profile and everything they own
+    (receipts + items, recipes, feedback, pantry data). `require_profile_id`
+    means a user can only ever delete their own account -- profile_id comes
+    from the X-Profile-Id header, never a path/body param.
+
+    Verified matches are preserved by design: the verified_matches (and
+    non_food_terms) table is a global correction cache with no profile_id
+    FK, so repo.delete_profile never touches it -- see its docstring."""
+
+    if not repo.get_profile(profile_id):
+        raise HTTPException(status_code=404, detail="No profile yet")
+    repo.delete_profile(profile_id)
+
+
 @router.get("/targets")
 def read_targets(profile_id: int = Depends(require_profile_id)):
     stored = repo.get_profile(profile_id)

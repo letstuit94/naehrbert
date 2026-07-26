@@ -4,6 +4,20 @@
   min-height: 100svh;
 }
 
+/* A small qualifier riding on the same line as an <h1>, at body-text size
+   (matches index.css's base font-size / its 1024px breakpoint) instead of
+   the heading's own much larger size -- e.g. Results' "(calculated over
+   the last 28 days)". */
+.title-note {
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: var(--text);
+  @media (max-width: 1024px) {
+    font-size: 16px;
+  }
+}
+
 .nav-bar {
   display: flex;
   align-items: center;
@@ -179,7 +193,7 @@
 }
 
 .form-error {
-  color: #d03b3b;
+  color: var(--danger);
   font-size: 15px;
 }
 
@@ -220,23 +234,27 @@
   font-size: 14px;
 }
 
-.btn-link,
-.btn-icon {
+.btn-danger {
+  background: var(--surface);
+  border-color: var(--danger);
+  color: var(--danger);
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-link {
   font: inherit;
   background: none;
   border: none;
   color: var(--text-h);
   cursor: pointer;
   padding: 0;
-}
-
-.btn-icon {
-  color: var(--text);
-  font-size: 14px;
-}
-
-.btn-icon:hover {
-  color: #d03b3b;
 }
 
 /* ── Stat tiles (Targets, Results) ────────────────────────────────────── */
@@ -325,7 +343,98 @@
   color: var(--text);
 }
 
+.plant-diversity-group {
+  margin-top: 14px;
+}
+
+.plant-diversity-group:first-of-type {
+  margin-top: 12px;
+}
+
+.plant-diversity-group__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 6px;
+}
+
 /* ── Upload / review screen ───────────────────────────────────────────── */
+
+.upload-card {
+  margin: 20px 0;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+}
+
+.upload-card__label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.upload-card .tab-row {
+  background: var(--code-bg);
+}
+
+.upload-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 40px 20px;
+  text-align: center;
+  background: var(--code-bg);
+  border: 1px dashed var(--border);
+  border-radius: 16px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.upload-dropzone:hover,
+.upload-dropzone--active {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.upload-dropzone__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.upload-dropzone__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-h);
+  box-shadow: var(--shadow);
+}
+
+.upload-dropzone__title {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.upload-dropzone__subtitle {
+  font-size: 13px;
+  color: var(--text);
+}
 
 .tab-row {
   display: flex;
@@ -363,6 +472,12 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 16px;
+}
+
+.upload-progress__filename {
+  margin: 0 0 10px;
+  font-weight: 600;
+  color: var(--text-h);
 }
 
 .upload-progress__steps {
@@ -436,11 +551,11 @@
 }
 
 .review-row {
-  display: grid;
-  grid-template-columns: 2fr 70px 80px auto auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  align-items: center;
-  padding: 10px 12px;
+  padding: 12px 40px 10px 12px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -450,11 +565,65 @@
   opacity: 0.55;
 }
 
-.review-row__name-cell {
+.review-row__delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  background: none;
+  border: none;
+  border-radius: 999px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.review-row__delete:hover {
+  color: #d03b3b;
+  background: var(--accent-bg);
+}
+
+.review-row__fields {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.review-row__field {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
+}
+
+.review-row__field--name {
+  flex: 1 1 160px;
+}
+
+.review-row__field--qty {
+  flex: 0 0 70px;
+}
+
+.review-row__field--unit {
+  flex: 0 0 90px;
+}
+
+.review-row__field-label {
+  font-size: 12px;
+  color: var(--text-h);
+}
+
+.review-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .review-row__match {
@@ -471,11 +640,9 @@
 
 .review-row__fix-match {
   font-size: 12px;
-  align-self: flex-start;
 }
 
 .review-row__search-panel {
-  grid-column: 1 / -1;
   margin-top: 4px;
   padding-top: 8px;
   border-top: 1px solid var(--border);
@@ -537,8 +704,9 @@
   white-space: nowrap;
 }
 
-.review-row input,
-.review-row select {
+.review-row__name,
+.review-row__qty,
+.review-row__unit {
   font: inherit;
   font-size: 14px;
   padding: 7px 10px;
@@ -547,20 +715,53 @@
   background: var(--surface);
   color: var(--text-h);
   width: 100%;
+  height: 36px;
+  box-sizing: border-box;
 }
 
 .review-row__nonfood {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 13px;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
   white-space: nowrap;
+  cursor: pointer;
 }
 
-@media (max-width: 640px) {
-  .review-row {
-    grid-template-columns: 1fr 1fr;
+.review-row__nonfood:has(input:checked) {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--text-h);
+}
+
+@media (max-width: 480px) {
+  .review-row__fields {
+    flex-wrap: wrap;
   }
+
+  .review-row__field--name {
+    flex-basis: 100%;
+  }
+}
+
+.review-purchase-info {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.upload-confirmed-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 20px;
 }
 
 /* ── Callouts ──────────────────────────────────────────────────────────── */
@@ -574,8 +775,9 @@
 }
 
 .callout--success {
-  background: rgba(12, 163, 12, 0.1);
-  border-color: rgba(12, 163, 12, 0.4);
+  background: var(--sage-soft);
+  border-color: var(--sage);
+  color: var(--sage-ink);
 }
 
 .callout--warning {
@@ -599,109 +801,74 @@
   color: var(--text);
 }
 
-/* ── Macro comparison chart (Results) ─────────────────────────────────── */
+/* ── Macro ring tiles (Results, "Your targets") ───────────────────────── */
 
-.viz-root {
-  --series-actual: #2a78d6;
-  --series-target: #eb6834;
-}
-@media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme='light'])) .viz-root {
-    --series-actual: #3987e5;
-    --series-target: #d95926;
-  }
-}
-:root[data-theme='dark'] .viz-root {
-  --series-actual: #3987e5;
-  --series-target: #d95926;
-}
-
-.macro-chart {
-  margin: 20px 0;
-}
-
-.macro-chart__legend {
-  display: flex;
-  gap: 20px;
-  font-size: 14px;
-  color: var(--text);
-  margin-bottom: 12px;
-}
-
-.swatch {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  margin-right: 6px;
-}
-
-.swatch--actual {
-  background: var(--series-actual);
-}
-.swatch--target {
-  background: var(--series-target);
-}
-
-.macro-chart__row {
-  margin-bottom: 14px;
-}
-
-.macro-chart__row-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-h);
-  margin-bottom: 4px;
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-}
-
-.macro-chart__delta {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--text);
-}
-
-.macro-chart__bars {
+.macro-ring-tile {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  text-align: center;
+}
+
+.macro-ring-tile__label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.macro-ring {
+  position: relative;
+  width: 84px;
+  height: 84px;
+}
+
+.macro-ring__fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  transition: background 0.2s ease;
+}
+
+.macro-ring__hole {
+  position: absolute;
+  inset: 9px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 4px;
 }
 
-.macro-chart__bar-track {
-  position: relative;
-  height: 20px;
-  background: var(--code-bg);
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-}
-
-.macro-chart__bar-fill {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  border-radius: 999px;
-  transition: width 0.2s ease;
-}
-
-.macro-chart__bar-fill--actual {
-  background: var(--series-actual);
-}
-.macro-chart__bar-fill--target {
-  background: var(--series-target);
-  opacity: 0.55;
-}
-
-.macro-chart__bar-label {
-  position: relative;
-  margin-left: 8px;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
+.macro-ring__value {
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text-h);
-  z-index: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.macro-ring__ratio {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.macro-ring-tile__caption {
+  font-size: 12px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.macro-ring-tile__action {
+  font-size: 13.75px; /* was 11px */
+  font-weight: 700;
+  color: var(--text-h);
 }
 
 /* ── Buckets ───────────────────────────────────────────────────────────── */
@@ -1183,21 +1350,259 @@ a.btn {
   }
 }
 
+/* ── Pantry / pantry (Vorrat.md) ───────────────────────────────────────── */
+
+/* Same card styling as .purchase-row, but a 4th column for the
+   eaten/removed actions (name · qty+date+store · macros · actions). */
+.pantry-row {
+  /* name (+ macros subtitle) · quantity · actions -- macros moved under the
+     name, so no separate macros column. */
+  grid-template-columns: 2.5fr 1.75fr auto;
+}
+
+.pantry-row__name-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Food-group emoji prefix on each lot -- a quick visual category cue. */
+.pantry-row__cat-emoji {
+  flex: 0 0 auto;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.pantry-row__macros-sub {
+  color: var(--text-muted, #888);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pantry-row__icon-btn {
+  border: none;
+  background: none;
+  padding: 2px 4px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.pantry-row__icon-btn:hover {
+  opacity: 1;
+  color: var(--text-h);
+}
+
+.pantry-row__icon-btn--active {
+  opacity: 1;
+  color: var(--accent, #2f7d5b);
+}
+
+.pantry-row__edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pantry-row__edit input {
+  width: 100%;
+  max-width: 200px;
+}
+
+.pantry-row__edit input[type='number'] {
+  width: 80px;
+}
+
+.pantry-row__unit-select {
+  flex: none;
+  width: auto;
+}
+
+.pantry-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* Emoji icon actions (🍴 eaten / 🗑️ removed): borderless, subtle hover, and
+   a highlighted background while their withdrawal panel is open. */
+.pantry-row__action {
+  border: 1px solid var(--border);
+  background: none;
+  padding: 4px 8px;
+  font-size: 18px;
+  line-height: 1;
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.pantry-row__action:hover {
+  opacity: 1;
+  background: var(--surface);
+}
+
+.pantry-row__action--active {
+  opacity: 1;
+  background: rgba(47, 125, 91, 0.16);
+}
+
+.btn-secondary--active {
+  outline: 2px solid var(--accent, #2f7d5b);
+  outline-offset: 1px;
+}
+
+/* Inline "how much eaten/removed?" control, spanning the row's full width
+   below the primary cells. */
+.pantry-row__panel {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.pantry-row__panel-label {
+  color: var(--text-h);
+  font-size: 13px;
+}
+
+.pantry-row__amount {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pantry-row__amount input {
+  width: 90px;
+}
+
+/* Piece control: a quarter-step slider (0 -> remaining), snapping to ¼ ½ ¾
+   and whole counts, with the chosen amount shown as a fraction glyph. */
+.pantry-row__slider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 180px;
+}
+
+.pantry-row__slider input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent, #2f7d5b);
+}
+
+.pantry-row__slider-value {
+  min-width: 56px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-h);
+}
+
+.pantry-row__panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+/* Manual "add item" affordance (Vorrat.md) */
+.pantry-add-btn {
+  margin-bottom: 16px;
+}
+
+.add-item-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--border, #d9d9d9);
+  border-radius: 10px;
+  background: var(--surface, #fafafa);
+}
+
+/* Name + amount + unit + search on one line (wraps on narrow screens),
+   mirroring a receipt line item. Bottom-aligned so the labelled fields and
+   the search button share a baseline. */
+.add-item-panel__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.add-item-panel__group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.add-item-panel__group--name {
+  flex: 0 1 200px;
+}
+
+.add-item-panel__group--name input {
+  width: 100%;
+}
+
+.add-item-panel__label {
+  color: var(--text-h);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.add-item-panel__qty {
+  width: 80px;
+}
+
+.add-item-panel__picked {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-h);
+}
+
+.add-item-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .pantry-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pantry-row__actions {
+    justify-content: flex-start;
+  }
+}
+
 /* ── Recipes ───────────────────────────────────────────────────────────── */
 
 .recipe-card {
+  position: relative;
   margin: 12px 0;
-  padding: 16px 22px;
+  padding: 16px 40px 16px 22px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 18px;
 }
 
+/* Two explicit rows -- title alone, then metrics/labels -- instead of one
+   wrapping row where long metadata could push the title around. */
 .recipe-card__summary {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 10px;
+  flex-direction: column;
+  gap: 4px;
   cursor: pointer;
   list-style: none;
 }
@@ -1206,14 +1611,20 @@ a.btn {
   display: none;
 }
 
-.recipe-card__summary::before {
+.recipe-card__title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.recipe-card__title-row::before {
   content: '▸';
   color: var(--text);
   font-size: 12px;
   flex-shrink: 0;
 }
 
-details[open] > .recipe-card__summary::before {
+details[open] > .recipe-card__summary .recipe-card__title-row::before {
   content: '▾';
 }
 
@@ -1223,10 +1634,29 @@ details[open] > .recipe-card__summary::before {
   font-size: 16px;
 }
 
+.recipe-card__meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-left: 20px; /* aligns under the title, past the triangle marker */
+}
+
 .recipe-card__meta {
   font-size: 13px;
   color: var(--text);
   font-variant-numeric: tabular-nums;
+}
+
+.recipe-card__label {
+  font-size: 12px;
+  padding: 3px 9px;
+  margin-left: auto; /* pins it to the bottom-right corner of the card header */
+  flex-shrink: 0;
+}
+
+.recipe-card__delete {
+  top: 14px;
 }
 
 .recipe-card__body {
@@ -1255,4 +1685,723 @@ details[open] > .recipe-card__summary::before {
 .recipe-card__estimate-note {
   margin-top: 4px;
   font-size: 13px;
+}
+
+/* ── Pantry: urgency traffic-light + soft label ─────────────────────────── */
+/* Fuzzy urgency only: a dot + optional word. Never a date or day count. */
+.pantry-row__meta-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.urgency {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.urgency__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  /* A ring so the state reads even against a same-hue background, and so the
+     grey "no estimate" dot isn't mistaken for a disabled control. */
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12) inset;
+}
+
+/* Ampel hues chosen to hold contrast in light and dark themes. */
+.urgency__dot--red {
+  background: #e5484d;
+}
+.urgency__dot--yellow {
+  background: #f5a524;
+}
+.urgency__dot--green {
+  background: #30a46c;
+}
+.urgency__dot--grey {
+  background: var(--border);
+}
+
+.urgency__label {
+  font-size: 12px;
+  color: var(--text-muted, #888);
+}
+
+/* ── Pantry controls: view toggle (A/B) + filters (kept visually apart) ─── */
+.pantry-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0 18px;
+}
+
+.pantry-controls__views {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  align-self: flex-start;
+}
+
+.pantry-toggle {
+  border: none;
+  background: none;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.pantry-toggle--active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+}
+
+/* Row 1: view toggle (left) + search (right); wraps on narrow widths. */
+.pantry-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+.pantry-search {
+  flex: 0 1 240px;
+  min-width: 160px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+}
+
+/* Row 2: filter bar, set apart from the sort row by a hairline. */
+.pantry-filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+/* "Categories (n/total) ▾" dropdown trigger. */
+.cat-filter {
+  position: relative;
+}
+
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.filter-btn--active {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.filter-btn__count {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted, #888);
+}
+
+.filter-btn--active .filter-btn__count {
+  color: inherit;
+}
+
+.filter-btn__caret {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* Checkbox popover -- checked = category shown. */
+.cat-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  min-width: 220px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.cat-popover__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cat-popover__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #888);
+}
+
+.cat-popover__actions {
+  display: inline-flex;
+  gap: 10px;
+}
+
+.cat-popover__list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.cat-popover__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.cat-popover__item:hover {
+  background: var(--bg);
+}
+
+/* "Next 3 days" quick filter as a toggle pill. */
+.filter-pill {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.filter-pill--on {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.pantry-clear {
+  margin-left: auto;
+  font-size: 13px;
+}
+
+/* ── Pantry "by category" view: group headers ───────────────────────────── */
+/* Expand/collapse-all control, right-aligned above the collapsed group list. */
+.pantry-group-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.pantry-group + .pantry-group {
+  margin-top: 18px;
+}
+
+.pantry-group__head {
+  margin: 0 0 6px;
+}
+
+/* Accordion header: full-width clickable row that expands/collapses its lots. */
+.pantry-group__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, #888);
+}
+
+.pantry-group__toggle:hover {
+  color: var(--text);
+}
+
+.pantry-group__caret {
+  font-size: 10px;
+  width: 12px;
+  flex: 0 0 auto;
+}
+
+.pantry-group__label {
+  flex: 1 1 auto;
+}
+
+.pantry-group__count {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--text-muted, #888);
+}
+
+/* ── Shelf-life config panel (not surfaced yet; see PantryPage) ─────────── */
+.shelf-life-panel {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 16px;
+  margin: 12px 0 4px;
+}
+
+.shelf-life-panel__head p {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.shelf-life-list {
+  list-style: none;
+  margin: 14px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shelf-life-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.shelf-life-row__label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.shelf-life-row__input {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.shelf-life-row__input input {
+  width: 68px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  text-align: right;
+}
+
+.shelf-life-row__tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+.shelf-life-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ── Profile page · CI v2 ──────────────────────────────────────────────── */
+/* Card = surface + soft ring (no hard border), flat by default (§7/§3). */
+.profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Padding stays inside declared widths — full-width buttons/inputs never
+   overhang their card. */
+.profile-page,
+.profile-page * {
+  box-sizing: border-box;
+}
+
+.profile-lead {
+  margin: 0 0 8px;
+  max-width: 56ch;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.card {
+  margin: 12px 0;
+  padding: 20px;
+  background: var(--surface);
+  border-radius: 20px;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+/* Eyebrow / section label (§4) */
+.eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.card .eyebrow {
+  margin-bottom: 12px;
+}
+
+/* Forms sit flush inside their card. */
+.card > .form {
+  margin-top: 0;
+  max-width: none;
+}
+
+/* Section label between cards (Bon history etc.). */
+.profile-section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 24px 2px 4px;
+}
+
+/* Header summary card: avatar + name + derived stats. */
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-avatar {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 999px;
+  background: var(--sage-soft);
+  color: var(--sage-ink);
+}
+
+.profile-avatar svg {
+  width: 28px;
+  height: 28px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.9;
+}
+
+.profile-header__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-header__name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.profile-header__meta {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A row of secondary actions (receipt history, log out). */
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.profile-note {
+  margin: 12px 0 24px;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Loading skeleton (§12) — soft pulse, disabled under reduced motion. */
+.skeleton {
+  background: var(--code-bg);
+  border-radius: 8px;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* Icon-button focus (§13) — always a visible ring. */
+.btn:focus-visible,
+.btn-link:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 2px;
+}
+
+/* Accent-soft button (§8) — light positive inline actions (Edit, My data).
+   Muted sage fill, never the full-tone accent. */
+.btn-soft {
+  background: var(--sage-soft);
+  color: var(--sage-ink);
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.btn-soft:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+/* Read-view fields: every row is a tappable button (label · value · pencil)
+   that opens the edit form on that field, so editability is obvious per field
+   — not only via the header button. */
+.profile-fields {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 0 -10px;
+  padding: 12px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 10px;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.profile-fields .profile-field:last-child {
+  border-bottom: 0;
+}
+
+.profile-field:hover {
+  background: var(--code-bg);
+}
+
+.profile-field--locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.profile-field--locked:hover {
+  background: none;
+}
+
+.profile-field:focus-visible {
+  outline: none;
+  background: var(--code-bg);
+  box-shadow: inset 0 0 0 2px var(--sage);
+}
+
+.profile-field__label {
+  flex: 0 0 42%;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.profile-field__value {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* Pencil affordance: faintly present at rest so touch users see it too,
+   full on hover/focus. */
+.profile-field__edit {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  color: var(--text);
+  opacity: 0.5;
+  transition: opacity 0.12s ease;
+}
+
+.profile-field:hover .profile-field__edit,
+.profile-field:focus-visible .profile-field__edit {
+  opacity: 1;
+  color: var(--sage-ink);
+}
+
+/* ── Inline field editor · row-wise editing (§4/§9) ─────────────────────── */
+/* The tapped row expands in place: label on top, control, then Save/Cancel.
+   A highlighted background marks the one active row. */
+.profile-field--editing {
+  display: block;
+  cursor: default;
+  background: var(--code-bg);
+}
+
+.profile-field--editing .profile-field__label {
+  display: block;
+  flex: none;
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text);
+}
+
+.profile-field__editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Editor controls share one look (§9) with a sage focus ring. Surface fill so
+   they read against the highlighted active row. */
+.profile-field__editor input,
+.profile-field__editor select,
+.profile-field__editor textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text-h);
+}
+
+.profile-field__editor input:focus,
+.profile-field__editor select:focus,
+.profile-field__editor textarea:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--sage);
+}
+
+.profile-field__editor .chip-input-row input {
+  width: auto;
+  flex: 1;
+}
+
+.profile-field__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+/* Compact "+" add button, replacing the old text "Add" (allergens, dislikes). */
+.chip-add-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  font-size: 22px;
+  line-height: 1;
+  border: 0;
+  border-radius: 12px;
+  background: var(--sage-soft);
+  color: var(--sage-ink);
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: pointer;
+  transition: filter 0.12s ease;
+}
+
+.chip-add-btn:hover {
+  filter: brightness(0.97);
+}
+
+.chip-add-btn:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 2px;
+}
+
+/* Links (not buttons) use a token colour, never the UA blue (§2/§16). */
+.profile-page a:not(.btn) {
+  color: var(--sage-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Account action cards · Receipt history, Log out ────────────────────── */
+/* Each sits in its own card; the button fills the card's content width and
+   stays inside it (box-sizing above). Emphasis via colour, not size — Log out
+   filled (sage-soft), Receipt history quiet (surface + ring). */
+.profile-action-card .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px 22px;
+  border-radius: 16px;
+  font-size: 15px;
+}
+
+.profile-logout {
+  font-weight: 600;
+}
+
+.profile-logout__icon {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
 }

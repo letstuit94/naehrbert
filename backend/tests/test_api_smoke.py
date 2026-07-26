@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from backend.app.api import analysis as analysis_api
 from backend.app.api import feedback as feedback_api
+from backend.app.api import pantry as pantry_api
 from backend.app.api import profile as profile_api
 from backend.app.api import profiles as profiles_api
 from backend.app.api import receipts as receipts_api
@@ -194,93 +195,6 @@ def test_purchases_converts_per_100g_to_actual_quantity_and_includes_non_food(mo
     assert pfand["calories_kcal"] is None
 
 
-def _fake_resolve_capturing_store(captured):
-    def fake_resolve(item):
-        captured["store"] = item.get("store")
-        return MatchedProduct(
-            parsed_item_name=item.get("name", ""),
-            match_type=MatchType.NONE,
-            confidence=0.0,
-            data_source="test",
-        )
-
-    return fake_resolve
-
-
-def test_upload_text_injects_receipt_store_into_resolve_item(monkeypatch):
-    """Regression: receipt_items has no `store` column (it lives on the
-    parent receipt), so resolve_item's Tier-0 lookup was always seeing
-    item.get("store") == None here -- every verified-match lookup silently
-    degraded to the store-agnostic scope only, missing every row recorded
-    under a real store. `store` must be merged onto the item dict passed
-    to resolve_item at upload time."""
-
-    monkeypatch.setattr(
-        receipts_api.receipt_text_parser,
-        "parse_receipt_text_offline",
-        lambda text: {
-            "store": "Rewe",
-            "date": None,
-            "scan_quality": "good",
-            "items": [
-                {
-                    "name": "Chili Mix Tri",
-                    "original_text": "Chili Mix Tri 1,49 B",
-                    "quantity": 1.0,
-                    "unit": "piece",
-                    "price": 1.49,
-                    "category": "other",
-                    "uncertain": False,
-                }
-            ],
-            "non_food_items_ignored": [],
-            "items_count": 1,
-        },
-    )
-    monkeypatch.setattr(receipts_api.non_food_terms, "filter_learned_non_food", lambda parsed: parsed)
-    monkeypatch.setattr(receipts_api.repo, "create_receipt", lambda **kwargs: {"id": "r1", "store": "Rewe"})
-    monkeypatch.setattr(
-        receipts_api.repo,
-        "insert_receipt_items",
-        lambda receipt_id, items: [{**item, "id": "item-1", "receipt_id": receipt_id} for item in items],
-    )
-    monkeypatch.setattr(receipts_api.repo, "update_receipt_item", lambda item_id, fields: fields)
-
-    captured = {}
-    monkeypatch.setattr(receipts_api, "resolve_item", _fake_resolve_capturing_store(captured))
-
-    resp = client.post(
-        "/receipts/text", json={"text": "irrelevant, parser is mocked"}, headers=AUTH
-    )
-    assert resp.status_code == 200
-    assert captured["store"] == "Rewe"
-
-
-def test_confirm_injects_receipt_store_into_resolve_item(monkeypatch):
-    """Same regression as the upload-time test, for confirm_receipt's
-    resolve_item call."""
-
-    monkeypatch.setattr(
-        receipts_api.repo,
-        "get_receipt",
-        lambda rid: {"id": rid, "store": "Lidl", "profile_id": 1},
-    )
-    monkeypatch.setattr(
-        receipts_api.repo,
-        "get_receipt_items",
-        lambda rid: [{"id": "item-1", "name": "Chili Mix Tri", "is_non_food": False}],
-    )
-    monkeypatch.setattr(receipts_api.repo, "update_receipt_item", lambda item_id, fields: fields)
-    monkeypatch.setattr(receipts_api.repo, "set_receipt_status", lambda rid, status: None)
-
-    captured = {}
-    monkeypatch.setattr(receipts_api, "resolve_item", _fake_resolve_capturing_store(captured))
-
-    resp = client.post("/receipts/r1/confirm", headers=AUTH)
-    assert resp.status_code == 200
-    assert captured["store"] == "Lidl"
-
-
 def test_confirm_receipt_404_when_owned_by_a_different_profile(monkeypatch):
     """A receipt that exists but belongs to profile 2 must look identical
     to a missing one from profile 1's point of view -- no leaking whether
@@ -353,6 +267,81 @@ def test_correct_item_records_verified_match_keyed_on_cleaned_name(monkeypatch):
     assert recorded["raw_text"] == "Bio Paprika Mix"  # the cleaned `name`, not `original_text`
 
 
+def test_update_item_marking_non_food_learns_the_term(monkeypatch):
+    """Regression: non_food_terms.py's read-side filter (filter_learned_non_food,
+    already wired into _persist_parsed) had no write side calling it --
+    marking an item "Not food" in review never actually taught the system,
+    so the same product kept needing the checkbox on every future receipt."""
+
+    monkeypatch.setattr(
+        receipts_api.repo, "get_receipt", lambda rid: {"id": rid, "store": "Netto", "profile_id": 1}
+    )
+    monkeypatch.setattr(
+        receipts_api.repo,
+        "update_receipt_item",
+        lambda item_id, fields: {
+            "id": item_id, "name": "Batterien AA", "original_text": "Batterien AA 4er", **fields
+        },
+    )
+    recorded = {}
+    monkeypatch.setattr(
+        receipts_api.non_food_terms,
+        "record_non_food_term",
+        lambda name: recorded.update(name=name),
+    )
+
+    resp = client.patch(
+        "/receipts/r1/items/item-1", json={"is_non_food": True}, headers=AUTH
+    )
+    assert resp.status_code == 200
+    assert recorded["name"] == "Batterien AA"  # the cleaned `name`, not `original_text`
+
+
+def test_update_item_editing_other_fields_does_not_learn_non_food(monkeypatch):
+    monkeypatch.setattr(
+        receipts_api.repo, "get_receipt", lambda rid: {"id": rid, "store": "Netto", "profile_id": 1}
+    )
+    monkeypatch.setattr(
+        receipts_api.repo,
+        "update_receipt_item",
+        lambda item_id, fields: {"id": item_id, "name": "Apfel", **fields},
+    )
+    called = {"recorded": False}
+    monkeypatch.setattr(
+        receipts_api.non_food_terms,
+        "record_non_food_term",
+        lambda name: called.__setitem__("recorded", True),
+    )
+
+    resp = client.patch("/receipts/r1/items/item-1", json={"quantity": 3}, headers=AUTH)
+    assert resp.status_code == 200
+    assert called["recorded"] is False
+
+
+def test_update_item_unmarking_non_food_does_not_learn(monkeypatch):
+    """Setting is_non_food back to False is just a correction -- it must not
+    also (re-)teach the term as if it had been marked non-food."""
+
+    monkeypatch.setattr(
+        receipts_api.repo, "get_receipt", lambda rid: {"id": rid, "store": "Netto", "profile_id": 1}
+    )
+    monkeypatch.setattr(
+        receipts_api.repo,
+        "update_receipt_item",
+        lambda item_id, fields: {"id": item_id, "name": "Apfel", **fields},
+    )
+    called = {"recorded": False}
+    monkeypatch.setattr(
+        receipts_api.non_food_terms,
+        "record_non_food_term",
+        lambda name: called.__setitem__("recorded", True),
+    )
+
+    resp = client.patch("/receipts/r1/items/item-1", json={"is_non_food": False}, headers=AUTH)
+    assert resp.status_code == 200
+    assert called["recorded"] is False
+
+
 def test_summary_counts_distinct_receipts_and_items(monkeypatch):
     monkeypatch.setattr(
         analysis_api.repo,
@@ -385,6 +374,47 @@ def test_composition_empty_state_without_receipts(monkeypatch):
     resp = client.get("/analysis/composition", headers=AUTH)
     assert resp.status_code == 200
     assert resp.json()["items_considered"] == 0
+
+
+def test_target_comparison_closeness_score_sums_not_averages_macro_diffs(monkeypatch):
+    """Regression: closeness_score used to average the 3 macro diffs, which
+    let one macro be badly off target (e.g. protein at half its goal) hide
+    behind two that were close, producing a deceptively high score for a
+    purchase pattern that's actually missing a target by a lot. It now sums
+    the absolute per-macro differences instead."""
+
+    monkeypatch.setattr(analysis_api.repo, "get_profile", lambda profile_id: _PROFILE_ROW)
+    monkeypatch.setattr(
+        analysis_api.repo,
+        "get_all_confirmed_receipt_items",
+        lambda profile_id: [
+            {
+                "receipt_id": "r1",
+                "quantity": 100,
+                "unit": "g",
+                "protein_g": 3.0,
+                "fat_g": 12.0,
+                "carbs_g": 25.0,
+                "calories_kcal": 200,
+                "match_type": "exact",
+            },
+        ],
+    )
+    resp = client.get("/analysis/target-comparison", headers=AUTH)
+    assert resp.status_code == 200
+    body = resp.json()
+
+    diffs = [
+        abs(body["actual_pct"][m] - body["target_pct"][f"{m}_pct"])
+        for m in ("protein", "fat", "carb")
+    ]
+    assert body["closeness_score"] == round(max(0.0, 100.0 - sum(diffs)), 1)
+
+    # Sanity: with these 3 (deliberately mismatched) macros, summing must
+    # differ from averaging -- otherwise this test couldn't tell the two
+    # formulas apart.
+    averaged = round(max(0.0, 100.0 - sum(diffs) / len(diffs)), 1)
+    assert body["closeness_score"] != averaged
 
 
 def test_diversity_empty_state_without_receipts(monkeypatch):
@@ -476,6 +506,7 @@ def test_generate_recipe_endpoint(monkeypatch):
         fat_g=10,
         carbs_g=60,
         fiber_g=12,
+        dietary_label="vegan",
     )
     captured_kwargs = {}
 
@@ -526,6 +557,7 @@ def test_generate_recipe_without_body_uses_no_cuisine_or_time_limit(monkeypatch)
         fat_g=1,
         carbs_g=65,
         fiber_g=2,
+        dietary_label="vegan",
     )
     captured_kwargs = {}
 
@@ -596,6 +628,381 @@ def test_list_recipes_endpoint(monkeypatch):
     resp = client.get("/recipes", headers=AUTH)
     assert resp.status_code == 200
     assert resp.json()[0]["title"] == "Lentil bowl"
+
+
+_STORED_RECIPE_ROW = {
+    "id": "r1",
+    "profile_id": 1,
+    "title": "Lentil bowl",
+    "ingredients": [{"name": "lentils", "quantity": "200 g"}],
+    "steps": ["Simmer."],
+    "prep_minutes": 5,
+    "cook_minutes": 20,
+    "servings": 2,
+    "calories_kcal": 450,
+    "protein_g": 25,
+    "fat_g": 10,
+    "carbs_g": 60,
+    "fiber_g": 12,
+    "dietary_label": "vegan",
+    "feedback": None,
+    "archived_at": None,
+    "created_at": "2026-07-21T00:00:00+00:00",
+}
+
+
+def test_set_recipe_feedback_endpoint(monkeypatch):
+    monkeypatch.setattr(recipes_api.repo, "get_recipe", lambda rid: _STORED_RECIPE_ROW)
+    captured = {}
+    monkeypatch.setattr(
+        recipes_api.repo,
+        "update_recipe",
+        lambda rid, fields: captured.update(id=rid, fields=fields)
+        or {**_STORED_RECIPE_ROW, **fields},
+    )
+    resp = client.patch("/recipes/r1/feedback", json={"feedback": "up"}, headers=AUTH)
+    assert resp.status_code == 200
+    assert resp.json()["feedback"] == "up"
+    assert captured == {"id": "r1", "fields": {"feedback": "up"}}
+
+
+def test_set_recipe_feedback_clears_with_null(monkeypatch):
+    monkeypatch.setattr(
+        recipes_api.repo, "get_recipe", lambda rid: {**_STORED_RECIPE_ROW, "feedback": "up"}
+    )
+    monkeypatch.setattr(
+        recipes_api.repo,
+        "update_recipe",
+        lambda rid, fields: {**_STORED_RECIPE_ROW, **fields},
+    )
+    resp = client.patch("/recipes/r1/feedback", json={"feedback": None}, headers=AUTH)
+    assert resp.status_code == 200
+    assert resp.json()["feedback"] is None
+
+
+def test_set_recipe_feedback_404_for_another_profiles_recipe(monkeypatch):
+    monkeypatch.setattr(
+        recipes_api.repo, "get_recipe", lambda rid: {**_STORED_RECIPE_ROW, "profile_id": 2}
+    )
+    resp = client.patch("/recipes/r1/feedback", json={"feedback": "down"}, headers=AUTH)
+    assert resp.status_code == 404
+
+
+def test_set_recipe_feedback_401_without_login(monkeypatch):
+    resp = client.patch("/recipes/r1/feedback", json={"feedback": "up"})
+    assert resp.status_code == 401
+
+
+def test_archive_recipe_endpoint(monkeypatch):
+    monkeypatch.setattr(recipes_api.repo, "get_recipe", lambda rid: _STORED_RECIPE_ROW)
+    captured = {}
+    monkeypatch.setattr(
+        recipes_api.repo,
+        "update_recipe",
+        lambda rid, fields: captured.update(id=rid, fields=fields),
+    )
+    resp = client.delete("/recipes/r1", headers=AUTH)
+    assert resp.status_code == 204
+    assert captured["id"] == "r1"
+    assert "archived_at" in captured["fields"]  # soft-delete, not a hard row delete
+
+
+def test_archive_recipe_404_for_another_profiles_recipe(monkeypatch):
+    monkeypatch.setattr(
+        recipes_api.repo, "get_recipe", lambda rid: {**_STORED_RECIPE_ROW, "profile_id": 2}
+    )
+    resp = client.delete("/recipes/r1", headers=AUTH)
+    assert resp.status_code == 404
+
+
+def test_archive_recipe_401_without_login(monkeypatch):
+    resp = client.delete("/recipes/r1")
+    assert resp.status_code == 401
+
+
+def test_list_recipes_excludes_archived(monkeypatch):
+    """get_all_recipes itself does the archived_at filtering (repo.py) --
+    this just confirms the endpoint returns whatever the repo hands back,
+    i.e. it doesn't re-include archived rows some other way."""
+
+    monkeypatch.setattr(recipes_api.repo, "get_all_recipes", lambda profile_id: [])
+    resp = client.get("/recipes", headers=AUTH)
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+# ── Pantry / basket (Vorrat.md) ───────────────────────────────────────────
+
+
+def test_pantry_scales_macros_to_remaining_food_only_urgency_first(monkeypatch):
+    """GET /pantry returns v_pantry rows as basket lots: kcal/macros scaled to
+    the amount STILL in stock (remaining_quantity, not the purchased quantity),
+    is_non_food always false, ordered by ESTIMATED expiry ascending (most
+    urgent first -- view A). Here milk (dairy, ~10 days) is more urgent than
+    rice (grains, ~365 days) despite being bought later, so it leads. The
+    estimated date itself never appears in the response -- only a fuzzy
+    `urgency` bucket and the coarse `food_group`."""
+
+    monkeypatch.setattr(pantry_api.repo, "get_shelf_life_overrides", lambda profile_id: {})
+    monkeypatch.setattr(
+        pantry_api.repo,
+        "get_pantry",
+        lambda profile_id: [
+            {
+                "id": "i-old",
+                "receipt_id": "r1",
+                "name": "Reis",
+                "quantity": 1000,
+                "remaining_quantity": 1000,  # untouched
+                "unit": "g",
+                "category": "grains",
+                "match_type": "bls",
+                "matched_name": "Reis, roh",
+                "fallback_category": None,
+                "confidence": 0.9,
+                "calories_kcal": 350,
+                "protein_g": 7,
+                "fat_g": 1,
+                "carbs_g": 78,
+                "fiber_g": 1.3,
+                "store": "Rewe",
+                "purchased_at": "2026-06-01",
+            },
+            {
+                "id": "i-new",
+                "receipt_id": "r2",
+                "name": "Vollmilch",
+                "quantity": 500,
+                "remaining_quantity": 250,  # half already drunk
+                "unit": "ml",
+                "category": "full_fat_dairy",
+                "match_type": "bls",
+                "matched_name": "Vollmilch 3,5%",
+                "fallback_category": None,
+                "confidence": 0.9,
+                "calories_kcal": 64,
+                "protein_g": 3.3,
+                "fat_g": 3.6,
+                "carbs_g": 4.8,
+                "fiber_g": 0,
+                "store": "Rewe",
+                "purchased_at": "2026-07-01",
+            },
+        ],
+    )
+    resp = client.get("/pantry", headers=AUTH)
+    assert resp.status_code == 200
+    items = resp.json()["items"]
+    assert [i["name"] for i in items] == ["Vollmilch", "Reis"]  # most urgent (earliest est. expiry) first
+    assert all(i["is_non_food"] is False for i in items)
+    # Fuzzy urgency + coarse group are exposed; the estimated date/day count is not.
+    valid_urgency = {"expired", "soon", "week", "long", "unknown"}
+    assert all(i["urgency"] in valid_urgency for i in items)
+    assert all("expiry" not in i and "estimated_expiry" not in i for i in items)
+    milk = items[0]
+    assert milk["food_group"] == "dairy_eggs"
+    assert items[1]["food_group"] == "grains_starches"
+    assert milk["quantity"] == 250  # remaining shown, not the 500 bought
+    assert milk["original_quantity"] == 500
+    assert milk["calories_kcal"] == 160  # 64 kcal/100g * 250ml (=250g) / 100, scaled to remaining
+    assert milk["protein_g"] == 8.2  # 3.3 * 2.5 = 8.25, rounded to 1 decimal
+
+
+def test_shelf_life_config_merges_defaults_with_overrides(monkeypatch):
+    """GET /pantry/shelf-life returns every food group with its effective days
+    (code default overlaid with the profile's overrides) and flags which are
+    custom. A group with no override keeps the conservative default."""
+
+    monkeypatch.setattr(
+        pantry_api.repo, "get_shelf_life_overrides", lambda profile_id: {"bread_bakery": 3}
+    )
+    resp = client.get("/pantry/shelf-life", headers=AUTH)
+    assert resp.status_code == 200
+    by_group = {g["food_group"]: g for g in resp.json()["groups"]}
+    assert by_group["bread_bakery"]["shelf_life_days"] == 3  # override wins
+    assert by_group["bread_bakery"]["is_override"] is True
+    assert by_group["fish_seafood"]["shelf_life_days"] == 3  # untouched default
+    assert by_group["fish_seafood"]["is_override"] is False
+    assert by_group["other"]["shelf_life_days"] is None  # no estimate -> sorts last
+
+
+def test_shelf_life_update_persists_and_rejects_unknown_group(monkeypatch):
+    """PUT /pantry/shelf-life upserts each override and returns the recomputed
+    config; an unknown group is a 422 so a typo can't create a phantom bucket."""
+
+    saved = {}
+    monkeypatch.setattr(
+        pantry_api.repo,
+        "upsert_shelf_life",
+        lambda profile_id, group, days: saved.__setitem__(group, days),
+    )
+    monkeypatch.setattr(
+        pantry_api.repo, "get_shelf_life_overrides", lambda profile_id: dict(saved)
+    )
+
+    ok = client.put("/pantry/shelf-life", headers=AUTH, json={"days": {"meat": 4, "other": None}})
+    assert ok.status_code == 200
+    assert saved == {"meat": 4, "other": None}
+    by_group = {g["food_group"]: g for g in ok.json()["groups"]}
+    assert by_group["meat"]["shelf_life_days"] == 4
+
+    bad = client.put("/pantry/shelf-life", headers=AUTH, json={"days": {"nope": 5}})
+    assert bad.status_code == 422
+
+
+def test_pantry_removal_whole_lot_applies_full_remaining(monkeypatch):
+    """No quantity in the payload = withdraw the whole remaining amount; the
+    server resolves that to the current remaining and reports it."""
+
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
+    monkeypatch.setattr(pantry_api.repo, "get_lot_remaining", lambda item_id: 3.0)
+    captured = {}
+
+    def fake_add(receipt_item_id, reason, quantity=None):
+        captured.update(receipt_item_id=receipt_item_id, reason=reason, quantity=quantity)
+        return {"id": "rm1", "receipt_item_id": receipt_item_id, "reason": reason,
+                "quantity": quantity, "removed_at": "2026-07-23T00:00:00+00:00"}
+
+    monkeypatch.setattr(pantry_api.repo, "add_pantry_removal", fake_add)
+    resp = client.post(
+        "/pantry/removals", json={"receipt_item_id": "i1", "reason": "eaten"}, headers=AUTH
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["reason"] == "eaten"
+    assert body["applied_quantity"] == 3.0
+    assert body["remaining_after"] == 0.0
+    assert body["clamped"] is False
+    assert captured["quantity"] == 3.0  # full remaining written, not None
+
+
+def test_pantry_removal_partial_leaves_remainder(monkeypatch):
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
+    monkeypatch.setattr(pantry_api.repo, "get_lot_remaining", lambda item_id: 1.0)
+    captured = {}
+    monkeypatch.setattr(
+        pantry_api.repo,
+        "add_pantry_removal",
+        lambda receipt_item_id, reason, quantity=None: captured.update(quantity=quantity)
+        or {"id": "rm1", "receipt_item_id": receipt_item_id, "reason": reason,
+            "quantity": quantity, "removed_at": "2026-07-23T00:00:00+00:00"},
+    )
+    resp = client.post(
+        "/pantry/removals",
+        json={"receipt_item_id": "i1", "reason": "eaten", "quantity": 0.2},
+        headers=AUTH,
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["applied_quantity"] == 0.2
+    assert body["remaining_after"] == 0.8
+    assert body["clamped"] is False
+    assert captured["quantity"] == 0.2
+
+
+def test_pantry_removal_clamps_overshoot(monkeypatch):
+    """Requesting more than what's left is clamped to the remaining, not
+    rejected -- the honest outcome for a stale UI / concurrent request."""
+
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
+    monkeypatch.setattr(pantry_api.repo, "get_lot_remaining", lambda item_id: 0.3)
+    captured = {}
+    monkeypatch.setattr(
+        pantry_api.repo,
+        "add_pantry_removal",
+        lambda receipt_item_id, reason, quantity=None: captured.update(quantity=quantity)
+        or {"id": "rm1", "receipt_item_id": receipt_item_id, "reason": reason,
+            "quantity": quantity, "removed_at": "2026-07-23T00:00:00+00:00"},
+    )
+    resp = client.post(
+        "/pantry/removals",
+        json={"receipt_item_id": "i1", "reason": "eaten", "quantity": 0.5},
+        headers=AUTH,
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["applied_quantity"] == 0.3  # clamped down to what was left
+    assert body["remaining_after"] == 0.0
+    assert body["clamped"] is True
+    assert captured["quantity"] == 0.3
+
+
+def test_pantry_removal_409_when_nothing_left(monkeypatch):
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
+    monkeypatch.setattr(pantry_api.repo, "get_lot_remaining", lambda item_id: 0.0)
+    called = {"added": False}
+    monkeypatch.setattr(
+        pantry_api.repo, "add_pantry_removal", lambda *a, **k: called.__setitem__("added", True)
+    )
+    resp = client.post(
+        "/pantry/removals", json={"receipt_item_id": "i1", "reason": "eaten"}, headers=AUTH
+    )
+    assert resp.status_code == 409
+    assert called["added"] is False
+
+
+def test_pantry_removal_rejects_invalid_reason(monkeypatch):
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
+    resp = client.post(
+        "/pantry/removals", json={"receipt_item_id": "i1", "reason": "burned"}, headers=AUTH
+    )
+    assert resp.status_code == 422  # reason not in {eaten, removed}
+
+
+def test_pantry_removal_404_for_another_profiles_item(monkeypatch):
+    """You can't withdraw a lot you don't own -- and it must look like the
+    item simply doesn't exist, never revealing it belongs to someone else."""
+
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 2)
+    called = {"added": False}
+    monkeypatch.setattr(
+        pantry_api.repo,
+        "add_pantry_removal",
+        lambda *a, **k: called.__setitem__("added", True),
+    )
+    resp = client.post(
+        "/pantry/removals", json={"receipt_item_id": "i1", "reason": "eaten"}, headers=AUTH
+    )
+    assert resp.status_code == 404
+    assert called["added"] is False  # never reached the write
+
+
+def test_pantry_removal_404_for_unknown_item(monkeypatch):
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: None)
+    resp = client.post(
+        "/pantry/removals", json={"receipt_item_id": "nope", "reason": "removed"}, headers=AUTH
+    )
+    assert resp.status_code == 404
+
+
+def test_delete_pantry_removal_undo_checks_ownership(monkeypatch):
+    monkeypatch.setattr(
+        pantry_api.repo, "get_pantry_removal", lambda rid: {"id": rid, "receipt_item_id": "i1"}
+    )
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
+    deleted = {"id": None}
+    monkeypatch.setattr(
+        pantry_api.repo, "remove_pantry_removal", lambda rid: deleted.__setitem__("id", rid)
+    )
+    resp = client.delete("/pantry/removals/rm1", headers=AUTH)
+    assert resp.status_code == 204
+    assert deleted["id"] == "rm1"
+
+
+def test_delete_pantry_removal_404_for_another_profiles_removal(monkeypatch):
+    monkeypatch.setattr(
+        pantry_api.repo, "get_pantry_removal", lambda rid: {"id": rid, "receipt_item_id": "i1"}
+    )
+    monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 2)
+    resp = client.delete("/pantry/removals/rm1", headers=AUTH)
+    assert resp.status_code == 404
+
+
+def test_pantry_401_without_login(monkeypatch):
+    assert client.get("/pantry").status_code == 401
+    assert client.post(
+        "/pantry/removals", json={"receipt_item_id": "i1", "reason": "eaten"}
+    ).status_code == 401
 
 
 def test_submit_feedback(monkeypatch):

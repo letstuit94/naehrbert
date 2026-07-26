@@ -1,6 +1,9 @@
 """Epic 5 (macro composition & target comparison) and Epic 6
 (bucketing & diversity) endpoints."""
 
+from datetime import date, timezone
+from datetime import datetime as _datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.core.auth import require_profile_id
@@ -9,10 +12,24 @@ from backend.app.models.profile import Profile
 from backend.app.services.basket_composition import compute_basket_composition
 from backend.app.services.bucketing import compute_buckets
 from backend.app.services.diversity import compute_diversity
-from backend.app.services.ideal_profile import compute_ideal_profile, macro_percentages
+from backend.app.services.ideal_profile import (
+    FIBER_G_PER_1000KCAL,
+    compute_ideal_profile,
+    macro_percentages,
+)
 from backend.app.services.nutrition_profile import grams_for
+from backend.app.services.plant_diversity import compute_plant_diversity
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
+
+# Konsum.md Stufe 1: results reflect current buying habits (~4 weekly
+# shops), not a lifetime sum. Same 28-day window plant_diversity.py already
+# uses -- the Results page's "(over the last 28 days)" heading text now
+# matches what's actually computed, rather than just describing it.
+# EWMA weighting (half_life_days, default 30) still applies *within* this
+# window on top of the hard cutoff -- see compute_basket_composition's
+# docstring for how the two combine.
+_RESULTS_WINDOW_DAYS = 28
 
 _EMPTY_COMPOSITION = {
     "protein_pct": None,
@@ -20,8 +37,26 @@ _EMPTY_COMPOSITION = {
     "carb_pct": None,
     "unaccounted_pct": None,
     "kcal_total": None,
+    "fiber_per_1000kcal": None,
     "items_considered": 0,
+    "receipts_considered": 0,
+    "macro_coverage_pct": None,
+    "match_coverage_pct": None,
+    "quantity_coverage_pct": None,
+    "low_confidence": True,
 }
+
+
+def _today() -> date:
+    """Reference date for the recency-weighted composition (UTC to match the
+    stored timestamps)."""
+    return _datetime.now(timezone.utc).date()
+
+
+def _scaled_macro(value, factor):
+    """Scale a per-100g macro to the purchased quantity, preserving None
+    (unknown) instead of turning it into a measured 0 g."""
+    return round(value * factor, 1) if value is not None else None
 
 
 def _targets_or_404(profile_id: int) -> dict:
@@ -64,12 +99,15 @@ def get_purchases(profile_id: int = Depends(require_profile_id)):
             factor = (
                 grams_for(row.get("quantity"), row.get("unit"), row.get("category"), row.get("name")) / 100.0
             )
+            # A missing macro is *unknown*, not 0 g -- scaling `or 0.0`
+            # would show "0.0 g protein" for an item we never resolved,
+            # which reads as a measured zero. Keep it None so the UI shows "—".
             actual = {
                 "calories_kcal": round(cal_per_100g * factor, 1),
-                "protein_g": round((row.get("protein_g") or 0.0) * factor, 1),
-                "fat_g": round((row.get("fat_g") or 0.0) * factor, 1),
-                "carbs_g": round((row.get("carbs_g") or 0.0) * factor, 1),
-                "fiber_g": round((row.get("fiber_g") or 0.0) * factor, 1),
+                "protein_g": _scaled_macro(row.get("protein_g"), factor),
+                "fat_g": _scaled_macro(row.get("fat_g"), factor),
+                "carbs_g": _scaled_macro(row.get("carbs_g"), factor),
+                "fiber_g": _scaled_macro(row.get("fiber_g"), factor),
             }
         items.append(
             {
@@ -94,22 +132,28 @@ def get_purchases(profile_id: int = Depends(require_profile_id)):
 
 @router.get("/composition")
 def get_composition(profile_id: int = Depends(require_profile_id)):
-    """Epic 5.1 — calorie-weighted macro split across every finalized
-    (confirmed) receipt to date."""
+    """Epic 5.1 — calorie-weighted macro split over the last
+    _RESULTS_WINDOW_DAYS (Konsum.md Stufe 1), not a lifetime sum."""
 
     items = repo.get_all_confirmed_receipt_items(profile_id)
-    composition = compute_basket_composition(items)
+    composition = compute_basket_composition(items, reference_date=_today(), window_days=_RESULTS_WINDOW_DAYS)
     return composition or _EMPTY_COMPOSITION
 
 
 @router.get("/target-comparison")
 def get_target_comparison(profile_id: int = Depends(require_profile_id)):
     """Epic 5.2 — actual vs. target macro %, a per-macro delta, and one
-    overall closeness score (0-100; 100 = exact match)."""
+    overall closeness score (0-100; 100 = exact match).
+
+    closeness_score = 100 - sum(|actual% - target%|) across protein/fat/carb,
+    floored at 0. Summed rather than averaged: averaging let one macro that's
+    badly off target (e.g. protein at half its goal) get diluted by two
+    macros that happen to be close, producing a deceptively high score for
+    a purchase pattern that's actually missing a target by a lot."""
 
     target_pct = _targets_or_404(profile_id)
     items = repo.get_all_confirmed_receipt_items(profile_id)
-    composition = compute_basket_composition(items) or _EMPTY_COMPOSITION
+    composition = compute_basket_composition(items, reference_date=_today(), window_days=_RESULTS_WINDOW_DAYS) or _EMPTY_COMPOSITION
 
     deltas = {}
     diffs = []
@@ -123,12 +167,23 @@ def get_target_comparison(profile_id: int = Depends(require_profile_id)):
         deltas[macro] = diff
         diffs.append(abs(diff))
 
-    closeness = round(max(0.0, 100.0 - sum(diffs) / len(diffs)), 1) if diffs else None
+    closeness = round(max(0.0, 100.0 - sum(diffs)), 1) if diffs else None
+
+    # Fiber isn't one of the 3 %-of-calories macros above (BR-M7: its target
+    # is a fixed g/1000kcal density, see ideal_profile.FIBER_G_PER_1000KCAL),
+    # so it gets its own actual/target/delta trio in the same density unit
+    # rather than folding into actual_pct/target_pct/delta_pct or the
+    # closeness score, which stays a 3-macro figure by definition.
+    fiber_actual = composition.get("fiber_per_1000kcal")
+    fiber_delta = round(fiber_actual - FIBER_G_PER_1000KCAL, 1) if fiber_actual is not None else None
 
     return {
         "actual_pct": {k: composition.get(f"{k}_pct") for k in ("protein", "fat", "carb")},
         "target_pct": target_pct,
         "delta_pct": deltas,
+        "fiber_actual_per_1000kcal": fiber_actual,
+        "fiber_target_per_1000kcal": FIBER_G_PER_1000KCAL,
+        "fiber_delta_per_1000kcal": fiber_delta,
         "closeness_score": closeness,
         "items_considered": composition.get("items_considered", 0),
     }
@@ -142,7 +197,7 @@ def get_buckets(profile_id: int = Depends(require_profile_id)):
 
     target_pct = _targets_or_404(profile_id)
     items = repo.get_all_confirmed_receipt_items(profile_id)
-    composition = compute_basket_composition(items) or _EMPTY_COMPOSITION
+    composition = compute_basket_composition(items, reference_date=_today(), window_days=_RESULTS_WINDOW_DAYS) or _EMPTY_COMPOSITION
     actual_pct = {k: composition.get(k) for k in ("protein_pct", "fat_pct", "carb_pct")}
     return {"buckets": compute_buckets(items, actual_pct, target_pct)}
 
@@ -153,3 +208,14 @@ def get_diversity(profile_id: int = Depends(require_profile_id)):
 
     items = repo.get_all_confirmed_receipt_items(profile_id)
     return compute_diversity(items)
+
+
+@router.get("/plant-diversity")
+def get_plant_diversity(profile_id: int = Depends(require_profile_id)):
+    """Results page's plant-diversity progress bar — distinct fruits/
+    vegetables/whole grains/legumes/nuts&seeds/herbs&spices bought in the
+    last 28 days (see services/plant_diversity.py for the category scope
+    and why the window is 28 days, not a lifetime sum)."""
+
+    items = repo.get_all_confirmed_receipt_items(profile_id)
+    return compute_plant_diversity(items, reference_date=_today())

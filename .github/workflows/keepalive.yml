@@ -1,0 +1,31 @@
+# Hält das Render-Free-Backend wach, damit die Demo keinen ~50 s Kaltstart
+# hat (Render Free schläft nach 15 Min Inaktivität ein).
+#
+# Kostenlose Alternative zu cron-job.org — nutzt die GitHub Actions, die das
+# Repo ohnehin schon verwendet, kein weiterer Drittanbieter nötig.
+#
+# Setup: Repo → Settings → Secrets and variables → Actions → New secret
+#        Name  = BACKEND_HEALTH_URL
+#        Value = https://<dein-service>.onrender.com/health
+#
+# Bekannte Einschränkungen des GitHub-Cron (bewusst in Kauf genommen):
+#  - Der Zeitplan ist "best effort": bei GitHub-Last kann er ein paar Minuten
+#    verspätet feuern (die 15-Min-Grenze von Render verzeiht das).
+#  - GitHub deaktiviert geplante Workflows automatisch nach 60 Tagen ohne
+#    Repo-Aktivität. Für ein aktives Bootcamp-Projekt kein Problem.
+name: keepalive
+
+on:
+  schedule:
+    - cron: "*/12 * * * *" # alle 12 Min < Renders 15-Min-Schlafgrenze
+  workflow_dispatch: {} # erlaubt manuelles Auslösen zum Testen
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        run: |
+          curl --fail --show-error --silent \
+               --retry 3 --retry-delay 20 --max-time 90 \
+               "${{ secrets.BACKEND_HEALTH_URL }}"

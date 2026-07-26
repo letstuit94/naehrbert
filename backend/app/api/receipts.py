@@ -7,14 +7,13 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from backend.app.analytics.match_quality import compute_match_quality
+from backend.app.api import match
 from backend.app.core.auth import require_profile_id
 from backend.app.db import repo
 from backend.app.models.nutrition import MatchedProduct
 from backend.app.services import (
-    bls_matcher,
     local_extractor,
     non_food_terms,
-    off_api,
     receipt_text_parser,
     verified_matches,
 )
@@ -98,16 +97,7 @@ def _persist_parsed(parsed: dict, source: str, raw_text: Optional[str], profile_
     # insert rather than waiting for confirm_receipt's pass below. Editing
     # an item during review leaves its match stale until Confirm, which
     # unconditionally re-resolves every remaining item regardless.
-    #
-    # receipt_items has no `store` column (it lives on the parent receipt),
-    # so resolve_item's Tier-0 lookup (resolver._learned -> item.get("store"))
-    # was always seeing None here -- every verified-match lookup silently
-    # degraded to the store-agnostic scope only, missing every row recorded
-    # under a real store (i.e. nearly all of them). `store` must be merged
-    # onto the transient dict passed to resolve_item (not persisted onto
-    # the row itself -- matched_product_to_row never includes it).
-    items_with_store = [{**item, "store": receipt.get("store")} for item in saved_items]
-    matched_products = _resolve_concurrently(items_with_store)
+    matched_products = _resolve_concurrently(saved_items)
     resolved_items = [
         repo.update_receipt_item(item["id"], matched_product_to_row(matched))
         for item, matched in zip(saved_items, matched_products, strict=False)
@@ -148,9 +138,16 @@ async def upload_receipt_file(
 def upload_receipt_text(
     payload: PasteTextPayload, profile_id: int = Depends(require_profile_id)
 ):
-    """Epic 3.2 — pasted text bypasses OCR entirely."""
+    """Epic 3.2 — pasted text bypasses OCR entirely.
 
-    parsed = receipt_text_parser.parse_receipt_text_offline(payload.text)
+    allow_plain_names=True here (never for the file-upload path above): a
+    manually typed list like "Paprika, Apfel, Huhn" carries no prices at
+    all, which is fine for a human typing it in but would otherwise fail
+    every price-anchored heuristic in the parser."""
+
+    parsed = receipt_text_parser.parse_receipt_text_offline(
+        payload.text, allow_plain_names=True
+    )
     return _persist_parsed(parsed, "pasted_text", payload.text, profile_id)
 
 
@@ -167,13 +164,23 @@ def update_item(
     payload: ItemUpdate,
     profile_id: int = Depends(require_profile_id),
 ):
-    """Epic 3.4 — inline edit or mark-as-non-food before confirming."""
+    """Epic 3.4 — inline edit or mark-as-non-food before confirming.
+
+    Marking an item non-food also teaches non_food_terms.py (the opposite-
+    direction sibling of Epic 4.2's verified-match learning): the same line
+    is then auto-recognized and stripped out on every future upload, before
+    it's even inserted as a receipt_item -- see that module's docstring."""
 
     _owned_receipt_or_404(receipt_id, profile_id)
     fields = payload.model_dump(exclude_unset=True)
     if not fields:
         raise HTTPException(status_code=400, detail="No fields to update")
-    return repo.update_receipt_item(item_id, fields)
+    updated = repo.update_receipt_item(item_id, fields)
+    if fields.get("is_non_food") is True:
+        name = updated.get("name") or updated.get("original_text")
+        if name:
+            non_food_terms.record_non_food_term(name)
+    return updated
 
 
 @router.delete("/{receipt_id}/items/{item_id}", status_code=204)
@@ -187,13 +194,12 @@ def confirm_receipt(receipt_id: str, profile_id: int = Depends(require_profile_i
     """Epic 3.4 / Epic 4.1 — finalize: run the tiered matcher on every
     remaining (non-non-food) item and persist the matched nutrition data."""
 
-    receipt = _owned_receipt_or_404(receipt_id, profile_id)
+    _owned_receipt_or_404(receipt_id, profile_id)
 
     food_items = [
         item for item in repo.get_receipt_items(receipt_id) if not item.get("is_non_food")
     ]
-    items_with_store = [{**item, "store": receipt.get("store")} for item in food_items]
-    matched_products = _resolve_concurrently(items_with_store)
+    matched_products = _resolve_concurrently(food_items)
     updated = [
         repo.update_receipt_item(item["id"], matched_product_to_row(matched))
         for item, matched in zip(food_items, matched_products, strict=False)
@@ -208,59 +214,17 @@ def confirm_receipt(receipt_id: str, profile_id: int = Depends(require_profile_i
     }
 
 
-_CANDIDATE_POOL_SIZE = 15  # over-fetch so filtering out incomplete macros still leaves _CANDIDATE_RESULT_SIZE
-_CANDIDATE_RESULT_SIZE = 5
-_MACRO_FIELDS = ("calories_kcal", "protein_g", "fat_g", "carbs_g")
-
-
-def _has_macros(nutrition: dict) -> bool:
-    return all(nutrition.get(f) is not None for f in _MACRO_FIELDS)
-
-
 @router.get("/{receipt_id}/items/{item_id}/candidates")
 def search_candidates(
     receipt_id: str, item_id: str, q: str, profile_id: int = Depends(require_profile_id)
 ):
     """Epic 4.2 — search OFF + BLS for a manual pick, for items flagged
-    below the confidence threshold in review. Restricted to the top 5
-    candidates per source that carry a complete macro profile — a match
-    missing calories/protein/fat/carbs isn't a usable pick."""
+    below the confidence threshold in review. The receipt-scoped twin of
+    GET /match/candidates: same search, plus an ownership check on the item
+    being corrected."""
 
     _owned_receipt_or_404(receipt_id, profile_id)
-
-    off_candidates = []
-    for p in off_api.search_products(q, page_size=_CANDIDATE_POOL_SIZE):
-        nutrition = off_api.extract_nutrition(p).model_dump()
-        if not _has_macros(nutrition):
-            continue
-        off_candidates.append(
-            {
-                "source": "off",
-                "off_id": str(p.get("code")) if p.get("code") else None,
-                "matched_name": off_api.product_display_name(p),
-                "nutrition": nutrition,
-            }
-        )
-        if len(off_candidates) >= _CANDIDATE_RESULT_SIZE:
-            break
-
-    bls_candidates = []
-    for rec in bls_matcher.search_bls(q, page_size=_CANDIDATE_POOL_SIZE):
-        nutrition = bls_matcher.record_nutrition(rec)
-        if not _has_macros(nutrition):
-            continue
-        bls_candidates.append(
-            {
-                "source": "bls",
-                "bls_code": rec["code"],
-                "matched_name": rec["name_de"],
-                "nutrition": nutrition,
-            }
-        )
-        if len(bls_candidates) >= _CANDIDATE_RESULT_SIZE:
-            break
-
-    return {"candidates": off_candidates + bls_candidates}
+    return {"candidates": match.search_candidates(q)}
 
 
 @router.post("/{receipt_id}/items/{item_id}/correct")

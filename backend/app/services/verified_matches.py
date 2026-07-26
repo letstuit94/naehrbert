@@ -108,13 +108,19 @@ def record_verified_match(
     return key
 
 
-def lookup_verified_match(raw_text: str, store: Optional[str] = None) -> Optional[dict]:
+def lookup_verified_match(raw_text: str) -> Optional[dict]:
     """
-    Tier-0 lookup (resolver.py). Exact (key, store) hit first, then a
-    store-agnostic hit (store=""), confidence 1.0 either way — with a
-    single user there's no vote share to discount by. Returns None on no
-    hit; never raises (a lookup failure here should degrade to the
-    OFF/BLS tiers, not break the pipeline).
+    Tier-0 lookup (resolver.py). Matches on product name alone -- no store
+    filter. This deliberately trades precision for reuse: a correction made
+    once resolves the same receipt line on every future receipt regardless
+    of which store it's from, at the cost of occasionally conflating two
+    stores' private-label products that happen to print the same
+    abbreviated till text (the raw text alone can't disambiguate those
+    anyway, so scoping by store only avoided the risk for repeat visits to
+    the *same* store, not across them). Confidence 1.0 -- with a single
+    user there's no vote share to discount by. Returns None on no hit;
+    never raises (a lookup failure here should degrade to the OFF/BLS
+    tiers, not break the pipeline).
     """
 
     key = normalize_match_key(raw_text)
@@ -124,19 +130,15 @@ def lookup_verified_match(raw_text: str, store: Optional[str] = None) -> Optiona
     try:
         from backend.app.db.repo import get_verified_match
 
-        scopes = [
-            s for s in dict.fromkeys((normalize_store(store), ""))
-        ]  # exact store first, then store-agnostic, deduped
-        for scope_store in scopes:
-            hit = get_verified_match(key, scope_store)
-            if hit:
-                return {
-                    "matched_name": hit.get("matched_name"),
-                    "off_id": hit.get("off_id"),
-                    "bls_code": hit.get("bls_code"),
-                    "nutrition": hit.get("nutrition"),
-                    "confidence": 1.0,
-                }
+        hit = get_verified_match(key)
+        if hit:
+            return {
+                "matched_name": hit.get("matched_name"),
+                "off_id": hit.get("off_id"),
+                "bls_code": hit.get("bls_code"),
+                "nutrition": hit.get("nutrition"),
+                "confidence": 1.0,
+            }
     except Exception:
         return None
     return None

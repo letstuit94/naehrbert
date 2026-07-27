@@ -1445,17 +1445,17 @@ a.btn {
   }
 }
 
-/* ── Basket / pantry (Vorrat.md) ───────────────────────────────────────── */
+/* ── Pantry / pantry (Vorrat.md) ───────────────────────────────────────── */
 
 /* Same card styling as .purchase-row, but a 4th column for the
    eaten/removed actions (name · qty+date+store · macros · actions). */
-.basket-row {
+.pantry-row {
   /* name (+ macros subtitle) · quantity · actions -- macros moved under the
      name, so no separate macros column. */
   grid-template-columns: 2.5fr 1.75fr auto;
 }
 
-.basket-row__name-line {
+.pantry-row__name-line {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1463,19 +1463,19 @@ a.btn {
 }
 
 /* Food-group emoji prefix on each lot -- a quick visual category cue. */
-.basket-row__cat-emoji {
+.pantry-row__cat-emoji {
   flex: 0 0 auto;
   font-size: 16px;
   line-height: 1;
 }
 
-.basket-row__macros-sub {
+.pantry-row__macros-sub {
   color: var(--text);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
-.basket-row__icon-btn {
+.pantry-row__icon-btn {
   border: none;
   background: none;
   padding: 2px 4px;
@@ -1486,37 +1486,37 @@ a.btn {
   opacity: 0.75;
 }
 
-.basket-row__icon-btn:hover {
+.pantry-row__icon-btn:hover {
   opacity: 1;
   color: var(--text-h);
 }
 
-.basket-row__icon-btn--active {
+.pantry-row__icon-btn--active {
   opacity: 1;
   color: var(--accent);
 }
 
-.basket-row__edit {
+.pantry-row__edit {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.basket-row__edit input {
+.pantry-row__edit input {
   width: 100%;
   max-width: 200px;
 }
 
-.basket-row__edit input[type='number'] {
+.pantry-row__edit input[type='number'] {
   width: 80px;
 }
 
-.basket-row__unit-select {
+.pantry-row__unit-select {
   flex: none;
   width: auto;
 }
 
-.basket-row__actions {
+.pantry-row__actions {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1525,7 +1525,7 @@ a.btn {
 
 /* Emoji icon actions (🍴 eaten / 🗑️ removed): borderless, subtle hover, and
    a highlighted background while their withdrawal panel is open. */
-.basket-row__action {
+.pantry-row__action {
   border: 1px solid var(--border);
   background: none;
   padding: 4px 8px;
@@ -1536,12 +1536,12 @@ a.btn {
   opacity: 0.85;
 }
 
-.basket-row__action:hover {
+.pantry-row__action:hover {
   opacity: 1;
   background: var(--surface);
 }
 
-.basket-row__action--active {
+.pantry-row__action--active {
   opacity: 1;
   background: var(--sage-soft);
 }
@@ -1553,7 +1553,7 @@ a.btn {
 
 /* Inline "how much eaten/removed?" control, spanning the row's full width
    below the primary cells. */
-.basket-row__panel {
+.pantry-row__panel {
   grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
@@ -1564,24 +1564,24 @@ a.btn {
   border-top: 1px dashed var(--border);
 }
 
-.basket-row__panel-label {
+.pantry-row__panel-label {
   color: var(--text-h);
   font-size: 13px;
 }
 
-.basket-row__amount {
+.pantry-row__amount {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.basket-row__amount input {
+.pantry-row__amount input {
   width: 90px;
 }
 
 /* Piece control: a quarter-step slider (0 -> remaining), snapping to ¼ ½ ¾
    and whole counts, with the chosen amount shown as a fraction glyph. */
-.basket-row__slider {
+.pantry-row__slider {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1589,19 +1589,19 @@ a.btn {
   min-width: 180px;
 }
 
-.basket-row__slider input[type='range'] {
+.pantry-row__slider input[type='range'] {
   flex: 1;
   accent-color: var(--accent);
 }
 
-.basket-row__slider-value {
+.pantry-row__slider-value {
   min-width: 56px;
   text-align: right;
   font-variant-numeric: tabular-nums;
   color: var(--text-h);
 }
 
-.basket-row__panel-actions {
+.pantry-row__panel-actions {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1609,7 +1609,7 @@ a.btn {
 }
 
 /* Manual "add item" affordance (Vorrat.md) */
-.basket-add-btn {
+.pantry-add-btn {
   margin-bottom: 16px;
 }
 
@@ -1672,11 +1672,11 @@ a.btn {
 }
 
 @media (max-width: 640px) {
-  .basket-row {
+  .pantry-row {
     grid-template-columns: 1fr;
   }
 
-  .basket-row__actions {
+  .pantry-row__actions {
     justify-content: flex-start;
   }
 }
@@ -1782,9 +1782,9 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   font-size: 13px;
 }
 
-/* ── Basket: urgency traffic-light + soft label ─────────────────────────── */
+/* ── Pantry: urgency traffic-light + soft label ─────────────────────────── */
 /* Fuzzy urgency only: a dot + optional word. Never a date or day count. */
-.basket-row__meta-line {
+.pantry-row__meta-line {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -1828,15 +1828,15 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   color: var(--text);
 }
 
-/* ── Basket controls: view toggle (A/B) + filters (kept visually apart) ─── */
-.basket-controls {
+/* ── Pantry controls: view toggle (A/B) + filters (kept visually apart) ─── */
+.pantry-controls {
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin: var(--space-4) 0 var(--space-5);
 }
 
-.basket-controls__views {
+.pantry-controls__views {
   display: inline-flex;
   gap: 2px;
   padding: 3px;
@@ -1846,7 +1846,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   align-self: flex-start;
 }
 
-.basket-toggle {
+.pantry-toggle {
   border: none;
   background: none;
   padding: 6px 12px;
@@ -1856,14 +1856,14 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   cursor: pointer;
 }
 
-.basket-toggle--active {
+.pantry-toggle--active {
   background: var(--accent);
   color: var(--accent-contrast);
   font-weight: 600;
 }
 
 /* Row 1: view toggle (left) + search (right); wraps on narrow widths. */
-.basket-toolbar {
+.pantry-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1871,7 +1871,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   gap: 10px 16px;
 }
 
-.basket-search {
+.pantry-search {
   flex: 0 1 240px;
   min-width: 160px;
   padding: 7px 10px;
@@ -1883,7 +1883,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 }
 
 /* Row 2: filter bar, set apart from the sort row by a hairline. */
-.basket-filterbar {
+.pantry-filterbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -2005,29 +2005,29 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   font-weight: 600;
 }
 
-.basket-clear {
+.pantry-clear {
   margin-left: auto;
   font-size: 13px;
 }
 
-/* ── Basket "by category" view: group headers ───────────────────────────── */
+/* ── Pantry "by category" view: group headers ───────────────────────────── */
 /* Expand/collapse-all control, right-aligned above the collapsed group list. */
-.basket-group-tools {
+.pantry-group-tools {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 10px;
 }
 
-.basket-group + .basket-group {
+.pantry-group + .pantry-group {
   margin-top: 18px;
 }
 
-.basket-group__head {
+.pantry-group__head {
   margin: 0 0 6px;
 }
 
 /* Accordion header: full-width clickable row that expands/collapses its lots. */
-.basket-group__toggle {
+.pantry-group__toggle {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2044,28 +2044,28 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   color: var(--text);
 }
 
-.basket-group__toggle:hover {
+.pantry-group__toggle:hover {
   color: var(--text);
 }
 
-.basket-group__caret {
+.pantry-group__caret {
   font-size: 10px;
   width: 12px;
   flex: 0 0 auto;
 }
 
-.basket-group__label {
+.pantry-group__label {
   flex: 1 1 auto;
 }
 
-.basket-group__count {
+.pantry-group__count {
   flex: 0 0 auto;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
   color: var(--text);
 }
 
-/* ── Shelf-life config panel (not surfaced yet; see BasketPage) ─────────── */
+/* ── Shelf-life config panel (not surfaced yet; see PantryPage) ─────────── */
 .shelf-life-panel {
   border-radius: 16px;
   background: var(--surface);

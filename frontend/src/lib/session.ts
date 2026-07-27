@@ -5,7 +5,7 @@
  * the one seam that later swaps this localStorage id for a real session.
  */
 
-const STORAGE_KEY = 'naehrbert.profileId'
+const STORAGE_KEY = 'nutriwise.profileId'
 
 export function getCurrentProfileId(): number | null {
   const raw = localStorage.getItem(STORAGE_KEY)

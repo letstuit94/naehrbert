@@ -527,7 +527,7 @@ export function searchCandidates(
 }
 
 /** Same OFF + BLS search as searchCandidates, but not tied to an existing
- * receipt item -- used by the manual "add to basket" flow, where the item
+ * receipt item -- used by the manual "add to pantry" flow, where the item
  * doesn't exist yet (GET /match/candidates). */
 export function searchMatchCandidates(query: string): Promise<CandidatesResponse> {
   return request<CandidatesResponse>(`/match/candidates?q=${encodeURIComponent(query)}`)
@@ -630,7 +630,7 @@ export function archiveRecipe(recipeId: string): Promise<void> {
   return request<void>(`/recipes/${recipeId}`, { method: 'DELETE' })
 }
 
-// ── Pantry / Basket (Vorrat.md) ───────────────────────────────────────────
+// ── Pantry / Pantry (Vorrat.md) ───────────────────────────────────────────
 
 /** Why a lot left the pantry. 'eaten' (gegessen) counts as consumption;
  * 'removed' (entfernt) left without being eaten (spoiled/given away/miscan).
@@ -680,7 +680,7 @@ export interface PantryItem {
   match_type: MatchType | null
   matched_name: string | null
   /** Canonical leaf category set for every lot at parse time (e.g.
-   * "tropical_fruits") -- drives the Basket's food-group emoji. */
+   * "tropical_fruits") -- drives the Pantry's food-group emoji. */
   category: string | null
   /** Coarse food group (e.g. "fish_seafood") -- drives the "by category"
    * view, the category filter, and which shelf-life estimate applies. */
@@ -763,7 +763,7 @@ export interface ShelfLifeConfig {
   groups: ShelfLifeGroup[]
 }
 
-/** The effective per-group shelf-life config driving the basket's urgency. */
+/** The effective per-group shelf-life config driving the pantry's urgency. */
 export function getShelfLife(): Promise<ShelfLifeConfig> {
   return request<ShelfLifeConfig>('/pantry/shelf-life')
 }
@@ -789,9 +789,9 @@ export interface ManualItemMatch {
   nutrition: CandidateNutrition
 }
 
-/** Manually add a food to the basket (POST /pantry/items). Creates a one-item
+/** Manually add a food to the pantry (POST /pantry/items). Creates a one-item
  * confirmed "Manuell" receipt dated today, so the item appears in both the
- * basket and the purchases view. Omit `match` to let the server resolve
+ * pantry and the purchases view. Omit `match` to let the server resolve
  * nutrition from the name; pass one to use a fix-match pick. */
 export function createPantryItem(input: {
   name: string

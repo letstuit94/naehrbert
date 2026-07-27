@@ -1,10 +1,10 @@
 /**
- * Food-group emoji per basket lot.
+ * Food-group emoji per pantry lot.
  *
  * The backend stores an 87-leaf canonical category on every lot (`category`,
  * set at parse time by `_canonical_category`; see fallback_categories.py),
  * plus a `fallback_category` on lots that only got a category-level estimate.
- * The Basket collapses those leaves into the 13 coarse food groups the user
+ * The Pantry collapses those leaves into the 13 coarse food groups the user
  * reasons about and shows one emoji per lot as a quick visual cue.
  *
  * The map is keyed by LEAF category (what's stored), grouped here under the

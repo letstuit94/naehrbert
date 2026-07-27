@@ -48,7 +48,9 @@ function loadExpandedGroups(): Set<PantryItem['food_group']> {
   try {
     const raw = localStorage.getItem(expandedGroupsKey())
     const parsed = raw ? JSON.parse(raw) : null
-    return Array.isArray(parsed) ? new Set(parsed as PantryItem['food_group'][]) : new Set()
+    return Array.isArray(parsed)
+      ? new Set(parsed as PantryItem['food_group'][])
+      : new Set()
   } catch {
     return new Set()
   }
@@ -164,9 +166,8 @@ export function BasketPage() {
   // (category + count) you scan and drill into, rather than one long scroll.
   // Persisted per profile (see loadExpandedGroups) so the view stays the way
   // the user last left it across reloads.
-  const [expandedGroups, setExpandedGroups] = useState<Set<PantryItem['food_group']>>(
-    loadExpandedGroups,
-  )
+  const [expandedGroups, setExpandedGroups] =
+    useState<Set<PantryItem['food_group']>>(loadExpandedGroups)
 
   useEffect(() => {
     try {
@@ -244,7 +245,9 @@ export function BasketPage() {
       await updateReceiptItem(item.receipt_id, item.id, fields)
       await load()
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : 'Could not save that change.')
+      setActionError(
+        err instanceof ApiError ? err.message : 'Could not save that change.',
+      )
     }
   }
 
@@ -319,7 +322,11 @@ export function BasketPage() {
   const addControls = adding ? (
     <AddItemPanel onAdded={handleAdded} onClose={() => setAdding(false)} />
   ) : (
-    <button type="button" className="btn-secondary basket-add-btn" onClick={() => setAdding(true)}>
+    <button
+      type="button"
+      className="btn btn-secondary basket-add-btn"
+      onClick={() => setAdding(true)}
+    >
       ＋ Add item manually
     </button>
   )
@@ -330,8 +337,9 @@ export function BasketPage() {
         <h1>Basket</h1>
         {undoBanner}
         <p>
-          Your basket is empty. It fills up as you <Link to="/upload">upload receipts</Link> or add
-          items by hand, and empties as you mark things eaten or removed.
+          Your basket is empty. It fills up as you{' '}
+          <Link to="/upload">upload receipts</Link> or add items by hand, and empties as
+          you mark things eaten or removed.
         </p>
         {addControls}
       </section>
@@ -344,13 +352,18 @@ export function BasketPage() {
   // groups are the headers, so we drop hiddenGroups there (the control is
   // hidden too, see BasketControls) while keeping search + next-3-days.
   const effectiveFilters =
-    view === 'category' ? { ...filters, hiddenGroups: new Set<PantryItem['food_group']>() } : filters
+    view === 'category'
+      ? { ...filters, hiddenGroups: new Set<PantryItem['food_group']>() }
+      : filters
   const visible = applyFilters(state.items, effectiveFilters, displayName)
 
   // Distinct food groups present in the FULL basket (not the filtered set),
   // in first-seen (urgency) order, so hiding a category doesn't remove its
   // own toggle chip.
-  const availableGroups: { group: (typeof state.items)[number]['food_group']; label: string }[] = []
+  const availableGroups: {
+    group: (typeof state.items)[number]['food_group']
+    label: string
+  }[] = []
   const seenGroups = new Set<string>()
   for (const item of state.items) {
     if (!seenGroups.has(item.food_group)) {
@@ -372,7 +385,9 @@ export function BasketPage() {
   return (
     <section>
       <h1>Basket</h1>
-      <p>All the products in your home pantry. Update what you have eaten or thrown away.</p>
+      <p className="page-lead">
+        All the products in your home pantry. Update what you have eaten or thrown away.
+      </p>
 
       {undoBanner}
       {actionError && (
@@ -518,7 +533,8 @@ function BasketRow({
   const macrosLine = (
     <span className="basket-row__macros-sub">
       {item.calories_kcal !== null ? `${Math.round(item.calories_kcal)} kcal` : '—'} · P{' '}
-      {formatGrams(item.protein_g)} · F {formatGrams(item.fat_g)} · C {formatGrams(item.carbs_g)}
+      {formatGrams(item.protein_g)} · F {formatGrams(item.fat_g)} · C{' '}
+      {formatGrams(item.carbs_g)}
     </span>
   )
 
@@ -540,7 +556,9 @@ function BasketRow({
                 ? 'purchase-row__name review-row__match--warn'
                 : 'purchase-row__name'
             }
-            title={match?.lowConfidence ? 'Category estimate, not a verified match' : undefined}
+            title={
+              match?.lowConfidence ? 'Category estimate, not a verified match' : undefined
+            }
           >
             {match?.lowConfidence ? '~ ' : ''}
             {displayName(item)}
@@ -548,7 +566,9 @@ function BasketRow({
           <button
             type="button"
             className={
-              searchingMatch ? 'basket-row__icon-btn basket-row__icon-btn--active' : 'basket-row__icon-btn'
+              searchingMatch
+                ? 'basket-row__icon-btn basket-row__icon-btn--active'
+                : 'basket-row__icon-btn'
             }
             onClick={() => {
               setPanel(null)
@@ -597,7 +617,12 @@ function BasketRow({
                 </option>
               ))}
             </select>
-            <button type="button" className="basket-row__icon-btn" onClick={saveQty} aria-label="Save quantity">
+            <button
+              type="button"
+              className="basket-row__icon-btn"
+              onClick={saveQty}
+              aria-label="Save quantity"
+            >
               ✓
             </button>
             <button
@@ -639,7 +664,11 @@ function BasketRow({
       <div className="basket-row__actions">
         <button
           type="button"
-          className={panel === 'eaten' ? 'basket-row__action basket-row__action--active' : 'basket-row__action'}
+          className={
+            panel === 'eaten'
+              ? 'basket-row__action basket-row__action--active'
+              : 'basket-row__action'
+          }
           onClick={() => openPanel('eaten')}
           aria-label="Eaten"
           aria-pressed={panel === 'eaten'}
@@ -649,7 +678,11 @@ function BasketRow({
         </button>
         <button
           type="button"
-          className={panel === 'removed' ? 'basket-row__action basket-row__action--active' : 'basket-row__action'}
+          className={
+            panel === 'removed'
+              ? 'basket-row__action basket-row__action--active'
+              : 'basket-row__action'
+          }
           onClick={() => openPanel('removed')}
           aria-label="Remove"
           aria-pressed={panel === 'removed'}
@@ -661,9 +694,7 @@ function BasketRow({
 
       {panel && (
         <div className="basket-row__panel">
-          <span className="basket-row__panel-label">
-            How much {REASON_VERB[panel]}?
-          </span>
+          <span className="basket-row__panel-label">How much {REASON_VERB[panel]}?</span>
           {measured ? (
             <div className="basket-row__slider">
               <input
@@ -692,7 +723,12 @@ function BasketRow({
             </div>
           )}
           <div className="basket-row__panel-actions">
-            <button type="button" className="btn-secondary" onClick={confirm} disabled={amount <= 0}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={confirm}
+              disabled={amount <= 0}
+            >
               {REASON_CONFIRM[panel]}
               {partial ? ` ${amountLabel}` : ' all'}
             </button>

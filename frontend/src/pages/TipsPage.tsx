@@ -157,13 +157,17 @@ export function TipsPage() {
   return (
     <section>
       <h1>Recipes</h1>
+      <p className="page-lead">
+        Recipes built from what&apos;s in your basket. Generate a new one or revisit your
+        saved ideas.
+      </p>
 
       {unlockStatus.data?.unlocked && unlockStatus.data.prefs_completed ? (
         <>
           <h2 id="recipes">Recipe generation</h2>
           <RecipeGenerationForm onGenerated={prependRecipe} />
 
-          <h2>Recipes</h2>
+          <h2>Your recipes</h2>
           {allRecipes.length === 0 && (
             <p>
               No recipes yet — fill in the form above (or leave it blank) and generate
@@ -388,7 +392,9 @@ function RecipeGenerationForm({
       </button>
 
       {generating && (
-        <p className="muted recipe-generating-note">{FUN_GENERATING_PHRASES[phraseIndex]}</p>
+        <p className="muted recipe-generating-note">
+          {FUN_GENERATING_PHRASES[phraseIndex]}
+        </p>
       )}
     </form>
   )

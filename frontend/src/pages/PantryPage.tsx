@@ -141,7 +141,7 @@ function daysInPantry(iso: string | null): string {
   if (Number.isNaN(then.getTime())) return 'unknown age'
   const days = Math.floor((Date.now() - then.getTime()) / 86_400_000)
   if (days <= 0) return 'today'
-  return `${days} day${days === 1 ? '' : 's'}`
+  return `${days} day${days === 1 ? '' : 's'} in`
 }
 
 // The verified identity to show, never the raw parsed receipt text: the
@@ -581,10 +581,7 @@ function PantryRow({
             ✎
           </button>
         </span>
-        <span className="pantry-row__meta-line">
-          <UrgencyBadge urgency={item.urgency} />
-          {macrosLine}
-        </span>
+        {macrosLine}
       </div>
       <span className="purchase-row__qty">
         {editingQty ? (
@@ -657,9 +654,12 @@ function PantryRow({
             >
               ✎
             </button>
-            <span className="muted"> · {daysInPantry(item.purchased_at)}</span>
           </>
         )}
+      </span>
+      <span className="pantry-row__freshness">
+        <UrgencyBadge urgency={item.urgency} />
+        <span className="pantry-row__age muted">{daysInPantry(item.purchased_at)}</span>
       </span>
       <div className="pantry-row__actions">
         <button

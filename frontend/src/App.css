@@ -1450,9 +1450,19 @@ a.btn {
 /* Same card styling as .purchase-row, but a 4th column for the
    eaten/removed actions (name · qty+date+store · macros · actions). */
 .pantry-row {
-  /* name (+ macros subtitle) · quantity · actions -- macros moved under the
-     name, so no separate macros column. */
-  grid-template-columns: 2.5fr 1.75fr auto;
+  /* name (+ macros subtitle) · quantity · freshness (urgency + days) · actions.
+     Name takes all slack; quantity/freshness/actions size to content so the
+     product name gets the room. */
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+}
+
+/* Freshness column: urgency (traffic-light) hint on top, age below. */
+.pantry-row__freshness {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  white-space: nowrap;
 }
 
 .pantry-row__name-line {
@@ -1460,6 +1470,18 @@ a.btn {
   align-items: center;
   gap: 6px;
   min-width: 0;
+}
+
+/* Food names read as row titles -- same weight as recipe-card titles. */
+.pantry-row .purchase-row__name {
+  font-weight: 600;
+}
+
+/* Age of the lot -- its own column, right of the quantity. */
+.pantry-row__age {
+  font-size: 12px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Food-group emoji prefix on each lot -- a quick visual category cue. */

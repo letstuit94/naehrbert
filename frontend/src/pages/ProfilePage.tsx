@@ -391,7 +391,10 @@ export function ProfilePage() {
     field: K,
     options: LabeledOption[],
   ) => (
-    <select value={form[field]} onChange={(e) => update(field, e.target.value as FormState[K])}>
+    <select
+      value={form[field]}
+      onChange={(e) => update(field, e.target.value as FormState[K])}
+    >
       {options.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}
@@ -406,12 +409,21 @@ export function ProfilePage() {
         <h1>Profile</h1>
         <div className="card">
           <div className="skeleton" style={{ height: 12, width: '30%' }} />
-          <div className="skeleton" style={{ height: 40, width: '100%', marginTop: 12 }} />
-          <div className="skeleton" style={{ height: 40, width: '100%', marginTop: 10 }} />
+          <div
+            className="skeleton"
+            style={{ height: 40, width: '100%', marginTop: 12 }}
+          />
+          <div
+            className="skeleton"
+            style={{ height: 40, width: '100%', marginTop: 10 }}
+          />
         </div>
         <div className="card">
           <div className="skeleton" style={{ height: 12, width: '30%' }} />
-          <div className="skeleton" style={{ height: 40, width: '100%', marginTop: 12 }} />
+          <div
+            className="skeleton"
+            style={{ height: 40, width: '100%', marginTop: 12 }}
+          />
         </div>
         <p className="muted">Loading your profile…</p>
       </section>
@@ -424,8 +436,8 @@ export function ProfilePage() {
         <h1>Profile</h1>
         <div className="card">
           <p>
-            🌱 You haven't set up your profile yet. Let's find out what your body
-            needs — it takes under a minute.
+            🌱 You haven't set up your profile yet. Let's find out what your body needs —
+            it takes under a minute.
           </p>
           <div className="profile-actions">
             <Link to="/onboarding" className="btn btn-primary">
@@ -462,7 +474,7 @@ export function ProfilePage() {
       {profile && (
         <>
           <div className="card">
-            <h2 className="eyebrow">Your details</h2>
+            <h2>Your details</h2>
             <div className="profile-fields">
               {renderRow(
                 'name',
@@ -526,7 +538,7 @@ export function ProfilePage() {
           </div>
 
           <div className="card">
-            <h2 className="eyebrow">Activity &amp; goal</h2>
+            <h2>Activity &amp; goal</h2>
             <div className="profile-fields">
               {renderRow(
                 'goal',
@@ -550,16 +562,17 @@ export function ProfilePage() {
           </div>
 
           <div className="card">
-            <h2 className="eyebrow">Household</h2>
+            <h2>Household</h2>
             <p className="profile-lead muted">
-              How much of what's bought is actually for you — used to scale your
-              results.
+              How much of what's bought is actually for you — used to scale your results.
             </p>
             <div className="profile-fields">
               {renderRow(
                 'household_size',
                 'People you shop for',
-                profile.household_size != null ? String(profile.household_size) : 'Not set',
+                profile.household_size != null
+                  ? String(profile.household_size)
+                  : 'Not set',
                 <input
                   type="number"
                   min={1}
@@ -592,10 +605,11 @@ export function ProfilePage() {
           </div>
 
           <div className="card">
-            <h2 className="eyebrow">Diet &amp; preferences</h2>
+            <h2>Diet &amp; preferences</h2>
             <p className="profile-lead muted">
-              Used to tailor your <Link to="/results#recipes">recipe recommendations</Link>{' '}
-              — never your calorie/macro targets.
+              Used to tailor your{' '}
+              <Link to="/results#recipes">recipe recommendations</Link> — never your
+              calorie/macro targets.
             </p>
             <div className="profile-fields">
               {renderRow(
@@ -700,10 +714,10 @@ export function ProfilePage() {
       </div>
 
       <div className="card">
-        <h2 className="eyebrow">Delete account</h2>
+        <h2>Delete account</h2>
         <p className="profile-lead muted">
-          Permanently deletes your profile and everything tied to it — receipts,
-          recipes and pantry data. This can't be undone.
+          Permanently deletes your profile and everything tied to it — receipts, recipes
+          and pantry data. This can't be undone.
         </p>
 
         {deleteError && (

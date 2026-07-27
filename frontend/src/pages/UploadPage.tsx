@@ -478,7 +478,9 @@ export function UploadPage() {
             <p className="upload-dropzone__title">
               Drop a receipt photo here or click to upload
             </p>
-            <p className="upload-dropzone__subtitle">JPG, PNG, WEBP or PDF · several at once</p>
+            <p className="upload-dropzone__subtitle">
+              JPG, PNG, WEBP or PDF · several at once
+            </p>
           </div>
         ) : (
           <div className="form-field">

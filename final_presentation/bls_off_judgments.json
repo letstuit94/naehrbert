@@ -1,0 +1,1748 @@
+[
+ {
+  "raw_name": "AB Bud 6x0,3l MW",
+  "normalized_name": "AB Bud Bier",
+  "category": "Getränke",
+  "occurrences": 1,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to evaluate.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts explicitly returned no candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Pilsner Bier",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"AB Bud\" = Anheuser-Busch Budweiser, a pale lager beer, so matching it to the generic \"Pilsner Bier\" entry (another pale lager, same beverage category and comparable nutrient profile) is an acceptable generic-vs-branded substitution, not a change in food type or processing form.",
+   "\"AB Bud 6x0,3l MW\" is a 6-pack of 0.3l Budweiser-style bottles (Mehrweg/returnable), i.e. beer, confirmed by the cleaned text \"AB Bud Bier\" and the \"Getränke\" category, and \"Pilsner Bier\" is a generic pale-lager beer entry whose nutrient profile (~38 kcal, negligible protein/fiber/sugar per 100g) is essentially the same as a Budweiser-type lager, so this is a generic-vs-branded substitution rather than a different food or processing form.",
+   "\"AB Bud 6x0,3l MW\" is Anheuser-Busch Budweiser beer (Mehrweg returnable bottles), and mapping this pale lager to the generic BLS entry \"Pilsner Bier\" is a legitimate branded-to-generic normalization to the same basic food (beer/lager) with essentially equivalent nutrition, not a different food or a different processed form."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Bananen 1,0 kg",
+  "normalized_name": "Bananen",
+  "category": "Obst",
+  "occurrences": 16,
+  "off_matched_name": "Bananen süß & samtig",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Bananen süß & samtig\" is a branded whole-banana product line (marketing tagline \"sweet & velvety\"), and its nutrition profile (96 kcal, ~17g sugar, 2g fiber per 100g) closely matches raw banana values, so it correctly represents the same fresh-fruit item the shopper bought despite being a specific brand name rather than a generic \"Banane roh\" entry.",
+   "\"Bananen süß & samtig\" is a branded/packaged whole-banana product (sweet & velvety being a ripeness/variety descriptor), and its macros (~96 kcal, ~2g fiber) sit right in the normal range for a raw banana, so despite being a specific brand rather than a generic entry, it represents the same food the shopper actually bought — fresh bananas by weight.",
+   "\"Bananen süß & samtig\" is a branded fresh-banana product line (a common German banana marketing name) whose nutrition profile (96 kcal, ~17g sugar/100g) matches plain fresh banana, so it represents the same fresh-fruit purchase despite being a specific brand rather than a generic entry."
+  ],
+  "bls_matched_name": "Bananen im Ausbackteig frittiert",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "2/3",
+  "bls_reasoning": [
+   "\"Bananen im Ausbackteig frittiert\" is a prepared dessert (bananas deep-fried in batter) rather than the plain raw fruit the receipt indicates (\"Bananen 1,0 kg\", category Obst) — the nutrition numbers (236 kcal, 4.8g protein, only 8.55g sugar diluted by batter) confirm it's the fried/battered dish, so it's the right food family but a meaningfully different processed form, not an outright unrelated food.",
+   "\"Bananen im Ausbackteig frittiert\" is a battered, deep-fried banana dessert/fritter — a distinct prepared dish with roughly 2.5x the calories and a completely different macro profile (added batter/oil, far less sugar-as-fruit) — not the plain fresh fruit the receipt line (\"Bananen 1,0 kg\", category Obst) actually indicates, making this the same kind of mismatch as the \"fried/battered dish matched for the plain raw ingredient\" example.",
+   "The receipt is for plain fresh bananas sold by weight (1.0 kg, category Obst/fruit), but BLS matched a battered, deep-fried banana dessert — a distinctly different prepared dish (confirmed by its much higher calorie/lower fiber/lower sugar profile from batter and frying), which the grading criteria explicitly treat as incorrect rather than a mere processing variant."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "BesteErnte Himbeeren 500g",
+  "normalized_name": "Beste Ernte Himbeeren",
+  "category": "Obst & Gemüse",
+  "occurrences": 1,
+  "off_matched_name": "gefrorene Himbeeren",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"BesteErnte Himbeeren\" is raspberries (the shopper bought raspberries, likely frozen given a 500g pack), and OpenFoodFacts' \"gefrorene Himbeeren\" (frozen raspberries) is the same food with matching nutrition profile (low calorie, high fiber, moderate sugar) — brand specificity isn't required for a correct match.",
+   "\"BesteErnte Himbeeren 500g\" is a branded pack of raspberries (the Aldi \"Beste Ernte\" line, commonly frozen fruit), and OpenFoodFacts matching it to \"gefrorene Himbeeren\" (frozen raspberries) captures the same food; branded product vs. its generic OFF catalogue entry for the same item is exactly the kind of brand-vs-generic difference the rubric treats as fine.",
+   "\"Beste Ernte\" is a common German (Rewe) house brand for frozen fruit, so \"BesteErnte Himbeeren 500g\" is almost certainly frozen raspberries; matching it to generic \"gefrorene Himbeeren\" is the same food with acceptable brand-to-generic substitution."
+  ],
+  "bls_matched_name": "Ente Innereien, tiefgefroren",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Ente Innereien, tiefgefroren\" (frozen duck giblets) is a completely unrelated food — this looks like a spurious string-similarity match where \"Ernte\" was confused with \"Ente\" (duck), and the nutrition profile (high protein, zero fiber/sugar) is nothing like raspberries.",
+   "\"Ente Innereien, tiefgefroren\" is frozen duck offal — a completely different food (fruit vs. animal organ meat) with wildly different nutrient profile (0g fiber/sugar, high protein), and the match appears to be a spurious string-overlap artifact (the substring \"Ente\" inside \"BesteErnte\") rather than any genuine food correspondence.",
+   "\"Ente Innereien, tiefgefroren\" (frozen duck giblets) is a completely different food from raspberries — the match appears driven by superficial string similarity between \"Ernte\" and \"Ente\" plus the shared \"tiefgefroren/gefrorene\" (frozen) descriptor, not any real product correspondence."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Bio Eier 10 Stk",
+  "normalized_name": "Bio Eier",
+  "category": "Eier",
+  "occurrences": 12,
+  "off_matched_name": "Eier",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "The receipt item is eggs (\"Bio Eier\" = organic eggs), and OpenFoodFacts matched it to a generic \"Eier\" (Eggs) entry — same food, with organic/brand specificity reasonably dropped, consistent with generic-vs-branded matching being acceptable.",
+   "\"Bio Eier\" (organic eggs) was matched to a generic \"Eier\" (eggs) entry — same food, and matching a branded/organic receipt item to a generic egg entry is acceptable per the generic-vs-branded rule.",
+   "\"Eier\" is simply the German generic term for eggs, and the nutrition profile (153 kcal, 13g protein, ~0.5g sugar per 100g) matches whole eggs closely, so despite being a generic (non-branded-specific) entry it genuinely represents the purchased \"Bio Eier\" (organic eggs)."
+  ],
+  "bls_matched_name": "Pilsner Bier",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS matched the eggs purchase to \"Pilsner Bier\" (Pilsner beer), an entirely unrelated food/beverage category — likely a string-similarity confusion between \"Eier\" and \"Bier\" rather than any genuine food match.",
+   "\"Bio Eier\" (eggs) was matched to \"Pilsner Bier\" (beer) — an entirely different food, evidently a string-similarity artifact (\"Eier\" vs \"Bier\") rather than a genuine semantic match, and the nutrient profile (38 kcal, near-zero protein) confirms it is not eggs.",
+   "\"Pilsner Bier\" is beer, an entirely unrelated food/beverage to eggs, with a nutrition profile (38 kcal, ~0.4g protein, no fiber) typical of a fermented alcoholic drink rather than eggs — this looks like a spurious string-similarity match (Eier vs. Bier) rather than a genuine food match."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Bio BB Feta 200g",
+  "normalized_name": "Bio Feta",
+  "category": "Milchprodukte",
+  "occurrences": 2,
+  "off_matched_name": "feta",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts matched \"Bio Feta\" directly to a \"feta\" catalogue entry, which is the same food the shopper bought (brand/organic qualifier dropped, but that is expected and acceptable genericization).",
+   "The receipt item is organic Feta cheese, and OpenFoodFacts matched it to a generic \"feta\" entry — an exact food match where only brand/organic specificity was dropped, which is acceptable per the matching rules.",
+   "OpenFoodFacts resolved \"Bio Feta\" to a generic \"feta\" catalogue entry, which is exactly the same food with only the organic/brand qualifier dropped — acceptable generic-vs-branded normalization."
+  ],
+  "bls_matched_name": "Brie mind. 60 % Fett i. Tr.",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS matched feta (a brined, salty Greek-style sheep/goat cheese) to Brie (a soft-ripened, bloomy-rind French cow's-milk cheese) — these are distinct, non-interchangeable cheese products with different milk source, processing/ripening method, texture and flavor, not merely a generic-vs-branded or form/processing variant of the same food, so this is a different food entirely despite both being \"cheese.\"",
+   "\"Brie mind. 60% Fett i. Tr.\" is a soft-ripened Brie cheese, a distinctly different cheese variety from brined Feta (different milk tradition, texture, ripening process, and flavor), so despite similar macros and both being \"cheese,\" this is a different specific food, not a form/processing variant of the same food.",
+   "Brie is a soft-ripened bloomy-rind cow's-milk cheese, entirely different from feta (a brined, crumbly sheep/goat-milk cheese in salty brine) in production method, texture, milk source, and taste — matching \"Bio Feta\" to a Brie entry is a different food, not a plausible generic stand-in for feta."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "BIO OLIVENÖL",
+  "normalized_name": "Bio Olivenöl",
+  "category": "Öle und Essige",
+  "occurrences": 1,
+  "off_matched_name": "Bio olivenöl",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts matched \"Bio olivenöl\" to \"Bio olivenöl\" — an exact name match for organic olive oil, and the nutrition profile (900 kcal, 0g protein/fiber/sugar per 100g) is exactly what pure olive oil should be, confirming it's the same product, not just a superficial word match.",
+   "OpenFoodFacts matched \"Bio olivenöl\" (organic olive oil) to a receipt line item \"BIO OLIVENÖL\" — an essentially exact name match for the same product, and the nutrition profile (900 kcal, 0g protein/fiber/sugar per 100g) is consistent with pure olive oil.",
+   "\"Bio olivenöl\" is the same product (organic olive oil) as the receipt text, essentially a direct name match, and the ~900 kcal/100g, all-fat nutrient profile is exactly what plain olive oil should show."
+  ],
+  "bls_matched_name": "Olivenöl",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS matched to generic \"Olivenöl\" (899 kcal, 0g protein/fiber/sugar per 100g), which is the correct generic food-composition entry for olive oil; dropping the \"Bio\" (organic) qualifier is an acceptable generic-vs-branded/qualifier simplification, not a different food.",
+   "BLS matched the generic \"Olivenöl\" entry (899 kcal, 0g protein/fiber/sugar per 100g), which is the same food (olive oil) just without the organic/bio qualifier — dropping brand/organic specificity for a generic raw-food database entry is acceptable per the matching criteria.",
+   "BLS matched to the generic \"Olivenöl\" entry, which is the same food (olive oil) minus the organic/brand qualifier that a generic composition database wouldn't be expected to carry — acceptable per the generic-vs-branded rule, and the 899 kcal, pure-fat profile matches olive oil."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Bio Paprika Mix 400g",
+  "normalized_name": "Bio Paprika Mix",
+  "category": "Gemüse",
+  "occurrences": 5,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Rinderragout mit Paprika",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Rinderragout mit Paprika\" is a prepared beef stew dish (high protein, meat-based nutrition profile) that merely contains peppers as one ingredient, whereas the receipt item is plain raw mixed bell peppers — an entirely different food that only shares the word \"Paprika\".",
+   "\"Rinderragout mit Paprika\" is a prepared beef stew containing peppers as one ingredient, not the plain vegetable (\"Bio Paprika Mix\") the shopper bought — the match only shares the word \"Paprika\" while the actual food (a meat dish vs. a raw vegetable mix) is entirely different.",
+   "\"Rinderragout mit Paprika\" is a beef stew/ragout (a meat dish merely seasoned/garnished with paprika/peppers) rather than the actual product bought — a bag of raw mixed bell peppers (\"Bio Paprika Mix\", Gemüse category) — and the nutrition profile (164 kcal, 16.6g protein, minimal fiber) confirms it's a meat dish, not a vegetable, so the match is a different food entirely despite the shared word \"Paprika.\""
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Vollmilch 3,5% 1L",
+  "normalized_name": "Bio Vollmilch",
+  "category": "Milchprodukte",
+  "occurrences": 1,
+  "off_matched_name": "Bio Vollmilch",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Bio Vollmilch\" is whole milk with nutrient values (68 kcal, 3.4g protein, 0g fiber, 4.8g sugar/100g) squarely matching standard 3.5%-fat whole milk, so despite the spurious \"Bio\" (organic) tag introduced during normalization, it is the same basic food and form the shopper bought (organic-vs-conventional is an attribute difference akin to brand, not a change in food form/processing).",
+   "The OFF entry \"Bio Vollmilch\" is whole milk with a macro profile (68 kcal, 3.4g protein, 4.8g sugar, 0g fiber per 100g) that matches standard 3.5%-fat whole milk almost exactly, so it is the same food as the receipt's \"Vollmilch 3,5% 1L\"; the added organic (\"Bio\") qualifier is a production-method/labeling distinction analogous to generic-vs-branded and does not change the food's identity or nutrition for tracking purposes.",
+   "The receipt item is whole milk 3.5% fat, and the matched entry \"Bio Vollmilch\" is also whole milk with a nutrient profile (68 kcal, 3.4g protein, 4.8g sugar, 0g fiber per 100g) consistent with standard whole milk — the added \"Bio\" (organic) qualifier is a production/branding distinction, not a different food form, so this counts as the same food."
+  ],
+  "bls_matched_name": null,
+  "bls_verdict": "no_match",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS returned no candidate above its similarity threshold, so there is no match to judge.",
+   "BLS did not return any candidate above its similarity threshold, so there is no match to judge.",
+   "BLS returned no candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Harry Sonntag",
+  "normalized_name": "Brötchen",
+  "category": "Backwaren",
+  "occurrences": 1,
+  "off_matched_name": "Burger Brötchen Brioche",
+  "off_verdict": "partially_correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Harry Sonntag(sbrötchen)\" is a standard supermarket bake-off bread-roll assortment (Backwaren/Brötchen), not a burger-specific product; OpenFoodFacts matched it to a brioche-style burger bun, which is the same broad food family (bread roll) but a meaningfully different, sweeter enriched dough intended for burgers rather than a plain breakfast roll (consistent with the unusually high 7.1g sugar/100g).",
+   "\"Harry Sonntag\" is Harry's plain white breakfast/Sunday roll (Sonntagsbrötchen), but OpenFoodFacts matched it to a \"Burger Brötchen Brioche\" — a specifically sweetened, butter/egg-enriched brioche burger bun (note the outlying 7.1g sugar/100g vs. the ~1-2g typical of a plain wheat roll), which is the same broad food family (bread roll) but a meaningfully different product form/use, not the plain roll actually bought.",
+   "\"Harry Sonntag\" is a standard plain wheat bread roll (Harry's well-known \"Sonntagsbrötchen\" line for breakfast), so matching it to \"Burger Brötchen Brioche\" keeps the right food family (bread roll) but substitutes a meaningfully different product — a sweet, butter/egg-enriched brioche bun made specifically for burgers, reflected in its much higher sugar (7.1g vs ~2g typical) and richer calorie profile than a plain crusty roll."
+  ],
+  "bls_matched_name": "Brötchen glutenfrei",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "There is no indication the shopper bought a gluten-free product, so BLS's \"Brötchen glutenfrei\" is the right food family (a bread roll) but a meaningfully different formulation (alternative-flour, gluten-free recipe) rather than the standard wheat/mixed-grain roll implied by \"Harry Sonntag\" and \"Brötchen\", which also explains its atypically low protein/fiber for a roll.",
+   "BLS matched to \"Brötchen glutenfrei,\" a gluten-free roll variant with roughly half the protein (4.4g vs. a typical wheat roll's ~8-9g) and fiber (1.6g) of a standard roll — nothing about \"Harry Sonntag\" indicates a gluten-free product, so this is the right food family (bread roll) but a distinct dietary-formulation variant rather than the plain wheat roll actually purchased.",
+   "The BLS match keeps the generic \"Brötchen\" wording but resolves to \"Brötchen glutenfrei,\" a dietary-variant formulation made from different (non-wheat) flour bases with no indication anywhere in the receipt text or category that the product was gluten-free, and its notably lower protein (4.4g) and fiber (1.6g) versus a typical wheat roll confirm it's a meaningfully different formulation rather than the plain roll actually purchased."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Bulgur Rote Beete",
+  "normalized_name": "Bulgur Rote Beete",
+  "category": "Fertiggericht",
+  "occurrences": 1,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts returned no candidate above threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Rote-Bete-Gemüse gedünstet",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "The receipt item is a Fertiggericht/mixed dish whose name explicitly leads with \"Bulgur\" (a wheat-grain component), but the BLS match \"Rote-Bete-Gemüse gedünstet\" is plain steamed beetroot with no grain at all — it drops an entire named, calorie/carb-relevant ingredient rather than merely differing in processing of the same food, so it does not represent the same food the shopper bought.",
+   "The receipt item is a \"Fertiggericht\" (ready-meal/salad) whose name explicitly leads with \"Bulgur\" — a wheat-grain component that would dominate its carbs/protein/calories — but the BLS match \"Rote-Bete-Gemüse gedünstet\" is plain steamed beetroot with no grain at all (its low 59 kcal/1.34g protein profile confirms no bulgur is present), so the match drops the food's primary defining ingredient rather than merely reflecting a different processing form of the same food.",
+   "The receipt item is a prepared bulgur-and-beetroot dish (\"Fertiggericht\"), but the BLS match \"Rote-Bete-Gemüse gedünstet\" is plain steamed beetroot with no grain component at all, omitting the bulgur that is presumably the dish's main ingredient — this changes the food's nutritional profile substantially (far fewer calories/carbs than an actual bulgur salad) and represents a different food, not merely a different form of the same food."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Bulgur Rote Beete",
+  "normalized_name": "Bulgur Rote Bete",
+  "category": "Fertiggericht",
+  "occurrences": 1,
+  "off_matched_name": "Rote Bete",
+  "off_verdict": "partially_correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "The receipt item is a bulgur-and-beetroot mixed dish (parser category \"Fertiggericht\"/ready meal), but OpenFoodFacts matched only to plain \"Rote Bete\" (beetroot alone, 43 kcal matching raw beetroot almost exactly) — it captured one of the two named ingredients but entirely dropped the bulgur/grain component, so it's the right food family but a meaningfully incomplete form (plain vegetable instead of the actual grain-vegetable dish), not a wrong food.",
+   "The receipt item is a \"Fertiggericht\" combining bulgur wheat and beetroot, but OpenFoodFacts matched it to plain \"Rote Bete\" (beetroot only) — same food family but it drops the bulgur/grain component entirely, reducing a composed dish to a single ingredient.",
+   "The receipt item is a bulgur-and-beetroot dish (parser flagged it \"Fertiggericht\"/ready-meal), but OpenFoodFacts's match \"Rote Bete\" is plain beetroot with no bulgur/grain component at all — it captures only one ingredient of a mixed dish and omits the component (bulgur) that likely contributes the bulk of the calories/carbs, so it's the same food family but a meaningfully different, incomplete form rather than the actual product."
+  ],
+  "bls_matched_name": "Rote-Bete-Gemüse gedünstet",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "Similarly, BLS matched to \"Rote-Bete-Gemüse gedünstet\" (steamed beetroot vegetable, 59 kcal) — again correctly landing on the beetroot component but omitting the bulgur entirely, so it represents a plain-ingredient/vegetable-side form rather than the actual mixed bulgur-beetroot prepared dish the shopper bought.",
+   "BLS matched to \"Rote-Bete-Gemüse gedünstet\" (steamed beetroot vegetable), which like the OFF match captures only the beetroot half of the bulgur+beetroot ready-meal and omits the bulgur wheat entirely, making it the right food family but a meaningfully incomplete/different form of the actual product.",
+   "BLS's match \"Rote-Bete-Gemüse gedünstet\" (steamed beetroot vegetable) has the same core problem as the OFF match: it represents only the beetroot side dish and entirely drops the bulgur, so it reflects a related but meaningfully different food (single steamed vegetable vs. a bulgur-beetroot combination dish), not a true match to what was actually purchased."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "CHAMPIGNONS GROSS",
+  "normalized_name": "Champignons Groß",
+  "category": "Gemüse",
+  "occurrences": 1,
+  "off_matched_name": "Champignons",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Champignons\" at 20 kcal/2.3g protein per 100g is consistent with plain fresh mushrooms, matching the same food (fresh/raw mushrooms) that the shopper bought, with no indication of a different processed form (e.g. canned, marinated, or a prepared dish).",
+   "The receipt item is fresh mushrooms (Champignons, size descriptor \"Groß\"/large); OpenFoodFacts' \"Champignons\" entry is the same food (plain mushrooms), just without the size qualifier and as a generic/branded catalogue entry, which is an acceptable generic-vs-specific match.",
+   "\"Champignons\" with low-calorie, low-sugar values consistent with fresh raw mushrooms is the same food as the receipt item, just a generic (unbranded) catalogue entry rather than a size/brand-specific one."
+  ],
+  "bls_matched_name": "Champignon roh",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Champignon roh\" (raw mushroom) is the standard generic BLS entry for a fresh mushroom purchase categorized as produce (\"Gemüse\"), and generic-vs-branded/size (\"Groß\" just denotes large mushrooms, not a different food) differences are explicitly acceptable.",
+   "\"Champignon roh\" (raw mushroom) is the same fresh-produce item purchased, with \"roh\" simply reflecting BLS's convention of specifying raw/uncooked state rather than a different food or processed form.",
+   "\"Champignon roh\" (raw mushroom) is the same food as the receipt's fresh/large champignons; matching a branded size descriptor (\"Groß\") to a generic raw-mushroom entry is exactly the acceptable generic-vs-branded case."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "COCA COLA 1,25L",
+  "normalized_name": "Coca Cola",
+  "category": "Getränke",
+  "occurrences": 1,
+  "off_matched_name": "Coca Cola",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "The receipt item is a 1.25L bottle of Coca-Cola, and OpenFoodFacts matched it to the exact branded product \"Coca Cola\" with nutrition values consistent with real Coca-Cola (~42 kcal, ~10.6g sugar per 100g) — this is a direct, exact match.",
+   "\"Coca Cola\" is the exact branded product purchased, a direct 1:1 match with matching cola nutrition profile (45 kcal, ~11g sugar/100g typical of regular Coca-Cola).",
+   "Exact brand match (\"Coca Cola\" to \"Coca Cola\"), and the nutrition profile (45 kcal, 11.2g sugar/100g) is consistent with regular sugared Coke rather than a zero/diet variant, matching the 1,25L regular Coca Cola bottle on the receipt."
+  ],
+  "bls_matched_name": "Colagetränk koffeinhaltig",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Colagetränk koffeinhaltig\" (caffeinated cola drink) is the generic BLS equivalent of the same beverage category the shopper bought, with matching nutrition profile (41 kcal, 10.3g sugar) — a generic-vs-branded match for the same food, which the rules explicitly treat as correct.",
+   "\"Colagetränk koffeinhaltig\" (caffeinated cola drink) is the generic BLS equivalent of Coca Cola specifically as a cola beverage, not merely a broader soft-drink category, and its nutrition values (41 kcal, 10.3g sugar) closely track regular Coca-Cola, so the brand-vs-generic gap is acceptable per the stated rule.",
+   "\"Colagetränk koffeinhaltig\" (caffeinated cola drink) is the appropriate generic BLS category for a regular cola, and its nutrition values (41 kcal, 10.3g sugar/100g) confirm it's the sugared/regular variant, not a diet cola, so the generic-vs-branded substitution is acceptable per the grading rule."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Cocktailrispe",
+  "normalized_name": "Cocktailrispentomaten",
+  "category": "Gemüse",
+  "occurrences": 3,
+  "off_matched_name": "Tomato-Ketchup",
+  "off_verdict": "incorrect",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Tomato-Ketchup\" is a manufactured condiment (tomatoes cooked down with added sugar, vinegar, and spices, used as a topping/dip) rather than any form of the fresh vegetable the shopper actually bought (whole cocktail tomatoes on the vine, category Gemüse); the match rides on the shared word \"tomato\" but the product identity, use-case, and nutrition profile (102 kcal, 22.8g sugar per 100g vs. a fresh vegetable) are entirely different, so this is a different food rather than merely a different processing form of the same one.",
+   "\"Cocktailrispentomaten\" are fresh whole cocktail/cluster tomatoes (a raw vegetable), while ketchup is a cooked, sweetened, vinegar-based condiment — a completely different food that merely shares the word \"tomato.\"",
+   "\"Cocktailrispentomaten\" is whole fresh cocktail tomatoes on the vine (categorized as Gemüse/vegetable), while ketchup is a cooked, sweetened/vinegared condiment with a completely different nutrition profile (102 kcal, 22.8g sugar vs. ~18-20 kcal, ~2-3g sugar for fresh tomatoes) — this is a different food that merely shares the word \"tomato.\""
+  ],
+  "bls_matched_name": "Tomaten passiert/Tomatenpüree",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Tomaten passiert/Tomatenpüree\" is genuinely the same underlying food (tomatoes) but in pureed/passata form rather than the whole, fresh cocktail tomatoes on the vine that were purchased, which is exactly the \"puree/passata instead of whole tomatoes\" case the rubric flags as a meaningfully different form/processing rather than a true match.",
+   "Tomatenpüree/passata is the right food family (tomatoes) but is a pureed/strained processed product rather than the whole fresh cocktail tomatoes actually purchased, exactly the puree-instead-of-whole-produce case flagged as partially correct.",
+   "Tomaten passiert/Tomatenpüree is the same food family (tomatoes) but is strained/pureed and cooked, a meaningfully different form/processing from the whole fresh cocktail tomatoes actually purchased — the exact \"puree/passata instead of whole tomatoes\" scenario called out as partially correct."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Cola 1,25L",
+  "normalized_name": "Cola",
+  "category": "Getränke",
+  "occurrences": 1,
+  "off_matched_name": "Cola-Cola",
+  "off_verdict": "correct",
+  "off_agreement": "2/2",
+  "off_reasoning": [
+   "\"Cola-Cola\" is a regular sugared cola soft drink (42 kcal, 10.6g sugar/100g is consistent with standard Coca-Cola), matching the receipt's generic \"Cola\" beverage purchase; a specific branded cola for a generic cola receipt line is the same food family, so brand specificity is not a problem.",
+   "\"Cola-Cola\" (evidently a garbled/duplicated rendering of \"Coca-Cola\") is a cola soft drink with nutrition values (42 kcal, 10.6g sugar/100g) matching classic Coca-Cola, so it correctly represents the cola beverage the shopper bought."
+  ],
+  "bls_matched_name": "Colagetränk koffeinhaltig",
+  "bls_verdict": "correct",
+  "bls_agreement": "2/2",
+  "bls_reasoning": [
+   "\"Colagetränk koffeinhaltig\" (caffeinated cola drink, 41 kcal, 10.3g sugar/100g) is the generic BLS equivalent of a standard sugared cola soft drink, appropriately matching the receipt's \"Cola 1,25L\" beverage purchase.",
+   "\"Colagetränk koffeinhaltig\" (caffeinated cola drink) is the generic BLS equivalent of a cola soft drink with matching nutrition profile (41 kcal, 10.3g sugar/100g), which is an appropriate generic-vs-branded match for a \"Cola 1,25L\" receipt item."
+  ],
+  "n_judges": 2
+ },
+ {
+  "raw_name": "TK DR. OETKER OFENFR.",
+  "normalized_name": "Dr. Oetker Ofenfrische Pizza",
+  "category": "Tiefkühlprodukte",
+  "occurrences": 1,
+  "off_matched_name": "Pizza Salami Die Ofenfrische",
+  "off_verdict": "partially_correct",
+  "off_agreement": "2/3",
+  "off_reasoning": [
+   "OpenFoodFacts correctly identifies the product as a Dr. Oetker \"Die Ofenfrische\" frozen pizza, but the receipt text gives no flavor information while the matched entry is the specific \"Salami\" variant — an unsupported guess that could meaningfully misstate the nutrition values (protein/kcal/fiber/sugar vary noticeably across Ofenfrische flavors like vegetable, cheese, or ham/mushroom), so the food family/brand/form is right but the specific product is not confirmed to be what was bought.",
+   "The receipt item is a Dr. Oetker \"Ofenfrische\" frozen pre-baked pizza, and OpenFoodFacts matched it to \"Pizza Salami Die Ofenfrische\" — the same brand and same specific product line (frozen, oven-fresh pizza), just with a particular topping variant (Salami) assumed since the receipt text doesn't specify which flavor was purchased; this is the same food, not a different form/processing or different food category, so the flavor-level ambiguity is analogous to acceptable generic/specific granularity differences.",
+   "The match correctly identifies the Dr. Oetker \"Die Ofenfrische\" frozen pizza product line, but the receipt text (\"OFENFR.\") gives no indication of flavor/topping, while OFF's match commits to a specific variant (\"Salami\") — since nutrition (protein, fat, sodium, calories) varies meaningfully across Ofenfrische flavors, this is an unverified guess at a specific sub-product rather than a confirmed same-food match, so it's the right family/form but potentially the wrong specific item."
+  ],
+  "bls_matched_name": null,
+  "bls_verdict": "no_match",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS returned no candidate above its similarity threshold, so there is no match to judge.",
+   "BLS returned no candidate above its similarity threshold, so there is no match to judge.",
+   "BLS returned no candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "FELDSALAT",
+  "normalized_name": "Feldsalat",
+  "category": "Gemüse",
+  "occurrences": 2,
+  "off_matched_name": "Feldsalat",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts' entry is literally named \"Feldsalat\" with a low-calorie/high-water nutrient profile (16 kcal, 1.9g protein) consistent with raw corn salad, matching the receipt item directly.",
+   "OpenFoodFacts matched to an entry named simply \"Feldsalat\" with nutrition values (16 kcal, 1.9g protein/100g) consistent with fresh corn salad/lamb's lettuce, the same raw vegetable the shopper bought under the \"Gemüse\" category — a plausible packaged/fresh-salad product match with no change in food identity or form.",
+   "The OpenFoodFacts entry is literally named \"Feldsalat\" (lamb's lettuce/corn salad), matching the receipt item exactly with no indication of a different processed form, brand-specific packaging aside."
+  ],
+  "bls_matched_name": "Feldsalat/Rapunzel, roh",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Feldsalat/Rapunzel, roh\" is the raw (roh) generic entry for corn salad — \"Rapunzel\" is just a regional synonym for Feldsalat — and its nutrient values closely mirror the expected profile, so it represents the same fresh vegetable purchased.",
+   "BLS matched to \"Feldsalat/Rapunzel, roh\" — \"Rapunzel\" is simply an alternate German name for the same plant (Valerianella locusta) and \"roh\" (raw) matches the unprocessed vegetable form implied by the receipt, so this is the same food correctly resolved to a generic raw entry.",
+   "\"Feldsalat/Rapunzel, roh\" is simply the raw (uncooked) form of the same vegetable (Rapunzel being a synonym for Feldsalat), which is exactly the fresh produce item a shopper would buy under the \"Gemüse\" category."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "FLAMMKUCHENTEIG",
+  "normalized_name": "Flammkuchenteig",
+  "category": "Backwaren",
+  "occurrences": 4,
+  "off_matched_name": "Flammkuchenteig",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts matched the receipt item to an entry with the identical name \"Flammkuchenteig\" (pre-made dough/base for Flammkuchen), which is exactly the product the shopper bought.",
+   "OpenFoodFacts matched \"Flammkuchenteig\" to an entry of the same name/product (Flammkuchen dough), which is exactly the item purchased.",
+   "OpenFoodFacts matched the receipt item to a product literally named \"Flammkuchenteig\" (the same raw tarte-flambée dough product), so it is the same food."
+  ],
+  "bls_matched_name": "Apfelkuchen (Quark-Öl-Teig)",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Apfelkuchen (Quark-Öl-Teig)\" is a sweet apple cake made with a quark-oil pastry base, a completely different food from savory Flammkuchen dough — the match appears driven only by the shared word \"Teig\" (dough), not the actual food.",
+   "\"Apfelkuchen (Quark-Öl-Teig)\" is a sweet apple cake made with a quark-oil pastry, an entirely different food from a plain savory flatbread/tarte-flambée dough — the match appears to hinge only on both containing \"Teig\" (dough), not on being the same food.",
+   "\"Apfelkuchen (Quark-Öl-Teig)\" is a sweet apple cake made with a quark-oil dough, an entirely different food from a plain savory Flammkuchen (tarte flambée) dough base — the only connection is the shared word \"Teig,\" not the actual food."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "MILCH FRISCH 3.5%",
+  "normalized_name": "Frische Milch 3.5%",
+  "category": "Milchprodukte",
+  "occurrences": 1,
+  "off_matched_name": "Frische Vollmilch 3.5% fett",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Frische Vollmilch 3.5% fett\" is the same product (fresh whole milk, 3.5% fat) as the receipt item, with nutrition values (64 kcal, 3.3g protein, 4.8g sugar/100g) consistent with plain milk; branded-vs-generic naming differences don't matter.",
+   "\"Frische Vollmilch 3.5% fett\" (fresh whole milk 3.5% fat) is the same product as the receipt item \"Frische Milch 3.5%\" — same food, same fat percentage, and the nutrition profile (64 kcal, low protein/sugar) is consistent with fresh milk; branded vs. generic naming differences don't matter here.",
+   "\"Frische Vollmilch 3.5% fett\" is fresh whole milk at 3.5% fat, an exact match to the receipt item \"Frische Milch 3.5%\" (fresh milk 3.5%) — the same food, branded-generic differences aside."
+  ],
+  "bls_matched_name": "Roggenvollkornknäckebrot mit Milch",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Roggenvollkornknäckebrot mit Milch\" is a rye wholegrain crispbread product, not milk itself — the nutrition profile (327 kcal, 19.68g fiber per 100g) is that of a baked cracker, not a dairy beverage, so only the incidental word \"Milch\" overlaps while the actual food is entirely different.",
+   "\"Roggenvollkornknäckebrot mit Milch\" is rye wholegrain crispbread (with milk as an ingredient), an entirely different food category from plain fresh milk, confirmed by the nutrition profile (327 kcal, 19.68g fiber) which is nothing like milk — the match appears to be a spurious keyword overlap on \"Milch.\"",
+   "\"Roggenvollkornknäckebrot mit Milch\" is rye wholegrain crispbread (with milk as an ingredient), a completely different food category (bread/crispbread, not a dairy beverage) — the match appears to be a spurious keyword overlap on \"Milch\" rather than the actual product (fresh milk), also evidenced by the nutrient profile (327 kcal, 19.68g fiber) which is nothing like plain milk."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Frischfi.erm.BED",
+  "normalized_name": "Frischfisch",
+  "category": "Fisch",
+  "occurrences": 1,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge — verdict is simply no_match.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Schellfisch roh",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "2/3",
+  "bls_reasoning": [
+   "The raw line (\"Frischfi.erm.BED\", likely fresh fish bought at the service counter — \"BED\" = Bedientheke) gives no species information, yet BLS's fuzzy text matcher (confirmed in backend/app/services/bls_matcher.py, which scores purely on token/string similarity against BLS_4_0's ~7,140 generic entries) picked \"Schellfisch roh\" (haddock) simply because it shares the \"-fisch\" substring and similar length with \"Frischfisch\" — the BLS cache contains no generic \"Fisch, roh\" entry, only species-specific ones (Schellfisch, Katfisch, Hornfisch, etc.), so the algorithm was forced to guess a species with no textual basis for that particular one; it lands in the right food family and correctly picks a raw/unprocessed member of it, but asserts an unverified specific species that could just as easily have been salmon, trout, or cod with very different macros, so it's a plausible-but-unconfirmed identity rather than a confirmed same-food match.",
+   "The receipt/cleaned text \"Frischfisch\" only establishes a generic \"fresh fish\" category with no species information, but BLS's \"Schellfisch roh\" asserts a specific species (haddock) that has no support in the source text — this is a fabricated identity rather than a legitimate generic-vs-branded simplification, and since fish species vary substantially in fat/calorie content (e.g., lean whitefish vs. salmon), this specific, unverifiable species assignment risks materially wrong nutrition data.",
+   "\"Frischfisch\" is a generic, species-unspecified counter label (any raw fish could have been sold under it), and while BLS's pick of \"Schellfisch roh\" (raw haddock) does stay within the correct category — raw, unprocessed, fresh fish, matching the parser's own \"Fisch\" tag — it asserts a specific species that was never indicated on the receipt (plausibly chosen for its \"-fisch\" string similarity rather than any real evidence), and since fish species differ substantially in fat/calorie content, this specific substitution could meaningfully misrepresent the nutrition of whatever fish was actually purchased."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "G&G Buttercroiss.",
+  "normalized_name": "G&G Buttercroissant",
+  "category": "Backwaren",
+  "occurrences": 1,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts did not return any candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts explicitly returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Croissant (Hefeblätterteig/Plunderteig)",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "The receipt item is a butter croissant, and BLS matched it to a generic \"Croissant (Hefeblätterteig/Plunderteig)\" entry, which is the same basic baked good (croissants are inherently butter/laminated-dough pastries) — the missing brand/\"Butter\" qualifier is the kind of generic-vs-specific gap the rubric explicitly allows.",
+   "The receipt item is a butter croissant, a baked good (matching the \"Backwaren\" category), and the BLS entry \"Croissant (Hefeblätterteig/Plunderteig)\" is a generic croissant entry for the same yeast-puff-pastry item — the missing \"butter\" qualifier is a generic-vs-specific variant detail, not a different food or processing form.",
+   "\"G&G Buttercroissant\" is a butter croissant, and the BLS entry \"Croissant (Hefeblätterteig/Plunderteig)\" is the generic laminated-dough croissant category — the same basic bakery item, with the brand/butter-emphasis being an acceptable generic-vs-branded/specific difference rather than a different food or processing form."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "G&G H-Schmand",
+  "normalized_name": "G&G H-Schmand",
+  "category": "Milchprodukte",
+  "occurrences": 1,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts did not return any candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Sauerrahm/Schmand, mind. 20 % Fett",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"G&G H-Schmand\" is a branded, UHT-treated (haltbar) Schmand/sour cream, and the BLS generic entry \"Sauerrahm/Schmand, mind. 20% Fett\" is the same food category with matching plausible nutrition (~206 kcal for a ~20%+ fat Schmand); the \"H-\" (long-life/UHT) treatment is a shelf-stability difference, not a different food, so brand/processing-shelf-life specificity not being preserved is acceptable per the generic-vs-branded rule.",
+   "\"G&G H-Schmand\" is a branded haltbarer Schmand (shelf-stable sour cream/schmand) product, and the BLS generic entry \"Sauerrahm/Schmand, mind. 20% Fett\" is exactly that same food category (schmand/sour cream), so the generic-vs-branded difference is acceptable and the match is correct.",
+   "\"G&G H-Schmand\" is a branded long-life (haltbar) Schmand/sour cream product, and the BLS generic entry \"Sauerrahm/Schmand, mind. 20% Fett\" is the same food category (Schmand) at the same fat tier, with the UHT (\"H-\") processing being a shelf-life treatment rather than a different food form, so this is a legitimate generic-vs-branded match."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "G&G rei.Butt.",
+  "normalized_name": "G&G Reibekäse",
+  "category": "Milchprodukte",
+  "occurrences": 1,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts returned no candidate above threshold, so there is no match to judge — verdict is simply \"no_match\".",
+   "OpenFoodFacts did not return any candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Leberkäse",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "The receipt (category \"Milchprodukte\", abbreviation \"rei.Butt.\") points to a dairy item such as butter or grated cheese, but \"Leberkäse\" is a baked liver/meat loaf (a meat product, not a dairy item) whose name only coincidentally contains \"käse\" — its macros (295 kcal, 11.8g protein, near-zero fiber/sugar) are consistent with processed meat, not butter or cheese, so this is a different food entirely rather than the same food.",
+   "\"Leberkäse\" is a baked liver/meat loaf (a meat product), not a grated cheese — the match was driven by the substring \"käse\" overlapping with \"Reibekäse,\" but the actual foods (meatloaf vs. grated dairy cheese) are entirely different, which is also betrayed by the receipt's own \"Milchprodukte\" category and by the nutrient profile (11.8g protein/0g sugar is typical of a meat loaf, far below the ~25g protein of real grated cheese).",
+   "\"Reibekäse\" is grated cheese (a dairy product, consistent with the \"Milchprodukte\" category), whereas \"Leberkäse\" is a baked liver/meat loaf with no dairy content at all — the match is a false-friend on the shared \"-käse\" suffix, not the same food."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "G&G Tomaten g",
+  "normalized_name": "G&G Tomaten",
+  "category": "Obst & Gemüse",
+  "occurrences": 1,
+  "off_matched_name": "Tomato-Ketchup",
+  "off_verdict": "incorrect",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"G&G Tomaten\" indicates whole/fresh tomatoes were purchased (category \"Obst & Gemüse\" = fruit & veg), but Tomato-Ketchup is a distinct condiment product (cooked, heavily sweetened/vinegared, ~22.8g sugar/100g vs ~2.6g in raw tomatoes) — the match only shares the word \"tomato,\" not the actual food.",
+   "The receipt item is plain fresh tomatoes (category \"Obst & Gemüse\"), but ketchup is a heavily processed condiment (cooked, sweetened, vinegar-based) that is a fundamentally different food, not merely a different form of the same product — the match only shares the word \"Tomaten/Tomato.\"",
+   "The receipt item is plain fresh tomatoes (\"Obst & Gemüse\" category), but OpenFoodFacts matched it to Tomato-Ketchup, a manufactured condiment with added sugar/vinegar/spices (22.8g sugar/100g) that is a fundamentally different product merely sharing the word \"Tomaten\"/tomato as an ingredient."
+  ],
+  "bls_matched_name": "Tomaten passiert/Tomatenpüree",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "Tomaten passiert/Tomatenpüree is the right food family (tomatoes, plausible sugar/nutrient profile in the same ballpark) but represents a meaningfully different processed form (pureed/passata) than the whole fresh tomatoes the plural \"Tomaten\" and produce category imply.",
+   "Tomato puree/passata is the same core ingredient family (tomatoes) but is a processed/pureed form rather than the whole fresh tomatoes implied by the \"Obst & Gemüse\" produce category, matching the explicit partially_correct example of \"puree/passata instead of whole tomatoes.\"",
+   "The receipt is for fresh tomatoes (category \"Obst & Gemüse\"), but BLS matched it to tomato puree/passata (Tomatenpüree) — a processed, strained form rather than whole fresh tomatoes, which is the right food family but the wrong processing form."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "G&G Vollk.Sandwich",
+  "normalized_name": "G&G Vollkorn Sandwich",
+  "category": "Backwaren",
+  "occurrences": 1,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts did not return any candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Roggen Vollkornschrot",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Roggen Vollkornschrot\" is raw/cracked rye wholemeal groats (a milling ingredient, not a baked good), whereas the receipt item is a finished whole-grain sandwich (bread product, category \"Backwaren\"), and the match even introduces a grain type (rye) not indicated by the original \"Vollkorn Sandwich\" text — an unbaked raw grain meal with ~19g fiber/100g is nutritionally and categorically a different product from a baked sandwich loaf.",
+   "\"Roggen Vollkornschrot\" is a raw, coarsely-milled rye meal/groats (an unbaked cooking/baking ingredient, consistent with its very high 19.1g fiber and negligible 1.4g sugar per 100g), not a finished whole-grain sandwich bread as sold in the Backwaren/bakery aisle — the two share only the \"Vollkorn\" descriptor while being fundamentally different products (raw grain meal vs. baked sliced bread).",
+   "\"Roggen Vollkornschrot\" is raw/cracked rye grain meal (an unprocessed baking ingredient), whereas the receipt item is a finished whole-grain sandwich/bread product (category \"Backwaren\"), so despite the shared word \"Vollkorn\" these are different foods in form and processing (raw cereal meal vs. baked sandwich bread), and the match even specifies rye when the product's grain type is unstated."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "GEBÄCKSTANG",
+  "normalized_name": "Gebäckstange",
+  "category": "Backwaren",
+  "occurrences": 2,
+  "off_matched_name": "Feine Gebäckstange",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Feine Gebäckstange\" contains the exact search term \"Gebäckstange\" verbatim (with only the qualifier \"Feine\"/fine added), the category (Backwaren) is consistent, and the nutrition profile (high kcal, low sugar, moderate protein) fits a plain/savory baked stick rather than a different food — this reads as a generic-term-to-specific-branded-variant match, which the rubric explicitly allows as correct.",
+   "\"Feine Gebäckstange\" (fine pastry stick) is the same product type as the receipt's \"Gebäckstange\" (pastry stick), with \"feine\" merely a common marketing/descriptive adjective rather than a different food or form, so this generic-vs-specific naming difference is acceptable.",
+   "\"Feine Gebäckstange\" (fine pastry/baked stick) is essentially the same term as the normalized receipt text \"Gebäckstange,\" differing only by the marketing adjective \"feine\" — this is the same generic-vs-branded latitude explicitly allowed (product name and category \"Backwaren\" line up, and the calorie-dense, moderate-protein profile is consistent with a butter/laminated-dough baked stick)."
+  ],
+  "bls_matched_name": null,
+  "bls_verdict": "no_match",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS returned no candidate above its similarity threshold, so by definition this is a no_match rather than an incorrect or partially correct match.",
+   "BLS returned no candidate above its similarity threshold, so there is no match to judge.",
+   "BLS returned no candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Gouda jung 200g",
+  "normalized_name": "Gouda jung",
+  "category": "Käse",
+  "occurrences": 12,
+  "off_matched_name": "Gouda Jung",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts matched to a catalogue entry named \"Gouda Jung,\" which is an exact name match to the receipt item and represents the same specific cheese (young/mild Gouda).",
+   "OpenFoodFacts matched to an entry literally named \"Gouda Jung\" with nutrition values (361 kcal, 25g protein, ~0 fiber/sugar) squarely in the normal range for semi-hard young Gouda cheese, so it represents the same food the shopper bought.",
+   "OpenFoodFacts matched to a catalogue entry literally named \"Gouda Jung\" — an exact name match to the same product (young Gouda cheese)."
+  ],
+  "bls_matched_name": "Gouda 48 % Fett i. Tr.",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS matched to \"Gouda 48% Fett i. Tr.,\" the standard generic German food-composition entry for Gouda cheese (48% fat-in-dry-matter is the typical/default Gouda variety including young Gouda), so this is the same food at generic granularity, not a different food or processing form.",
+   "BLS, a generic composition database, classifies Gouda by fat-in-dry-matter tier rather than by \"jung\" (young) designation, and \"48% Fett i.Tr.\" is the standard/most common Gouda fat class sold in stores with nutrient values (379 kcal, 22.47g protein) closely matching real Gouda cheese, so this is the same food under a generic classification scheme, not a different food.",
+   "BLS matched to generic \"Gouda 48% Fett i.Tr.\", the standard German composition entry for Gouda cheese (48% fat-in-dry-matter is the common Gouda classification); BLS lacks a young/aged distinction, but this is still the same cheese, so a generic-vs-specific mismatch here is acceptable per the matching criteria."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Vand.Mai Gouda",
+  "normalized_name": "Gouda Käse",
+  "category": "Käse",
+  "occurrences": 1,
+  "off_matched_name": "Gouda Käse",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "The receipt item is Gouda cheese (\"Vand.Mai Gouda\" / normalized \"Gouda Käse\"), and OpenFoodFacts matched it to a \"Gouda Käse\" entry — the same food, with generic-vs-branded specificity being immaterial.",
+   "The receipt item is a Gouda cheese, and OpenFoodFacts matched it to a \"Gouda Käse\" entry — the same food (dairy cheese), with branded-vs-generic differences being immaterial.",
+   "The receipt item is a branded Gouda cheese (\"Vand.Mai Gouda\" normalized to \"Gouda Käse\"), and OpenFoodFacts matched it directly to a \"Gouda Käse\" entry — the same food, dairy cheese, with plausible nutrition values (336 kcal, 23g protein) for a semi-hard cheese."
+  ],
+  "bls_matched_name": "Fleischkäse grob",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Fleischkäse grob\" is a coarse meatloaf-type processed meat product (despite the word \"Käse\" in its name, it contains no cheese), so it is an entirely different food from the Gouda cheese actually purchased — a false match driven by lexical overlap on \"Käse\" alone.",
+   "\"Fleischkäse grob\" is a meat product (a type of German meatloaf/baked sausage), not cheese at all — the match appears to be driven purely by the substring \"käse\" overlapping, while the actual food category (meat vs. dairy) is completely wrong.",
+   "\"Fleischkäse\" is a German meat product (a baked meatloaf/bologna-type sausage), not a dairy cheese at all, despite sharing the word \"Käse\" with \"Gouda Käse\" — this is a false match driven by textual overlap on an entirely different food category (processed meat vs. cheese), consistent with the classic Fleischkäse-for-cheese confusion."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "CHAMPIGNONS GROSS",
+  "normalized_name": "Große Champignons",
+  "category": "Gemüse",
+  "occurrences": 1,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts did not return any candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Champignonpastete",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Champignonpastete\" is a mushroom pâté/spread (a processed, prepared product with added fat/other ingredients, evidenced by its high kcal/protein and near-zero fiber), whereas the receipt item is plain fresh raw mushrooms — same food family (mushroom) but a meaningfully different processed form, not the whole raw vegetable.",
+   "\"Champignonpastete\" is a prepared pâté/pastry dish built around mushroom as a flavor ingredient (its nutrient profile of 143 kcal and 12.81g protein per 100g is far richer than raw mushrooms), not the plain fresh \"Große Champignons\" the shopper actually bought — same food family, but a meaningfully different processed form.",
+   "The shopper bought plain fresh/raw large mushrooms (\"Große Champignons\"), but BLS matched to \"Champignonpastete,\" a prepared mushroom pâté/spread (consistent with its fat-rich 143 kcal profile vs. raw mushrooms' ~20 kcal) — same base ingredient family but a meaningfully different processed form, analogous to jam standing in for fresh fruit."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Gurken Stück x",
+  "normalized_name": "Gurken",
+  "category": "Gemüse",
+  "occurrences": 4,
+  "off_matched_name": "Gurken",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "The receipt item is a plain fresh cucumber (Gemüse category, \"Gurken Stück\"), and OpenFoodFacts' \"Gurken\" entry with ~19 kcal/100g is consistent with raw, unprocessed cucumber, so it represents the same food as purchased.",
+   "\"Gurken\" at 19 kcal/100g is consistent with fresh raw cucumber, the plain vegetable form implied by a \"Gurken Stück\" (cucumber, piece) line item on a supermarket receipt.",
+   "\"Gurken\" is the plain/generic cucumber entry with nutrition values (19 kcal, low sugar/fiber) consistent with raw fresh cucumber, matching what a shopper buying a \"Gurken Stück\" (cucumber piece) at the supermarket actually purchased."
+  ],
+  "bls_matched_name": "Gurken gedünstet",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Gurken gedünstet\" means steamed/braised cucumber, a cooked preparation rather than the raw cucumber actually bought at the supermarket, and its much higher kcal/sugar/fiber values confirm it's a different (cooked) form of the same base food rather than the plain vegetable.",
+   "\"Gurken gedünstet\" is cucumber in a cooked/braised preparation (67 kcal vs the ~15-20 kcal typical of raw cucumber, plus elevated sugar), so while it's the same food family, it represents a meaningfully different processed form than the raw cucumber a shopper buys by the piece.",
+   "\"Gurken gedünstet\" means steamed/braised cucumber, a cooked preparation (reflected in the much higher 67 kcal and higher sugar/fiber vs raw), whereas the receipt item is a raw, unprepared cucumber sold by the piece at a supermarket — same food family but wrong processing form."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "H-MILCH 1,5% 6X1L",
+  "normalized_name": "H-Milch 1.5%",
+  "category": "Milchprodukte",
+  "occurrences": 1,
+  "off_matched_name": "H-Milch 1.5% Fett laktosefrei",
+  "off_verdict": "partially_correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "The fat level (1.5%) and product type (H-Milch) match, but the match adds \"laktosefrei\" (lactose-free), a specific dietary attribute nowhere indicated in the receipt text (\"H-MILCH 1,5% 6X1L\"), so it's a different specific formulation of the same basic food rather than an exact match.",
+   "The receipt is plain H-Milch 1.5% with no indication of being lactose-free, so matching it to a \"laktosefrei\" variant introduces a specific processing attribute (enzymatic lactose breakdown) not present in the purchased product, making it the right food family (UHT milk, same fat %) but a meaningfully different formulation.",
+   "The match keeps the correct product type and fat level (H-Milch 1.5%) but adds \"laktosefrei\" (lactose-free), a specific enzyme-treated variant not indicated anywhere on the receipt text, so it's the right family but a meaningfully different processed form rather than an exact match."
+  ],
+  "bls_matched_name": "Buttermilch",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "Buttermilch (buttermilk, a soured byproduct of butter-churning) is a distinct dairy product from H-Milch (UHT semi-skimmed drinking milk) — different production process, taste, and use, not merely a generic version of the same food.",
+   "Buttermilch (buttermilk/cultured milk byproduct) is a distinct fermented dairy product from H-Milch (UHT whole/reduced-fat drinking milk) — they share the \"Milch\" root and dairy category but are different foods in composition, production process, and use, matching the rubric's \"different food entirely despite word overlap\" case.",
+   "Buttermilch (buttermilk) is a fermented/cultured dairy product with a tangy taste and distinct production process, not the same food as UHT \"H-Milch\" (long-life heat-treated milk) at 1.5% fat that was actually purchased."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "hackfleisch 400g",
+  "normalized_name": "Hackfleisch",
+  "category": "Fleisch",
+  "occurrences": 1,
+  "off_matched_name": "Hackfleisch gemischt",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "In German supermarkets, unqualified \"Hackfleisch\" (with no species specified, e.g. no \"Rind-\" or \"Schweine-\" prefix) conventionally denotes the mixed beef/pork product, so \"Hackfleisch gemischt\" is the standard, literal reading of the receipt text and represents the same product the shopper bought.",
+   "\"Hackfleisch gemischt\" (mixed ground beef/pork) is exactly the default, most common product German shoppers mean when a receipt just says \"Hackfleisch\" with no qualifier, so this is the same food the shopper bought.",
+   "Unqualified German \"Hackfleisch\" (no Rind/Schwein qualifier) conventionally refers to the standard mixed beef-pork product sold under that plain name, so \"Hackfleisch gemischt\" is the natural generic-default match for the same food the shopper bought."
+  ],
+  "bls_matched_name": "Schwein Hackfleisch, roh",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "2/3",
+  "bls_reasoning": [
+   "The receipt gives no species qualifier, but BLS resolved it to a single-species \"Schwein Hackfleisch, roh\" (pork only) rather than the generic/mixed variant that plain \"Hackfleisch\" conventionally implies, introducing an unstated compositional assumption (reflected in the notably higher calorie count vs. the mixed product) even though it's still raw ground meat in the right food family.",
+   "\"Schwein Hackfleisch, roh\" is still plain raw ground meat matching the \"Fleisch\" category and unprocessed form of the purchase — it only narrows the unspecified meat type to pork, a reasonable resolution of receipt ambiguity rather than a different food or processing form.",
+   "BLS resolved the ambiguous, unqualified \"Hackfleisch\" to a specific single-animal variant (\"Schwein Hackfleisch, roh\") that the receipt text never indicated, and the composition assumption is far from trivial — it yields a notably different calorie/fat profile (271 vs 234 kcal) than the more likely mixed product, so it's the right food family but a meaningfully different, unsupported specific variant rather than a confirmed match."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Haferflocken 500g",
+  "normalized_name": "Haferflocken",
+  "category": "Müsli & Cerealien",
+  "occurrences": 12,
+  "off_matched_name": "Haferflocken",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts matched \"Haferflocken\" to an entry literally named \"Haferflocken\" (rolled oats), and the macros (372 kcal, 13.5g protein, 10g fiber, low sugar) are exactly consistent with plain rolled oats, so this is the same food the shopper bought.",
+   "OpenFoodFacts matched the receipt text \"Haferflocken\" to a catalogue entry with the identical name \"Haferflocken,\" and the nutrient profile (372 kcal, 13.5g protein, 10g fiber, low sugar) is consistent with plain rolled oats, so this is the same food the shopper bought.",
+   "OpenFoodFacts matched the receipt item to an entry literally named \"Haferflocken\" (rolled oats) with a nutrient profile (372 kcal, 13.5g protein, 10g fiber, low sugar) fully consistent with plain oat flakes, so this is the same food the shopper bought."
+  ],
+  "bls_matched_name": "Hafer Flocken",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS matched to \"Hafer Flocken\" (generic rolled oats entry), with nearly identical nutrition figures to the branded match (348 kcal, 13.22g protein, ~11g fiber), confirming it's the same plain-oats food, just represented as a generic/raw composition entry rather than a branded product.",
+   "BLS matched to \"Hafer Flocken,\" which is the same food (oat flakes) just written with a space instead of as one compound word, and its generic nutrient values (348 kcal, 13.22g protein, ~11g fiber) closely track those of plain rolled oats, making this a correct generic match.",
+   "BLS matched to \"Hafer Flocken\" (oat flakes, just written with a space), a generic raw-food entry whose nutrient values (348 kcal, 13.22g protein, ~11g fiber, low sugar) closely mirror typical rolled oats, so despite being a generic rather than branded entry it is genuinely the same food."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "BesteErnte Himbeeren 500g",
+  "normalized_name": "Himbeeren 500g",
+  "category": "Obst",
+  "occurrences": 1,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Himbeere roh",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Himbeere roh\" (raw raspberry) is the same plain fresh fruit the shopper bought (BesteErnte Himbeeren 500g is just a branded packaged raspberry punnet), and matching a branded fresh-produce item to a generic raw-fruit entry is exactly the kind of brand-vs-generic difference that is acceptable.",
+   "The receipt item is fresh raspberries (500g, categorized as Obst) sold under the \"BesteErnte\" store brand, and \"Himbeere roh\" (raw raspberry) is the correct generic/raw counterpart — brand-vs-generic differences don't count against the match, and there's no processing/form mismatch (e.g. jam, puree, juice) to demote it.",
+   "\"Himbeere roh\" (raw raspberry) is the generic equivalent of the branded fresh raspberries (\"BesteErnte Himbeeren\") actually purchased, and generic-vs-branded substitution is acceptable for a correct match."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "HIRTENKÄSE",
+  "normalized_name": "Hirtenkäse",
+  "category": "Käse",
+  "occurrences": 4,
+  "off_matched_name": "High Protein Hirtenkäse",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "The matched item is literally named \"Hirtenkäse\" (just a specific high-protein branded variant of shepherd's cheese), so it is the same food as the receipt line item, with only brand/formulation specificity differing, which is acceptable.",
+   "The match is literally named \"High Protein Hirtenkäse\" — the same shepherd's-cheese product, just a specific branded/lower-fat-higher-protein variant, which is acceptable brand-level specificity within a packaged-goods database.",
+   "\"High Protein Hirtenkäse\" is the same core food (Hirtenkäse, a feta-style brined cheese) — it's just a specific branded/protein-enhanced product variant, and brand/formulation specificity is acceptable under the generic-vs-branded rule."
+  ],
+  "bls_matched_name": "Käse-Grießnockerl",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Käse-Grießnockerl\" is a semolina-dumpling dish containing cheese as one ingredient, not the shepherd's cheese product itself, so it is a different food that merely shares the word \"Käse\".",
+   "\"Käse-Grießnockerl\" is a cheese-semolina dumpling dish (note the fiber/sugar content pointing to a grain-based semolina component), not the brined shepherd's-cheese product itself — the match rides on the shared \"Käse\" substring but represents an entirely different food.",
+   "\"Käse-Grießnockerl\" is cheese-flavored semolina dumplings, an entirely different prepared dish (confirmed by its fiber/sugar content typical of a grain-based food) — it only shares the word \"Käse\" with Hirtenkäse and is not the brined cheese the shopper bought."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Irische Butter Kerrygold 250g",
+  "normalized_name": "Irische Butter Kerrygold",
+  "category": "Milchprodukte",
+  "occurrences": 2,
+  "off_matched_name": "Kerrygold Irische Butter",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts matched to \"Kerrygold Irische Butter\" — the identical product with words merely reordered, and the macros (748 kcal, ~0.7g protein/sugar per 100g) are exactly consistent with pure butter, confirming it's the same item the shopper bought.",
+   "\"Kerrygold Irische Butter\" is the same product as \"Irische Butter Kerrygold\" (Kerrygold Irish butter), just with words reordered, and the nutrition profile (748 kcal, ~0.7g protein/sugar per 100g) is exactly consistent with pure butter.",
+   "\"Kerrygold Irische Butter\" is the identical branded product (just word order swapped) to the receipt's \"Irische Butter Kerrygold,\" and the nutrition profile (748 kcal, ~0.7g protein/sugar per 100g) is exactly what pure butter looks like."
+  ],
+  "bls_matched_name": "Spiegelei gebraten in Butter",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS matched to \"Spiegelei gebraten in Butter\" (fried egg in butter), a completely different food whose identity is egg, not butter — confirmed by the nutrition profile (204 kcal, 13.2g protein/100g is egg-like, whereas plain butter runs ~717-750 kcal with negligible protein), so the match only shares the incidental word \"Butter\" rather than representing the butter the shopper purchased.",
+   "\"Spiegelei gebraten in Butter\" is a fried egg dish, not butter itself — the shopper bought a stick/pack of butter, not fried eggs, and the nutrition (204 kcal, 13.2g protein) matches egg, not butter, so the match only shares the incidental word \"Butter\" while being a different food entirely.",
+   "\"Spiegelei gebraten in Butter\" (fried egg cooked in butter) is a fried-egg dish, not butter itself — its nutrition profile (13.2g protein per 100g) is characteristic of egg, not butter (~0.7g protein/100g), so the match latched onto the shared word \"Butter\" while resolving to an entirely different food."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Beste Ernte Kichererbsen 265g",
+  "normalized_name": "Kichererbsen",
+  "category": "Hülsenfrüchte",
+  "occurrences": 2,
+  "off_matched_name": "Kichererbsen",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "The receipt item is a packaged/canned chickpeas product (265g, categorized as Hülsenfrüchte/legumes); OpenFoodFacts' \"Kichererbsen\" entry (117 kcal, 6.3g protein, 7.6g fiber, 1.2g sugar/100g) is squarely in line with typical canned/cooked chickpea nutrition, so it represents the same plain food, just as a generic catalogue entry rather than the specific brand.",
+   "The receipt item is plain packaged chickpeas (\"Beste Ernte Kichererbsen\"), and OFF matched it to a generic \"Kichererbsen\" entry whose nutrition profile (117 kcal, 6.3g protein, 7.6g fiber, 1.2g sugar/100g) is squarely in line with plain cooked/canned chickpeas — a correct match to the same food, with generic-vs-branded specificity being acceptable.",
+   "The receipt item is plain packaged chickpeas (\"Kichererbsen\"), and OpenFoodFacts matched it to a generic \"Kichererbsen\" entry whose nutrient profile (117 kcal, 6.3g protein, 7.6g fiber per 100g) is consistent with plain chickpeas, so this is the same food at an acceptable generic-vs-branded level."
+  ],
+  "bls_matched_name": "Kichererbsen-Eintopf",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Kichererbsen-Eintopf\" is a prepared chickpea stew, not the plain legume the shopper bought — its much lower kcal/protein/fiber (62 kcal, 2.6g protein, 2.2g fiber vs. ~117/6.3/7.6 for plain chickpeas) reflects dilution by broth/vegetables typical of a stew, making it the right food family but a meaningfully different processed form.",
+   "BLS matched to \"Kichererbsen-Eintopf\" (chickpea stew), a prepared multi-ingredient dish rather than the plain legume the shopper bought — its much lower per-100g values (62 kcal, 2.6g protein, 2.2g fiber) reflect dilution with broth/vegetables, confirming it's a dish containing chickpeas rather than chickpeas themselves, i.e. right food family but meaningfully different form.",
+   "BLS matched to \"Kichererbsen-Eintopf\" (chickpea stew), a prepared dish containing chickpeas rather than the plain legume itself, which is confirmed by the much lower calorie/protein/fiber values consistent with a diluted stew rather than pure chickpeas."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Beste Ernte Kidneybohnen 255g",
+  "normalized_name": "Kidneybohnen",
+  "category": "Hülsenfrüchte",
+  "occurrences": 2,
+  "off_matched_name": "Kidneybohnen",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "The receipt item is a 255g can of \"Beste Ernte\" kidney beans (category Hülsenfrüchte), and OFF's generic \"Kidneybohnen\" entry (98 kcal, 8g protein, 6g fiber, 0.5g sugar/100g) is squarely in the range typical of canned/ready-to-eat kidney beans — this is the same food, just a generic catalogue entry standing in for the specific brand, which is an acceptable generic-vs-branded substitution.",
+   "\"Kidneybohnen\" is a plain, unprepared/unprocessed-beyond-canning generic entry with nutrition values consistent with canned kidney beans, matching the actual receipt item without any meaningful change in food form.",
+   "\"Beste Ernte Kidneybohnen 255g\" is a private-label canned kidney bean product (Beste Ernte is REWE's canned-vegetable/legume brand), and OFF's \"Kidneybohnen\" entry has a nutrient profile (98 kcal, 8g protein, 6g fiber, 0.5g sugar/100g) that closely matches drained canned kidney beans — same ready-to-eat food, so the match is correct."
+  ],
+  "bls_matched_name": "Kidneybohnen gedünstet",
+  "bls_verdict": "correct",
+  "bls_agreement": "2/3",
+  "bls_reasoning": [
+   "I pulled the actual BLS 4.0 database and confirmed it contains four Kidneybohne entries: raw/dried (316 kcal), boiled (129 kcal), canned-drained \"Konserve, abgetropft\" (128 kcal, 8.5g protein, 11.2g fiber, 0.9g sugar), and the matched \"gedünstet\"/stewed (129 kcal, 6.8g protein, 9.2g fiber, 1.2g sugar). The matcher picked \"stewed\" over the more literally appropriate \"canned, drained\" entry that actually exists in the same catalogue, but the two are nutritionally near-identical (~128-129 kcal, both cooked/ready-to-eat, non-composite plain beans) and both are worlds apart from the raw/dried 316-kcal entry it correctly avoided — so despite the imprecise processing label, it represents the same food in essentially the same nutritional state the shopper bought, not a meaningfully different form.",
+   "\"Kidneybohnen gedünstet\" specifies a home-cooking preparation (steamed/stewed) rather than the plain, ready-to-eat canned beans actually purchased, and its notably higher kcal/fiber (129 kcal, 9.2g fiber) versus the product's canned form reflects that different processing state — same food family, but not the same form.",
+   "BLS's \"Kidneybohnen gedünstet\" (129 kcal, 6.8g protein, 9.2g fiber, 1.2g sugar/100g) reflects the cooked/prepared state of kidney beans rather than raw dry beans, which is the appropriate generic BLS analogue for a pre-cooked canned bean product — a fine generic-vs-branded substitution, not a different food or processing form."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "KOHLRABI",
+  "normalized_name": "Kohlrabi",
+  "category": "Gemüse",
+  "occurrences": 4,
+  "off_matched_name": "Kohlrabi G-Rahm-Gemüse",
+  "off_verdict": "partially_correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Kohlrabi G-Rahm-Gemüse\" reads as a prepared/creamed vegetable product (\"Rahmgemüse\" = vegetable in cream sauce), consistent with its higher calorie count and lower fiber than raw kohlrabi — it's the right vegetable family but a processed side-dish form rather than the plain fresh kohlrabi the shopper actually bought off the produce shelf.",
+   "\"Kohlrabi G-Rahm-Gemüse\" reads as a prepared creamed-kohlrabi side dish (Rahm = cream), not the plain raw vegetable rung up under the \"Gemüse\" produce category — its nearly-doubled calorie count and lower protein/fiber-per-100g relative to raw kohlrabi are consistent with added cream/fat diluting the profile, so it's the same food family but a meaningfully different processed form.",
+   "\"Kohlrabi G-Rahm-Gemüse\" is a prepared/packaged product (kohlrabi in cream sauce, i.e. \"Gemüse in Rahm\"), not the plain raw kohlrabi implied by a bare \"KOHLRABI\" receipt line in the \"Gemüse\" (produce) category — the same vegetable family but a meaningfully different processed form (added cream sauce), consistent with its near-double calorie count versus raw."
+  ],
+  "bls_matched_name": "Kohlrabi roh",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Kohlrabi roh\" is the generic raw kohlrabi entry with macros consistent with fresh kohlrabi, which is exactly the plain vegetable a \"KOHLRABI\" receipt line under a Gemüse category represents.",
+   "\"Kohlrabi roh\" (raw kohlrabi) is exactly the plain, unprocessed vegetable implied by a bare \"KOHLRABI\" line item under the produce category, and its nutrient values (28 kcal, ~1.9g protein, 1.5g fiber) align with standard raw kohlrabi composition.",
+   "\"Kohlrabi roh\" (raw kohlrabi) is the plain, unprocessed generic vegetable, which is exactly the food a bare \"KOHLRABI\" produce-section receipt line represents."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "KOKOSNUSSMILCH",
+  "normalized_name": "Kokosnussmilch",
+  "category": "Milchprodukte & Alternativen",
+  "occurrences": 4,
+  "off_matched_name": "kokosnuss milch",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts matched \"Kokosnussmilch\" to \"kokosnuss milch\" — an exact literal match (just split into two words) for coconut milk, so it is the same food as purchased.",
+   "\"kokosnuss milch\" is textually identical to the receipt item (just a space), and its fat-driven calorie profile (175 kcal, low protein) is consistent with coconut milk rather than some other coconut product, so it genuinely represents the same food.",
+   "\"kokosnuss milch\" is a literal (merely re-spaced) match of \"Kokosnussmilch\" and its macro profile (~175 kcal, low protein/sugar, presumably high fat) is consistent with genuine coconut milk, so this is the same food as a branded product."
+  ],
+  "bls_matched_name": "Kokosmilch/Kokosnussmilch",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS matched it to \"Kokosmilch/Kokosnussmilch,\" a generic coconut milk entry that explicitly lists the receipt's exact term as an alternate name, so it correctly represents the same food (a generic entry standing in for a specific branded product is acceptable per the matching rules).",
+   "\"Kokosmilch/Kokosnussmilch\" is an exact-name generic entry for coconut milk with a nutrient profile (227 kcal, ~2.8g protein) typical of full-fat coconut milk, making it a valid generic match for the branded/packaged item purchased.",
+   "BLS's entry is literally titled \"Kokosmilch/Kokosnussmilch\" — an exact synonym match — and its generic composition (higher kcal/fiber than the branded entry) reflects normal generic-vs-branded variation for the same food, not a different food."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Lang.Cremiss.Eis",
+  "normalized_name": "Langnese Cremissimo Eis",
+  "category": "Eis",
+  "occurrences": 1,
+  "off_matched_name": "Eis Bourbon Vanille",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Langnese Cremissimo Eis\" is a branded tub ice cream, and OpenFoodFacts matched it to \"Eis Bourbon Vanille,\" which is also a dairy-based ice cream (184 kcal/19g sugar per 100g fits typical ice cream nutrition) — same food category (ice cream), differing only in brand/flavor specificity, which is acceptable per the matching criteria.",
+   "The receipt item is Langnese Cremissimo ice cream, and OpenFoodFacts matched it to \"Eis Bourbon Vanille\" - also an ice cream product; differing brand/flavor is acceptable specificity variance, not a different food.",
+   "Both are branded ice cream (Eis) products consistent with the parsed category \"Eis\"; matching a specific Vanille flavor instead of Cremissimo is just a different variant of the same food, which is acceptable generic/brand-adjacent substitution."
+  ],
+  "bls_matched_name": "Reis gepufft, ungesüßt",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Reis gepufft, ungesüßt\" (unsweetened puffed rice) is a dry, unsweetened cereal/grain product with a nutrition profile (365 kcal, near-zero sugar, no fat mentioned) totally inconsistent with a frozen, sugary dairy ice cream dessert — this appears to be a spurious match likely triggered by superficial letter overlap (\"Eis\"/\"Reis\"), not the same food at all.",
+   "\"Reis gepufft, ungesüßt\" is puffed rice, an entirely different food from ice cream (Eis) - this looks like a string-matching confusion between \"Eis\" and \"Reis\" rather than any genuine food correspondence.",
+   "\"Reis gepufft, ungesüßt\" is puffed rice cereal, an entirely different food category from ice cream (dairy dessert) with no shared processing or nutritional profile — this looks like a spurious string match on \"Eis\"/\"Reis\" rather than a genuine food match."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "LAUCHZWIEBELN",
+  "normalized_name": "Lauchzwiebeln",
+  "category": "Gemüse",
+  "occurrences": 7,
+  "off_matched_name": "Obazda Lauchzwiebeln",
+  "off_verdict": "incorrect",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Obazda Lauchzwiebeln\" is a Bavarian cheese-based spread/dip (a spring-onion-flavored variant of Obazda) — its nutrition profile (324 kcal, 11g protein) confirms it's a dairy/cheese product, not the fresh vegetable the shopper bought; the word \"Lauchzwiebeln\" only appears as a flavor descriptor on a completely different food.",
+   "\"Obazda Lauchzwiebeln\" is a Bavarian cheese-based spread (Camembert/cream cheese dip) merely flavored with or garnished by spring onions — it is a fundamentally different food (a dairy spread, ~324 kcal/11g protein per 100g is consistent with cheese, not a vegetable) that only matched due to the shared word \"Lauchzwiebeln\" in its product name, analogous to the Fleischkäse/rucola-pizza incorrect examples.",
+   "\"Obazda Lauchzwiebeln\" is a Bavarian cheese-based spread/dip (Obazda = Camembert/butter-based spread) flavored with spring onions, not the raw vegetable itself — the 324 kcal and 11g protein per 100g are consistent with a dairy spread, not a fresh Allium vegetable, so this is a different food entirely that merely shares the word \"Lauchzwiebeln\" as a flavor descriptor, analogous to matching a rucola-topped pizza for plain rucola."
+  ],
+  "bls_matched_name": "Zwiebeln gebraten",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Zwiebeln gebraten\" is the same food family (onion/allium) but is fried/cooked regular onions rather than raw fresh spring onions (Lauchzwiebeln), so the processing/form and specific onion type differ meaningfully from what a \"Gemüse\" receipt line implies was purchased.",
+   "placeholder",
+   "\"Zwiebeln gebraten\" (fried bulb onions) is in the same broad onion/Allium vegetable family as the raw spring onions (Lauchzwiebeln) actually purchased, but it swaps both the specific vegetable (bulb onion vs. spring onion) and the form (pan-fried, with added fat and caramelization raising calories/sugar vs. raw) — a meaningfully different preparation rather than the plain fresh product on the receipt."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "LINSEN MIT SG",
+  "normalized_name": "Linsen",
+  "category": "Hülsenfrüchte",
+  "occurrences": 3,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts returned no candidate above threshold, so there is no match to judge.",
+   "OpenFoodFacts did not return any candidate above its similarity threshold, so there is no match to judge — verdict is no_match by definition.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Linsen-Bolognese vegan",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Linsen-Bolognese vegan\" is a prepared multi-ingredient sauce/dish that merely contains lentils rather than the plain lentils the receipt line (\"LINSEN MIT SG\", category Hülsenfrüchte) actually refers to, consistent with the nutrient profile (low protein/fiber for lentils, added sugar) that doesn't match plain cooked lentils.",
+   "The receipt item normalizes to plain \"Linsen\" (lentils, category Hülsenfrüchte), but BLS matched it to \"Linsen-Bolognese vegan,\" a prepared sauce/dish built around lentils rather than the plain legume itself — same food family, meaningfully different processed form (analogous to the \"prepared dish containing the ingredient\" partially-correct example), and its much lower kcal/higher sugar-for-processed-sauce profile is inconsistent with what a shopper buying plain dried/canned lentils would expect.",
+   "The receipt/normalized text point to plain lentils, but BLS matched it to \"Linsen-Bolognese vegan,\" a prepared sauce/dish that merely contains lentils as an ingredient rather than the plain legume itself, which is a meaningfully different form/processing."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "LINSEN MIT SG",
+  "normalized_name": "Linsen mit Suppengrün",
+  "category": "Hülsenfrüchte",
+  "occurrences": 1,
+  "off_matched_name": "Linsen mit Suppengrün",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts matched to an entry with the identical name \"Linsen mit Suppengrün\" as the normalized receipt text, and its low kcal/protein/sugar profile (74 kcal, 5.8g protein, 0.5g sugar) is consistent with a raw/dry lentil-plus-vegetable product rather than a cooked dish, so this looks like a genuine same-product match.",
+   "OpenFoodFacts returned an exact name match (\"Linsen mit Suppengrün\" = \"Linsen mit Suppengrün\") with modest, soup/vegetable-mix-appropriate nutrition (74 kcal, low sugar), consistent with the receipt item being a canned lentil-with-soup-vegetables product.",
+   "OpenFoodFacts matched to an entry with the identical name \"Linsen mit Suppengrün,\" and the low kcal/sugar profile (74 kcal, 0.5g sugar) is consistent with an uncooked/dry lentil-plus-soup-vegetable product rather than a cooked dish, so it plausibly represents the same packaged item the shopper bought."
+  ],
+  "bls_matched_name": "Linsen-Eintopf mit Suppengemüse",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS matched to \"Linsen-Eintopf mit Suppengemüse\" (lentil stew), a fully prepared/cooked dish rather than the plain lentils-with-soup-vegetables product the receipt (and its \"Hülsenfrüchte\" category) implies, and this is corroborated by the notably higher kcal/protein/fiber typical of a cooked, concentrated stew — same food family, but a meaningfully different processed form.",
+   "BLS substituted \"Linsen-Eintopf mit Suppengemüse\" (a lentil stew, a heartier complete-meal dish often containing more/different ingredients) for what the receipt shows as a plain \"Linsen mit Suppengrün\" soup-vegetable product, and the nearly-doubled calories/protein/fiber support that this is a meaningfully different preparation rather than the same food.",
+   "BLS matched to \"Linsen-Eintopf mit Suppengemüse\" (lentil stew with soup vegetables) — \"Eintopf\" denotes a cooked, ready-to-eat one-pot stew, a meaningfully different preparation form from the receipt's raw/dry \"Linsen mit Suppengrün\" (category \"Hülsenfrüchte\"), which is also reflected in the notably higher kcal/protein/fiber values versus the OFF entry."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "OSTFR. TEEMISCHUNG LOS",
+  "normalized_name": "Lose Osterfrüchtetee Mischung",
+  "category": "Tee",
+  "occurrences": 1,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts did not return any candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Meeresfrüchtemischung roh",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "The receipt item is a loose fruit tea blend (\"Osterfrüchtetee Mischung\"), but BLS matched it to \"Meeresfrüchtemischung roh\" (raw seafood/mixed-seafood mix) — an entirely different food (raw seafood vs. dried tea) that only coincidentally shares the substring \"früchte,\" so this is a false match, not merely a different form of the same food.",
+   "The receipt item is a loose fruit-tea blend (Osterfrüchtetee/Früchtetee, a dried tea product), while BLS matched it to \"Meeresfrüchtemischung roh\" — a raw seafood mixture — which is a completely different food category (seafood vs. tea) that only superficially shares the substring \"früchte/Früchtemischung\" with \"Früchtetee Mischung\".",
+   "The receipt item is a loose fruit-tea blend (\"Osterfrüchtetee Mischung\"/Teemischung), but BLS matched it to \"Meeresfrüchtemischung roh\" (raw seafood/shellfish mixture) — an entirely different food (tea vs. raw seafood), apparently matched only on the superficial string similarity of \"...mischung\" and overlapping letters with \"Früchte/Meeresfrüchte\", not on actual food identity."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Minigurken 750g",
+  "normalized_name": "Minigurken",
+  "category": "Gemüse",
+  "occurrences": 2,
+  "off_matched_name": "Minigurken",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Minigurken\" (mini cucumbers, raw produce) matched to an OFF entry literally named \"Minigurken\" with ~12 kcal/100g, consistent with raw cucumber's known low-calorie, high-water-content profile — same food.",
+   "OpenFoodFacts' \"Minigurken\" match is an exact name match with a nutrient profile (12 kcal, 0.6g protein/100g) consistent with raw fresh mini cucumbers, i.e. the same food actually purchased.",
+   "OpenFoodFacts matched the item to a product literally named \"Minigurken\" with kcal/protein values consistent with raw cucumber (~12 kcal/100g), so it represents the same fresh, raw mini cucumbers the shopper bought (categorized as Gemüse/vegetable), which is correct even though it's a branded-catalogue entry."
+  ],
+  "bls_matched_name": "Gurken gedünstet",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Gurken gedünstet\" is cucumber in a steamed/cooked preparation (and its much higher kcal/protein/fiber/sugar values reflect that), whereas the receipt item is fresh raw mini cucumbers sold as produce, so it's the right food family but the wrong processing form.",
+   "\"Gurken gedünstet\" is a cooked/steamed cucumber preparation (its ~67 kcal/100g is far above raw cucumber's ~12-16 kcal, implying added fat/cream), so while it's the same base vegetable family, it represents a meaningfully different processed form than the raw whole mini cucumbers the shopper bought by weight.",
+   "\"Gurken gedünstet\" (steamed/braised cucumbers) is the same food family but a meaningfully different preparation/processing than the raw, unprepared mini cucumbers implied by a 750g \"Minigurken\" produce purchase — reflected in the much higher kcal (67 vs ~12) and added fiber/sugar figures for a cooked dish rather than the raw vegetable."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Minipflaumen Tomaten 500g",
+  "normalized_name": "Minipflaumen Tomaten",
+  "category": "Gemüse",
+  "occurrences": 2,
+  "off_matched_name": "Tomato-Ketchup",
+  "off_verdict": "incorrect",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Minipflaumen Tomaten\" (mini plum/cherry tomatoes, a fresh vegetable) is not the same food as ketchup, a cooked/processed condiment with added sugar and vinegar; the match likely arose from shared \"Tomato\" text overlap rather than genuine food identity.",
+   "The receipt item is fresh, raw mini plum tomatoes sold as produce (Gemüse); Tomato-Ketchup is a manufactured condiment whose nutritional profile is dominated by added sugar and vinegar (22.8g sugar/100g vs ~2.6g in fresh tomatoes, and ~5x the calories) and which is consumed in small amounts as a flavoring rather than eaten as a vegetable — the match relies purely on the shared word \"Tomat-\" rather than any real correspondence in food identity, form, or usage, so it is a different food despite the lexical overlap.",
+   "The receipt item is fresh mini plum tomatoes (a raw vegetable, consistent with the \"Gemüse\" category), whereas ketchup is a heavily processed condiment (cooked down, sweetened, vinegared) with a very different nutrient profile (22.8g sugar vs. what fresh tomatoes would have) — this is a different food, not just a different form of the same food."
+  ],
+  "bls_matched_name": "Tomaten passiert/Tomatenpüree",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "Tomaten passiert/Tomatenpüree is the same base ingredient (tomato) but represents a meaningfully different processed form (strained/pureed) rather than the whole fresh mini plum tomatoes actually purchased, matching the guidance's explicit \"puree/passata instead of whole tomatoes\" partially-correct example.",
+   "Tomaten passiert/Tomatenpüree is still fundamentally tomatoes (cooked/strained, no dominant added ingredients) with a broadly similar nutrient profile, so it's the right food family but a meaningfully different processed form (puree/passata) rather than the whole fresh tomatoes actually purchased.",
+   "Tomatenpüree/passata is the same food family (tomatoes) as the fresh mini plum tomatoes purchased, but it's a meaningfully different processed form (cooked/strained puree) rather than the whole fresh vegetable, matching the explicit \"puree/passata instead of whole tomatoes\" partially-correct example."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Miracel Whip",
+  "normalized_name": "Miracel Whip",
+  "category": "Saucen/Dressings",
+  "occurrences": 1,
+  "off_matched_name": "Miracel Whip",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "The receipt item \"Miracel Whip\" (category Saucen/Dressings) is a garbled rendering of \"Miracle Whip,\" the Kraft mayonnaise-style sandwich spread, and OFF matched it to an entry of that same name with a nutrition profile (254 kcal, near-zero protein/fiber) consistent with an oil/egg-based dressing — genuinely the same product.",
+   "The receipt item \"Miracel Whip\" (categorized as Saucen/Dressings) is a misspelling of \"Miracle Whip,\" and OpenFoodFacts matched it to a product literally named \"Miracel Whip\" with a macro profile (high kcal, near-zero protein/fiber, moderate sugar) consistent with a mayonnaise-style dressing — this is the same product the shopper bought.",
+   "The parser category \"Saucen/Dressings\" and the nutrient profile (254 kcal, near-zero fiber, low protein) are exactly consistent with Miracle Whip, the mayonnaise-style dressing/spread the receipt text (even with its \"Miracel\" typo) is naming, so this is the same product."
+  ],
+  "bls_matched_name": "Mirabelle roh",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS matched it to \"Mirabelle roh\" (raw mirabelle plums), a wholly different food category (fresh fruit vs. a mayonnaise-based condiment) seemingly picked only because \"Mirabelle\" superficially resembles \"Miracel\" — the low-calorie, higher-fiber/sugar fruit profile contradicts the Saucen/Dressings category and the actual purchased item.",
+   "\"Mirabelle roh\" is raw mirabelle plum, a fresh fruit entirely unrelated to a mayonnaise-based sandwich spread/dressing — the match appears driven purely by superficial spelling similarity (\"Miracel\" vs \"Mirabelle\") rather than the actual product, and is contradicted by the receipt's own \"Saucen/Dressings\" category.",
+   "\"Mirabelle roh\" is raw mirabelle plum, a whole fresh fruit — a completely different food from a mayonnaise-based sauce/dressing, and its high-fiber/high-sugar, low-calorie profile (and the \"Saucen/Dressings\" category) confirm the match was driven by superficial string similarity (\"Miracel\"/\"Mirabelle\") rather than any genuine food correspondence."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Naturjoghurt 500g",
+  "normalized_name": "Naturjoghurt",
+  "category": "Milchprodukte",
+  "occurrences": 12,
+  "off_matched_name": "Joghurt mild 3,5 % Fett",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Joghurt mild 3,5% Fett\" is standard German retail terminology for plain/natural whole-milk yogurt (the \"mild\" and fat-percentage labeling is just how these products are marketed), so it is genuinely the same food as \"Naturjoghurt,\" with nutrition values (70 kcal, low sugar) consistent with unflavored yogurt.",
+   "\"Joghurt mild 3,5% Fett\" is plain/mild yogurt at a standard fat level — this is essentially what \"Naturjoghurt\" denotes in German retail (unflavored, unsweetened yogurt), so despite the branded-catalogue phrasing it is the same food.",
+   "\"Joghurt mild 3,5% Fett\" is a plain/unflavored whole-milk yogurt entry (no fruit, no added sugar implied by the nutrition profile — sugar level is consistent with natural lactose), so it represents the same food as \"Naturjoghurt\"; generic-vs-branded and the \"mild\" taste descriptor are not meaningful deviations."
+  ],
+  "bls_matched_name": "Joghurt-Dip",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Joghurt-Dip\" is a prepared savory condiment/dip (typically with added fat, herbs, or mayonnaise-like ingredients) rather than plain yogurt meant to be eaten as-is, so while it's in the same yogurt-based dairy family, its higher calorie count (93 kcal) and different intended use represent a meaningfully different processed form, not the plain natural yogurt the shopper bought.",
+   "\"Joghurt-Dip\" is a prepared condiment (yogurt-based dip typically mixed with herbs/spices/mayonnaise-like ingredients for dipping, not eaten as plain dairy) — it's the same food family as natural yogurt but a meaningfully different processed form, consistent with its notably higher calorie count (93 vs ~60-70 kcal typical for plain yogurt).",
+   "\"Joghurt-Dip\" is a yogurt-based prepared condiment/sauce (typically blended with oil, herbs, or mayonnaise for dipping vegetables/chips) rather than plain yogurt eaten on its own, and its nutrition profile (higher kcal, lower protein density than plain yogurt) is consistent with that dilution — same dairy family as the receipt item but a meaningfully different processed form, not the plain \"Naturjoghurt\" actually purchased."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "OSTFR. TEEMISCHUNG LOS",
+  "normalized_name": "Osterfrüchtetee Mischung lose",
+  "category": "Tee",
+  "occurrences": 1,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts did not return any candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts did not return any candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Meeresfrüchtemischung roh",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "The receipt item is a loose fruit-tea blend (a dried tea product), but BLS matched it to \"Meeresfrüchtemischung roh\" (raw seafood mixture) — an entirely different food (seafood vs. tea), with the match apparently driven only by superficial string overlap (\"-früchte-\"/\"mischung\") rather than any genuine food correspondence.",
+   "The receipt item is a loose-leaf East Frisian black tea blend (\"Ostfriesische Teemischung, lose\"), but BLS matched it to \"Meeresfrüchtemischung roh\" (raw seafood/mixed-seafruits mixture) — an entirely different food category (seafood vs. tea) that merely shares superficial string similarity (\"...früchte...mischung\") with the (already mis-normalized) \"Osterfrüchtetee Mischung\" text.",
+   "The receipt item is a loose tea blend (\"Teemischung lose\" / East Frisian tea blend), but BLS matched it to \"Meeresfrüchtemischung roh\" (raw seafood mixture) — an entirely unrelated food (seafood vs. tea), apparently matched only on the superficial \"-mischung\" (mixture) string fragment."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Ostm.Paprika ger. gem.50g",
+  "normalized_name": "Ostmann Paprika gemahlen",
+  "category": "Gewürze",
+  "occurrences": 1,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts returned no candidate above threshold, so there is no match to judge.",
+   "OpenFoodFacts did not return any candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Paprika-Tomaten-Gemüse gedünstet",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "The receipt item is ground paprika spice/powder (Ostmann brand, category \"Gewürze,\" \"ger./gem.\" = ground), but BLS matched it to a stewed/steamed paprika-tomato vegetable dish — a completely different food (a cooked vegetable side dish vs. a dry seasoning powder) that only shares the word \"Paprika.\"",
+   "The receipt item is ground paprika spice (a dried, ground pepper powder sold in a 50g spice packet, categorized \"Gewürze\"), while the BLS match \"Paprika-Tomaten-Gemüse gedünstet\" is a steamed/braised paprika-and-tomato vegetable side dish — a completely different food (fresh cooked vegetables vs. a dehydrated seasoning powder), and the low-calorie, low-fiber nutrient profile (44 kcal, 1.9g fiber/100g) confirms it reflects a watery cooked vegetable rather than concentrated dried spice, so only the word \"Paprika\" overlaps.",
+   "The receipt item is dried, ground paprika spice powder (Ostmann brand, 50g, categorized as \"Gewürze\"/spices), while the BLS match is a cooked/steamed paprika-tomato vegetable side dish — a completely different food (fresh, watery vegetable preparation vs. a dry seasoning powder) that only coincidentally shares the word \"Paprika.\""
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "PAPRIKA MIX",
+  "normalized_name": "Paprika Mix",
+  "category": "Gemüse",
+  "occurrences": 4,
+  "off_matched_name": "Protein Mix Paprika",
+  "off_verdict": "incorrect",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Paprika Mix\" on a receipt categorized as \"Gemüse\" almost certainly denotes a bag of fresh mixed bell peppers, but OpenFoodFacts matched it to \"Protein Mix Paprika,\" a paprika-flavored protein-powder/supplement product (501 kcal, 24.9g protein, 11.2g fiber per 100g are values typical of a protein powder, nothing like fresh peppers, ~25-30 kcal and ~1g protein per 100g) — the match is a different food entirely, tied together only by the shared words \"Paprika\" and \"Mix.\"",
+   "\"Protein Mix Paprika\" is a branded protein-supplement/snack product (501 kcal, 24.9g protein, 11.2g fiber — a nutrient profile typical of a protein snack, not a vegetable), whereas the receipt item, categorized by the parser as \"Gemüse,\" almost certainly refers to a fresh mixed bell-pepper pack (a very common German supermarket product); the match rides on literal overlap of the words \"Mix\" and \"Paprika\" while representing an entirely different food.",
+   "\"Protein Mix Paprika\" is a paprika-flavored protein supplement/powder (501 kcal, ~25g protein per 100g is a supplement macro profile), not the fresh bell peppers (\"Gemüse\") the receipt line item indicates — the match only shares the words \"Mix\" and \"Paprika\" with a completely different food category."
+  ],
+  "bls_matched_name": "Rinderragout mit Paprika",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "2/3",
+  "bls_reasoning": [
+   "BLS matched the vegetable-category \"Paprika Mix\" to \"Rinderragout mit Paprika\" (beef ragout with peppers), a meat-based prepared dish whose nutrient profile (164 kcal, 16.59g protein per 100g) is dominated by beef, not vegetable — like the rucola-topped-pizza example, the peppers are only a minor component of a fundamentally different dish, so this is a different food entirely rather than the same food in another form.",
+   "\"Rinderragout mit Paprika\" is a beef-ragout stew (164 kcal, 16.59g protein — nutritionally dominated by meat) in which paprika is only a minor component, so despite the word overlap it is a fundamentally different food than the fresh vegetable (\"Gemüse\") the shopper bought, analogous to the \"rucola-topped pizza matched for plain rucola\" incorrect-match example.",
+   "\"Rinderragout mit Paprika\" is a prepared beef stew that merely contains peppers as one ingredient, rather than the plain fresh bell peppers (vegetable mix) the shopper actually bought, so it's the right general food family (paprika) but the wrong form (a meat-based prepared dish vs. the raw vegetable)."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Plattpfirsiche",
+  "normalized_name": "Plattpfirsiche",
+  "category": "Obst",
+  "occurrences": 3,
+  "off_matched_name": "Plattpfirsiche",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts matched the exact same name (\"Plattpfirsiche\") and its nutrition profile (39 kcal, 0.8g protein, 8.9g sugar/100g) closely matches plain fresh peach values, so it genuinely represents the same raw fruit the shopper bought.",
+   "OpenFoodFacts matched the identical name \"Plattpfirsiche\" with a nutrient profile (39 kcal, 0.8g protein, 8.9g sugar/100g) that is squarely in line with fresh peaches, so it genuinely represents the flat/donut peaches the shopper bought.",
+   "The OFF entry is literally named \"Plattpfirsiche\" (flat peaches) and its nutrient profile (~39 kcal, ~9g sugar per 100g) matches fresh peach exactly, so it genuinely represents the same fresh-fruit item the shopper bought."
+  ],
+  "bls_matched_name": "Pfirsich Melba",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "2/3",
+  "bls_reasoning": [
+   "\"Pfirsich Melba\" (Peach Melba) is a prepared dessert (peach with vanilla ice cream/raspberry sauce), not the plain fruit — its much higher calories/protein/sugar and lower fiber than raw peach (170 kcal, 2.2g protein, 0.6g fiber vs. ~39 kcal, ~1.5g fiber for fresh peach) confirm added dairy/cream, so it's the same food family in a meaningfully different, mixed-dish form rather than the raw fruit purchased.",
+   "\"Pfirsich Melba\" (Peach Melba) is a composed dessert dish (poached peach with raspberry sauce/cream, traditionally with ice cream), not the plain fresh fruit — its far higher calorie count (170 vs. the ~39 kcal typical of raw peach) confirms it's a rich prepared dish rather than the whole fruit the \"Obst\" receipt line indicates, so the shared word \"Pfirsich\" masks what is really a different food.",
+   "\"Pfirsich Melba\" is peach in a sweetened/prepared dessert form (peach still the headline ingredient, but with added sugar/other components), evidenced by roughly 4x the calories and nearly 2x the sugar of fresh peach and lower fiber — same fruit family as the receipt's raw \"Obst\" item but a meaningfully different processed form, not the plain fresh fruit."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "PORREE",
+  "normalized_name": "Porree",
+  "category": "Gemüse",
+  "occurrences": 3,
+  "off_matched_name": "Porree Paste",
+  "off_verdict": "partially_correct",
+  "off_agreement": "2/3",
+  "off_reasoning": [
+   "\"Porree Paste\" is a leek-based paste/concentrate (364 kcal per 100g vs. ~60 kcal for fresh leek), so it's the same food family but a meaningfully different processed form than the raw vegetable a shopper would buy on a produce receipt line.",
+   "\"Porree Paste\" is leek-based but is a concentrated/processed paste (364 kcal per 100g is far too energy-dense for fresh leek, ~10x the raw value), so it's the right food family but a meaningfully different processed form rather than the plain vegetable actually bought.",
+   "\"Porree Paste\" is a concentrated paste/seasoning product (364 kcal/100g is far too high for pureed vegetable and implies added oil/salt/starch, similar to a bouillon or herb-paste base) rather than the fresh whole leek the shopper bought under a \"Gemüse\" (vegetable) category — this is a different product category, not just a processed form of the same food."
+  ],
+  "bls_matched_name": "Porree/Lauch, roh",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Porree/Lauch, roh\" is exactly the raw/generic leek entry matching the plain vegetable receipt item, which is the expected generic match for a \"Gemüse\" line item.",
+   "\"Porree/Lauch, roh\" is exactly the raw leek vegetable the receipt line (category Gemüse) indicates was purchased, with plausible raw-vegetable macros (36 kcal, low sugar), so this is a correct generic match.",
+   "\"Porree/Lauch, roh\" (raw leek) is the exact generic raw-vegetable entry matching the receipt's plain \"Porree\" item, with plausible nutrition values (36 kcal, fiber present) consistent with fresh leek."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "RADIESCHEN",
+  "normalized_name": "Radieschen",
+  "category": "Gemüse",
+  "occurrences": 6,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts did not return any candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Radieschen roh",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Radieschen\" (radish) is a raw vegetable sold and eaten fresh, and \"Radieschen roh\" (raw radish) is exactly that generic raw form with no processing or dish transformation, so it's a correct match.",
+   "\"Radieschen\" (radish, a fresh vegetable, category Gemüse) matched to \"Radieschen roh\" (raw radish) is the same food in its natural/purchased form, and the generic (non-branded) nature of the BLS database is expected and acceptable, just like the banana-to-\"Banane roh\" example.",
+   "\"Radieschen roh\" (raw radish) is the same plain fresh vegetable the receipt line \"RADIESCHEN\" refers to, and its nutrient profile (~18 kcal, low protein/sugar, moderate fiber per 100g) is consistent with raw radishes, so matching a branded/loose produce item to the generic raw entry is fine."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "REISNUDELN 200G",
+  "normalized_name": "Reisnudeln",
+  "category": "Nudeln & Reis",
+  "occurrences": 4,
+  "off_matched_name": "Reisnudeln",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts matched the exact same name \"Reisnudeln\" to a branded product entry, which directly represents the rice noodles the shopper bought.",
+   "The OpenFoodFacts entry \"Reisnudeln\" (rice noodles) is exactly the product type purchased (packaged dry rice noodles), so this is the same food.",
+   "\"Reisnudeln\" is exactly the food purchased (dry rice noodles) and its macro profile (340 kcal, low sugar/fiber) is consistent with a dry noodle product, so this is the same food."
+  ],
+  "bls_matched_name": "Reisnudeln roh",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Reisnudeln roh\" (raw/dry rice noodles) is the standard raw-ingredient form BLS uses for a dry pasta product bought as a 200g package, consistent with the allowed generic/raw substitution pattern.",
+   "BLS's \"Reisnudeln roh\" (raw/uncooked rice noodles) correctly reflects that the receipt item is a dry packaged noodle product measured in its as-sold/uncooked state, which is standard BLS convention and not a different food or processing state.",
+   "\"Reisnudeln roh\" (raw/uncooked rice noodles) is the standard BLS entry for dry packaged rice noodles as sold — \"roh\" here denotes the as-purchased dry form rather than a cooked dish, directly analogous to the given \"Banane roh\" example, so it is the same food despite being the generic raw-food-database entry."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "TOMATN RISPE 500G",
+  "normalized_name": "Rispentomaten",
+  "category": "Gemüse",
+  "occurrences": 1,
+  "off_matched_name": "Bio Rispentomaten",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Bio Rispentomaten\" is literally vine/truss tomatoes, the exact same fresh whole-tomato product the receipt line describes (500g pack of Rispentomaten); the organic/branded qualifier is an acceptable generic-vs-branded difference, and the ~18 kcal/100g is consistent with fresh raw tomatoes.",
+   "The receipt item is fresh vine/truss tomatoes (\"Rispentomaten\"), and OpenFoodFacts matched it to \"Bio Rispentomaten\" — the same food (vine tomatoes), with only an organic/branded distinction, which is acceptable per the generic-vs-branded allowance.",
+   "\"Bio Rispentomaten\" is fresh vine tomatoes (just an organic-branded variant) matching the actual purchased item \"Rispentomaten\"/500g vine tomatoes; brand/organic specificity doesn't disqualify a generic-vs-branded match, and the 18 kcal/0.9g protein per 100g is consistent with raw tomatoes."
+  ],
+  "bls_matched_name": "Tomaten passiert/Tomatenpüree",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Tomaten passiert/Tomatenpüree\" is a processed, strained/pureed tomato product (confirmed by its higher kcal/sugar/fiber density typical of concentrated puree), not whole fresh vine tomatoes, so it's the same food family but a meaningfully different processed form rather than the plain fresh vegetable purchased.",
+   "The shopper bought whole fresh vine tomatoes, but BLS matched to \"Tomaten passiert/Tomatenpüree\" (tomato puree/passata), a processed, strained product — same food family but a meaningfully different form, exactly the puree-vs-whole-tomato case called out as partially correct.",
+   "\"Tomaten passiert/Tomatenpüree\" is a processed puree/passata product, not the whole fresh vine tomatoes the shopper bought — same food family (tomato) but a meaningfully different processed form, exactly the puree-instead-of-whole-tomatoes case called out as partially correct."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "SB JB-Roastbeef ca.280gQS kg 0,294",
+  "normalized_name": "Roastbeef",
+  "category": "Fleisch",
+  "occurrences": 2,
+  "off_matched_name": "Roastbeef",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts' \"Roastbeef\" entry (110 kcal, 23g protein, low sugar) matches the macro profile of sliced roast beef and directly corresponds to the receipt's \"Roastbeef\" item, so this is a genuine same-food match despite being a generic/branded catalogue entry rather than the exact store product.",
+   "OpenFoodFacts matched \"Roastbeef\" to a \"Roastbeef\" entry with nutrition values (110 kcal, 23g protein, 0.9g sugar/100g) fully consistent with a beef roast/sliced roast beef product, so it correctly identifies the same food (generic-vs-branded specificity aside).",
+   "The receipt item is roast beef (a beef cold-cut/meat product), and OpenFoodFacts matched it to a \"Roastbeef\" entry, which is the same food (branded catalogue entry for the same product type is acceptable)."
+  ],
+  "bls_matched_name": "Fleischbrühe (Rind)",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Fleischbrühe (Rind)\" is beef broth/bouillon — a thin liquid stock (3 kcal, 0.4g protein per 100g) — which is an entirely different food from sliced roast beef deli meat purchased by weight at a meat counter; the only connection is that both are beef-derived, not that they are the same food.",
+   "BLS matched \"Roastbeef\" (a solid cut/sliced beef roast, ~110 kcal and ~23g protein per 100g) to \"Fleischbrühe (Rind)\" (beef broth, a nearly caloric- and protein-free liquid at 3 kcal/0.4g protein per 100g) — this is a different food entirely (broth vs. solid roasted meat), the match apparently driven by shared \"beef/Fleisch\" wording rather than the actual product.",
+   "\"Fleischbrühe (Rind)\" is beef broth/stock, an entirely different food from sliced roast beef meat (the receipt's \"Fleisch\" category item) — the near-zero calorie/protein profile (3 kcal, 0.4g protein) confirms it's a liquid broth, not the beef roast that was purchased."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Rote Linsen",
+  "normalized_name": "Rote Linsen",
+  "category": "protein",
+  "occurrences": 2,
+  "off_matched_name": "Fusilli Rote Linsen",
+  "off_verdict": "partially_correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Fusilli Rote Linsen\" is a red-lentil-flour pasta product (a shaped, extruded pasta), not the plain dried/split red lentils the shopper bought — same base ingredient family but a materially different processed form, analogous to matching puree instead of the whole vegetable.",
+   "\"Fusilli Rote Linsen\" is pasta made from red lentil flour (shaped noodles), not the whole/dry red lentils the shopper bought — same core ingredient but a meaningfully different processed form, analogous to puree vs. whole tomatoes.",
+   "\"Fusilli Rote Linsen\" is a pasta product made from red lentil flour rather than the plain dried/raw red lentils the shopper actually bought, so it's the same base ingredient family but a meaningfully different processed form (akin to puree vs. whole fruit)."
+  ],
+  "bls_matched_name": "Quarkplinsen gebraten",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Quarkplinsen gebraten\" (fried quark pancakes/fritters) is an entirely unrelated dairy-based fried dish with no lentils at all — the match appears driven by superficial string similarity between \"Linsen\" and \"Plinsen\" rather than any real food correspondence.",
+   "\"Quarkplinsen gebraten\" (fried quark/curd-cheese pancakes) is a dairy-based fried dish with no relation to lentils at all — the match appears driven by superficial string similarity between \"Linsen\" and \"Plinsen,\" not the actual food.",
+   "\"Quarkplinsen gebraten\" is fried quark pancakes/fritters, an entirely unrelated dairy-based dish with no connection to red lentils apart from a superficial string resemblance between \"Linsen\" and \"Plinsen\"; its nutrition profile (high sugar, low fiber) also contradicts a legume."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "RUCOLA",
+  "normalized_name": "Rucola",
+  "category": "Gemüse",
+  "occurrences": 4,
+  "off_matched_name": "Pizza Rucola Ristorante",
+  "off_verdict": "incorrect",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "The receipt is for plain fresh rucola (produce, category \"Gemüse\"), but OpenFoodFacts matched it to a frozen pizza product (\"Pizza Rucola Ristorante\") — a completely different food that merely contains rucola as a topping/named ingredient; the nutrition profile (217 kcal, 2.95g sugar) confirms this is pizza dough/cheese/sauce, not the vegetable itself.",
+   "The receipt line is for plain rucola (arugula) sold as a vegetable, but OpenFoodFacts matched it to \"Pizza Rucola Ristorante,\" a frozen/prepared pizza that merely has rucola as a topping — a completely different food (bread, cheese, sauce, etc.) with a nutrient profile (217 kcal, low fiber, some sugar) nothing like fresh rucola, so this is a wrong match rather than just a different form of the same ingredient.",
+   "The receipt item is plain fresh rucola (vegetable category), but OpenFoodFacts matched it to a frozen pizza that merely has rucola as a topping — a completely different food (baked dough/cheese/tomato product, ~217 kcal/100g) rather than the raw leafy green itself, which is explicitly called out as an incorrect-match pattern."
+  ],
+  "bls_matched_name": "Rucola roh",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS matched to \"Rucola roh\" (raw rucola), which is precisely the plain fresh vegetable the shopper bought, and its nutrition values (21 kcal, low sugar, no processing) are consistent with raw arugula.",
+   "BLS matched it to \"Rucola roh\" (raw arugula), which is exactly the plain generic raw vegetable the receipt line refers to, consistent with the \"Gemüse\" category and plausible nutrient values.",
+   "\"Rucola roh\" (raw rucola) is the exact generic match for the fresh vegetable purchased, with nutrition values consistent with raw leafy greens — a textbook correct generic-vs-branded match."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Salatherzen Roma",
+  "normalized_name": "Salatherzen Roma",
+  "category": "Gemüse",
+  "occurrences": 3,
+  "off_matched_name": "Roma Salatherzen",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Roma Salatherzen\" is the identical product name (just word order swapped) and the nutrition profile (14 kcal, ~0g sugar, some fiber) matches a lettuce heart, so this is the same food genuinely purchased.",
+   "\"Roma Salatherzen\" is simply the same words in reversed order — a branded lettuce-hearts (Romaine/cos lettuce \"hearts of romaine\") product matching the receipt's \"Salatherzen Roma,\" and the ~14 kcal, near-zero sugar/protein profile is consistent with lettuce.",
+   "\"Roma Salatherzen\" is simply the same words reordered (\"Roma [variety] lettuce hearts\"), and the nutrient profile (14 kcal, near-zero protein/sugar, some fiber) is consistent with a leafy lettuce heart product, so this genuinely represents the purchased item."
+  ],
+  "bls_matched_name": "Wassermelone roh",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Wassermelone roh\" (raw watermelon) is an entirely different food from \"Salatherzen Roma\" (Roma lettuce hearts) — a fruit vs. a leafy vegetable — with the mismatch confirmed by watermelon's much higher sugar/calorie content, and the overlap is likely just spurious matching on \"Roma\".",
+   "\"Salatherzen\" (lettuce hearts, a leafy vegetable) has nothing to do with \"Wassermelone roh\" (raw watermelon, a sweet fruit) — the nutrient profile (35 kcal, 6.72g sugar) is watermelon's, not lettuce's, so this is a different food entirely despite the parser's \"Gemüse\" category tag.",
+   "\"Salatherzen Roma\" (Roma lettuce hearts, a leafy vegetable) was matched to \"Wassermelone roh\" (raw watermelon), a completely unrelated fruit with a mismatched nutrient profile (35 kcal, 6.72g sugar vs. the near-zero-sugar leafy vegetable actually purchased) — this is a different food entirely."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "SB JB-Roastbeef ca.280gQS",
+  "normalized_name": "SB Roastbeef",
+  "category": "Fleisch",
+  "occurrences": 1,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts did not return any candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts did not return any candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Fleischbrühe (Rind)",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "The receipt item is sliced roast beef deli meat (SB Roastbeef, categorized as Fleisch), but BLS matched it to \"Fleischbrühe (Rind)\" — beef bouillon/broth, a thin liquid stock with only 3 kcal and 0.4g protein per 100g — an entirely different food that shares no real identity with a solid roast beef cut beyond a loose \"beef-derived\" association.",
+   "\"SB Roastbeef\" is sliced deli/roast beef meat (a solid, high-protein cold cut meant to be eaten as meat), whereas \"Fleischbrühe (Rind)\" is beef broth/bouillon (a near-calorie-free liquid stock), confirmed by the absurdly low 3 kcal/0.4g protein per 100g — this is a different food product entirely, not merely a different processing form of roast beef.",
+   "\"Roastbeef\" is a beef roasting/cold-cut joint (solid meat), while \"Fleischbrühe (Rind)\" is beef broth/bouillon — an entirely different food (liquid stock vs. meat cut), evidenced by the near-zero calories/protein (3 kcal, 0.4g protein) that are wildly inconsistent with roast beef, so the match is wrong despite the shared \"beef\" association."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Schokolade 3kg",
+  "normalized_name": "Schokolade",
+  "category": "Süßwaren",
+  "occurrences": 1,
+  "off_matched_name": "Haselnuss Schokolade",
+  "off_verdict": "partially_correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "The receipt only said generic \"Schokolade\" (chocolate) with no flavor specified, but OpenFoodFacts matched to \"Haselnuss Schokolade\" (hazelnut chocolate) — a specific flavor variant with nuts added, not merely a branded instance of plain chocolate, and its nutrition profile (extra fat/protein from hazelnuts) meaningfully diverges from plain chocolate.",
+   "The receipt text \"Schokolade\" gives no indication of a hazelnut variant, yet OpenFoodFacts matched to \"Haselnuss Schokolade\" (hazelnut chocolate) — same food family (chocolate) but a more specific, unwarranted sub-type with meaningfully different composition (notably lower fiber, different fat/sugar profile), so it's not a clean same-food match.",
+   "The receipt/normalized text only says generic \"Schokolade\" with no flavor indicated, but OpenFoodFacts matched to a specific flavored variant \"Haselnuss Schokolade\" (hazelnut chocolate) — same food family but a meaningfully different, more specific product than what was actually purchased, reflected in notably different nutrition values (higher fat/calories, lower fiber from added nuts)."
+  ],
+  "bls_matched_name": "Schokolade",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS matched the generic \"Schokolade\" line item to its own generic \"Schokolade\" entry — an exact, unembellished match of the same food with no unwarranted specificity added.",
+   "BLS matched to a generic \"Schokolade\" entry with no added flavor/variant specificity, which is exactly the plain chocolate the shopper's receipt text indicates.",
+   "The BLS entry \"Schokolade\" is a plain, generic chocolate entry that directly matches the normalized receipt text with no unwarranted specificity added."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "SPAN. GRÜNE/GESCHW.OLI",
+  "normalized_name": "Spanische Oliven",
+  "category": "Konserven & Feinkost",
+  "occurrences": 4,
+  "off_matched_name": "Spanische Oliven",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "The receipt item is Spanish (green/black) olives, and OpenFoodFacts matched it to a catalogue entry literally named \"Spanische Oliven\" (Spanish Olives) with plausible nutrition values (145 kcal, near-zero protein, low sugar) consistent with olives — this is the same food.",
+   "The receipt line is for Spanish green/pitted olives, and OpenFoodFacts matched it to an entry literally named \"Spanische Oliven\" (Spanish olives) — this is the same food, and the plausible nutrition profile (moderate kcal from oil content, low protein/sugar) is consistent with olives.",
+   "\"Spanische Oliven\" (Spanish olives) directly matches the receipt text \"SPAN. GRÜNE/GESCHW.OLI\" (Spanish green/blackened olives), and the nutrition profile (145 kcal, ~1g protein, low sugar) is consistent with olives, so this is the same food."
+  ],
+  "bls_matched_name": "Anspacher Leberpresssack/Leberpresssack",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS matched the olive purchase to \"Anspacher Leberpresssack/Leberpresssack,\" which is a German liver-based headcheese/sausage — a completely different food category (processed meat vs. a preserved vegetable/fruit), with nutrition values (300 kcal, 14g protein) that reflect meat, not olives.",
+   "\"Anspacher Leberpresssack/Leberpresssack\" is a liver-based pressed sausage/headcheese (a meat product), entirely unrelated to olives, and its nutrition profile (300 kcal, 14g protein) is characteristic of processed meat, not a fruit/vegetable preserve.",
+   "\"Anspacher Leberpresssack/Leberpresssack\" is a liver-based pressed sausage/cold cut (a meat product), which is an entirely different food from Spanish olives despite no word overlap — the high protein (14.12g) and low sugar profile confirm it's meat, not a fruit/vegetable preserve."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Suesskartoffeln 0,718 kg",
+  "normalized_name": "Süßkartoffeln",
+  "category": "Gemüse",
+  "occurrences": 3,
+  "off_matched_name": "Buntes Gartengemüse mit Süßkartoffeln",
+  "off_verdict": "partially_correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Buntes Gartengemüse mit Süßkartoffeln\" is a mixed/prepared vegetable product where sweet potato is just one ingredient among several, not the plain raw sweet potato the shopper bought, so it's the right food family but a meaningfully different (mixed, processed) form.",
+   "The match \"Buntes Gartengemüse mit Süßkartoffeln\" is a mixed/prepared vegetable medley product that merely contains sweet potatoes as one ingredient among others, not a plain/whole sweet potato product as purchased on the receipt — same food family but wrong form (mixed prepared dish vs. plain root vegetable).",
+   "\"Buntes Gartengemüse mit Süßkartoffeln\" is a mixed vegetable medley that merely contains sweet potato as one ingredient among several, not the plain sweet potato the shopper bought — same food family but a meaningfully different (composite/prepared) product."
+  ],
+  "bls_matched_name": "Kartoffelgratin",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Kartoffelgratin\" is a baked potato-and-cream gratin made from ordinary potatoes (Kartoffeln), not sweet potatoes (Süßkartoffeln) — it's a different vegetable entirely in a different (prepared, dairy-laden) form, matched only via the coincidental \"Kartoffel\" substring.",
+   "\"Kartoffelgratin\" is a baked potato-gratin dish (regular potatoes in a cream/cheese preparation), an entirely different food from raw sweet potatoes — the match appears driven by superficial overlap of the word \"Kartoffel\" rather than any genuine correspondence to Süßkartoffeln.",
+   "\"Kartoffelgratin\" is a baked potato-and-cream dish made from regular potatoes, not sweet potatoes — this looks like a false match driven by the shared substring \"Kartoffel,\" making it a different food entirely rather than the same ingredient in another form."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Vollmilch 3,5% 1L",
+  "normalized_name": "Test Milch",
+  "category": "Milchprodukte",
+  "occurrences": 1,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Kondensmilch 10 % Fett",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "The receipt item is fresh liquid whole drinking milk (Vollmilch 3,5%), but BLS matched it to Kondensmilch (condensed/evaporated milk) — the same dairy-milk family but a meaningfully different processed/concentrated form (much higher calories, sugar, and different typical use, analogous to juice-vs-whole-fruit or purée-vs-whole-tomato substitutions), so it's not the same food bought but not an unrelated food either.",
+   "The receipt item is fresh liquid whole milk (Vollmilch 3,5%), but BLS matched it to Kondensmilch (condensed milk) — a heavily processed, water-reduced/sweetened dairy product with roughly 3x the calories and sugar of drinking milk (195 kcal/17.75g sugar vs. ~64 kcal/~4.8g sugar per 100g/ml), so it is the same base ingredient family (milk) but a meaningfully different processed form, not the plain product bought.",
+   "The receipt item is plain drinking whole milk (Vollmilch 3.5%, ~64 kcal/100g), but BLS matched it to Kondensmilch (condensed milk, 195 kcal, 17.75g sugar per 100g) — a heavily processed, water-reduced and evidently sweetened dairy product used for baking/coffee rather than drinking, so it's the same food family (cow's milk) but a meaningfully different processed form, not the item actually purchased."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Vollmilch 3,5% 1L",
+  "normalized_name": "Test Milch 3,5%",
+  "category": "Milchprodukte",
+  "occurrences": 1,
+  "off_matched_name": null,
+  "off_verdict": "no_match",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts returned no candidate above its similarity threshold, so there is no match to judge.",
+   "OpenFoodFacts did not return any candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "bls_matched_name": "Kondensmilch 10 % Fett",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Kondensmilch 10% Fett\" is a concentrated/evaporated milk product (roughly double the fat, protein, and calories of fresh milk due to water removal) rather than the plain \"Vollmilch 3,5%\" drinking milk actually purchased — same base ingredient family but a meaningfully different processed form, analogous to matching tomato passata for whole tomatoes.",
+   "\"Kondensmilch 10% Fett\" is still milk-derived but is a distinctly different processed form (water-reduced/concentrated, higher fat, ~3x the calories and much higher sugar than fresh 3.5% Vollmilch), analogous to matching juice instead of whole fruit — same food family, wrong processing form.",
+   "Both are dairy milk products, but \"Kondensmilch 10% Fett\" is evaporated/concentrated milk (often with added sugar) rather than the fresh liquid whole milk (3.5% fat) actually purchased — its ~3x higher calorie density and much higher sugar (17.75g vs ~4.7g lactose per 100g for fresh milk) reflect a meaningfully different processed form, analogous to matching jam instead of fresh fruit."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "THUER.METT/HACKEP.",
+  "normalized_name": "Thüringer Mett",
+  "category": "Fleisch/Wurst",
+  "occurrences": 1,
+  "off_matched_name": "Thüringer mett",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts matched the receipt item to a catalogue entry with the identical name (\"Thüringer mett\"/\"Thüringer Mett\"), so it is the same food; branded-database specificity is not a defect here.",
+   "OpenFoodFacts matched to an entry with the identical name \"Thüringer mett\" (raw seasoned minced pork), i.e. the same product/food as the receipt item — brand/packaging specificity differences aside, this is the correct food.",
+   "OpenFoodFacts' \"Thüringer mett\" is essentially a verbatim name match to the cleaned text \"Thüringer Mett,\" representing the same raw minced-pork product the shopper bought."
+  ],
+  "bls_matched_name": "Thüringer Rotwurst",
+  "bls_verdict": "incorrect",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "Thüringer Rotwurst is a cooked blood sausage (pork, blood, fat/rind, cooked/smoked) while Thüringer Mett is raw seasoned ground pork eaten uncooked — different primary ingredients and processing, not merely a different form of the same food, so despite the shared \"Thüringer\"/meat-category label this is a mismatch to a genuinely different product.",
+   "\"Thüringer Rotwurst\" is a cooked blood sausage (containing blood, rind/fat and often filler ingredients, as hinted by its non-trivial fiber/sugar content), a fundamentally different meat product from raw minced \"Mett\" — the match shares only the regional adjective \"Thüringer\" but is a different food entirely, akin to the Fleischkäse/cheese mismatch example.",
+   "\"Thüringer Rotwurst\" is a cooked blood sausage (Wurst), a completely different food from \"Mett\" (raw, unformed minced/ground pork eaten uncooked) — the match only shares the regional adjective \"Thüringer\" and the Fleisch/Wurst category, not the actual product."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Vollkornbrot 500g",
+  "normalized_name": "Vollkornbrot",
+  "category": "Backwaren",
+  "occurrences": 14,
+  "off_matched_name": "Vollkornbrot",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "The matched entry is itself named \"Vollkornbrot\" (whole-grain bread) with plausible bread-level kcal/protein/fiber; the somewhat higher sugar (4.9g) is consistent with a specific packaged product containing added malt/honey, which is an acceptable branded-vs-generic variation, not a different food.",
+   "The OFF entry is named exactly \"Vollkornbrot\" and its macros (211 kcal, ~7g protein, 10g fiber per 100g) are squarely in the normal range for whole-grain bread, so it represents the same food the shopper bought (a generic/unbranded catalogue entry is acceptable per the matching rules).",
+   "OpenFoodFacts matched \"Vollkornbrot\" to a branded \"Vollkornbrot\" product with comparable calorie/protein/fiber values (slightly higher sugar consistent with a packaged product recipe), representing the same food item the shopper bought."
+  ],
+  "bls_matched_name": "Vollkornbrot",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "Matched to the generic \"Vollkornbrot\" entry with kcal/protein/fiber/sugar values typical of plain whole-grain bread, correctly representing the same food as the receipt item.",
+   "The BLS entry is also named exactly \"Vollkornbrot\" with near-identical kcal/protein/fiber to the OFF match (the lower sugar figure is plausible for a generic raw-composition bread entry rather than a sweeter branded variant), so it correctly identifies the same whole-grain bread item.",
+   "BLS matched \"Vollkornbrot\" to a generic \"Vollkornbrot\" entry with near-identical calories, protein, and fiber to what's expected for whole grain bread, so it correctly identifies the same food (a generic composition database is expected to lack brand-specific sugar/additive content)."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "vollmilch 0,5l",
+  "normalized_name": "Vollmilch",
+  "category": "Milchprodukte",
+  "occurrences": 11,
+  "off_matched_name": "Vollmilch",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "The receipt item \"vollmilch 0,5l\" (whole milk) was matched to an OpenFoodFacts entry literally named \"Vollmilch,\" which is the same food (whole milk) at typical whole-milk nutrient values — generic-name matching is fine for a branded database.",
+   "The OpenFoodFacts entry \"Vollmilch\" is generic whole milk with plausible whole-milk macros (67 kcal, 3.3g protein, 4.8g sugar/100g), matching the purchased \"vollmilch 0,5l\" as the same food.",
+   "The receipt item is generic whole milk and OpenFoodFacts returned an entry literally named \"Vollmilch\" with nutrient values (67 kcal, 3.3g protein, 4.8g sugar/100g) squarely in the normal range for 3.5%-fat whole milk, so it represents the same food the shopper bought."
+  ],
+  "bls_matched_name": "H-Vollmilch 3,5 % Fett, ultrahocherhitzt",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"H-Vollmilch 3,5% Fett, ultrahocherhitzt\" is standard UHT whole milk at 3.5% fat — the same product the shopper bought, just specifying the near-universal German retail form (UHT/long-life) and fat level, which is not a meaningfully different food or processing form (unlike jam vs. fresh fruit).",
+   "\"H-Vollmilch 3,5% Fett, ultrahocherhitzt\" is still whole milk (3.5% fat) with near-identical nutrition to fresh whole milk (62 kcal, 3.18g protein) — the UHT/long-life processing distinction doesn't materially change the food's identity or nutrient profile, so this is a fair generic match, not a different food form.",
+   "\"H-Vollmilch 3,5% Fett, ultrahocherhitzt\" is still plain whole milk at the same fat level with essentially the same nutrition profile (62 kcal, 3.18g protein, 4.19g sugar/100g); UHT vs. fresh pasteurization is a minor shelf-life processing detail, not a substantive change in food form/identity like turning fruit into jam or juice."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Vollmilch 3,5% 1L",
+  "normalized_name": "Vollmilch 3,5%",
+  "category": "Milchprodukte",
+  "occurrences": 3,
+  "off_matched_name": "Vollmilch",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Vollmilch\" is generic whole milk with plausible nutrition values (67 kcal, 3.3g protein, 4.8g sugar per 100g) matching the receipt's \"Vollmilch 3,5%\" - a generic catalogue entry for the same food is an acceptable match even without an explicit fat-percentage tag.",
+   "OpenFoodFacts' \"Vollmilch\" entry is generic whole milk with nutrition values (67 kcal, 3.3g protein, 4.8g sugar/100g) consistent with standard German 3.5% whole milk, so it represents the same food the shopper bought.",
+   "OpenFoodFacts' \"Vollmilch\" is a generic whole-milk entry that matches the receipt item exactly (whole milk, 3.5% fat) with plausible nutrition values; a generic vs. branded mismatch is explicitly acceptable."
+  ],
+  "bls_matched_name": "H-Vollmilch 3,5 % Fett, ultrahocherhitzt",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"H-Vollmilch 3,5 % Fett, ultrahocherhitzt\" matches the exact fat content stated on the receipt (3,5%) and is whole milk just like the purchased item; UHT treatment is a minor processing distinction that doesn't change it into a different food or meaningfully different nutritional form.",
+   "\"H-Vollmilch 3,5% Fett, ultrahocherhitzt\" is still whole milk at the same fat percentage — UHT treatment is the standard processing for shelf-stable whole milk sold under the plain \"Vollmilch\" label in German supermarkets and doesn't meaningfully change its nutrition profile (macros closely match the receipt item), so it's the same food, not a different form like juice-vs-fruit or puree-vs-whole.",
+   "\"H-Vollmilch 3,5% Fett, ultrahocherhitzt\" is still the same food (3.5% whole milk) with near-identical nutrition to the receipt item — UHT vs. fresh pasteurization is a preservation-method detail, not a meaningfully different food form like juice vs. fruit or puree vs. whole tomatoes."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Avocado vorgereift ST",
+  "normalized_name": "Vorgereifte Avocado",
+  "category": "Obst",
+  "occurrences": 3,
+  "off_matched_name": "Avocados",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Avocados\" is the same fresh-fruit item the shopper bought; \"vorgereift\" (pre-ripened) is just a ripeness/service attribute, not a change in food identity or processing form, so a generic/branded whole-avocado catalogue entry is an acceptable match even if its stated fiber/sugar values look a bit off from typical USDA figures.",
+   "\"Avocados\" is a generic whole-avocado entry; a pre-ripened avocado is still just an avocado fruit (ripeness stage is not a processing/form change), so this is the same food the shopper bought.",
+   "\"Avocados\" is OpenFoodFacts' generic entry for the whole raw fruit, matching the receipt's plain pre-ripened avocado; being a database-wide generic (not a specific brand) is not a defect per the stated standard."
+  ],
+  "bls_matched_name": "Avocado roh",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Avocado roh\" (raw avocado) is exactly the plain, unprocessed fruit form the receipt line refers to — pre-ripening does not change the food into a different preparation, so matching to the generic raw-avocado entry is appropriate.",
+   "\"Avocado roh\" (raw avocado) is the plain raw fruit, and \"vorgereift\" (pre-ripened) describes ripeness at purchase, not a different processed form, so this generic raw entry is a valid match.",
+   "\"Avocado roh\" (raw avocado) is exactly the plain fresh fruit the shopper bought, with no change in processing form (not guacamole, oil, or a prepared dish)."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "Weissbrot",
+  "normalized_name": "Weissbrot",
+  "category": "grain",
+  "occurrences": 2,
+  "off_matched_name": "Weissbrot",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "OpenFoodFacts matched the receipt text \"Weissbrot\" to a catalogue entry with the identical name \"Weissbrot\" (white bread), representing the same food the shopper bought.",
+   "OpenFoodFacts matched the exact term \"Weissbrot\" (white bread) with nutrient values (261 kcal, 7.3g protein) typical of white bread, so it represents the same food the shopper bought.",
+   "The matched entry's name (\"Weissbrot\") is an exact match to the cleaned receipt text and its macros (261 kcal, moderate protein, some fiber/sugar) are squarely in the normal range for white bread, so this is the same food (generic-vs-branded specificity aside)."
+  ],
+  "bls_matched_name": "Weizenbrot/Weißbrot",
+  "bls_verdict": "correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS matched to \"Weizenbrot/Weißbrot\" (wheat/white bread), the correct generic equivalent of the branded white bread purchased, with plausibly similar nutrition values (261-272 kcal, ~7-9g protein), so generic-vs-branded variation is acceptable per the rubric.",
+   "BLS matched to \"Weizenbrot/Weißbrot\" (wheat bread/white bread), the standard generic category for exactly this food, which is a correct generic-vs-specific match consistent with white bread's typical nutrient profile.",
+   "\"Weizenbrot/Weißbrot\" is precisely the generic BLS category for wheat/white bread, matching the receipt item's food identity even though it's a raw/generic composition entry rather than a specific branded product."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "LAUCHZWIEBELN",
+  "normalized_name": "Zwiebel",
+  "category": "Gemüse",
+  "occurrences": 1,
+  "off_matched_name": "Veganer Leverkäse-Aufschnitt - Zwiebel",
+  "off_verdict": "incorrect",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Veganer Leverkäse-Aufschnitt - Zwiebel\" is a packaged vegan meat-analog cold-cut (a Leberkäse-style deli slice with onion flavoring), not a vegetable at all — it only matched on the leftover word \"Zwiebel\" from the normalization and bears no resemblance to the fresh spring onions (Lauchzwiebeln) actually purchased, so this is a different food entirely.",
+   "\"Veganer Leverkäse-Aufschnitt - Zwiebel\" is a branded vegan cold-cut/meatloaf-style slice product flavored with onion — it is a processed meat-substitute deli product, not a vegetable at all, and the match was clearly driven by the shared word \"Zwiebel\" rather than genuine food identity (same failure mode as matching \"Fleischkäse\" for cheese).",
+   "The OFF match is a vegan Leberkäse-style deli/cold-cut slice (a processed meat-substitute product) that merely carries \"Zwiebel\" as a flavor variant name — this is a completely different food category (processed protein product) from the fresh spring onion vegetable actually purchased, with word overlap only on \"Zwiebel\"."
+  ],
+  "bls_matched_name": "Speisezwiebel roh",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Speisezwiebel roh\" is the correct broad category (raw, unprocessed allium/onion vegetable, matching \"Gemüse\") but it is the mature bulb onion rather than the actual purchased item Lauchzwiebeln (spring onions/scallions) — a related but distinct vegetable with a notably different nutrient profile (e.g., sugar ~6g vs. spring onion's ~2g per 100g), so it's the right family but not the same specific food.",
+   "\"Speisezwiebel roh\" (raw mature bulb onion) is in the same allium/onion family as the actual purchased item \"Lauchzwiebeln\" (spring onions/scallions), but spring onions are a distinct form eaten with their green stalks and have a different culinary role and nutrient profile than a cooking onion bulb, so it's the right food family but not truly the same product.",
+   "\"Speisezwiebel roh\" is raw mature bulb onion, which is in the same allium family as Lauchzwiebeln (spring onion/scallion) but is a meaningfully different vegetable/plant form (mature bulb vs. immature green stalk) with a distinct nutrition profile, so it's the right food family but not truly the same food the shopper bought."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "apfel x 3",
+  "normalized_name": "Äpfel",
+  "category": "Obst",
+  "occurrences": 1,
+  "off_matched_name": "Himbeere Apfel",
+  "off_verdict": "incorrect",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "\"Himbeere Apfel\" (raspberry-apple) is a distinct mixed/flavored product defined as much by raspberry as by apple, not the plain apples on the receipt — its low, diluted nutrient profile (40 kcal, only 4.6g sugar vs raw apple's ~10g) indicates a blended juice/puree product rather than the same food merely in a different form, so it's a different item that happens to share the word \"Apfel.\"",
+   "\"Himbeere Apfel\" (raspberry-apple) is a raspberry-flavored/blended product, not plain apples; the primary identifier \"Himbeere\" doesn't correspond to anything on the receipt, and the atypically high protein (3.6g/100g) for a fruit item confirms this is a different, unrelated packaged product that merely shares the word \"Apfel.\"",
+   "\"Himbeere Apfel\" is a raspberry-apple combination product (almost certainly a branded fruit puree/compote pouch or juice blend, consistent with its low 40 kcal / 4.6g sugar profile, far below a raw apple's ~52 kcal), not plain apples — the added raspberry component and its low-calorie processed profile mean it's a different manufactured food that merely shares one ingredient, not a packaged stand-in for the whole fruit the receipt shows (3 units, \"Obst\")."
+  ],
+  "bls_matched_name": "Vanilleäpfel",
+  "bls_verdict": "partially_correct",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "\"Vanilleäpfel\" is a prepared/cooked apple dessert (vanilla-stewed apples) rather than the plain raw fruit the shopper bought — its much higher kcal (128 vs ~52 for raw apple) and sugar (12.4g vs ~10g, but with clear added-sugar/dessert framing) confirm it's the same food family (apple) in a meaningfully different, processed form.",
+   "\"Vanilleäpfel\" (vanilla/stewed apples) is the correct food family (apples) but is a meaningfully different prepared form — its calorie (128 vs ~52 for raw apple) and sugar (12.4g vs ~10g) profile indicate a cooked/sweetened dessert preparation rather than the plain whole fresh apples the shopper bought.",
+   "\"Vanilleäpfel\" is still fundamentally apple, but its nutrition profile (128 kcal and 12.4g sugar per 100g vs. a raw apple's ~52 kcal) indicates a sweetened/vanilla-flavored prepared apple dish (e.g., stewed or baked apples) rather than the plain raw apples implied by \"Äpfel x 3,\" matching the same-family-but-different-processing pattern."
+  ],
+  "n_judges": 3
+ },
+ {
+  "raw_name": "ÖSTERREICHISCHER BERGK",
+  "normalized_name": "Österreichischer Bergkäse",
+  "category": "Milchprodukte",
+  "occurrences": 1,
+  "off_matched_name": "Österreichischer Bergkäse",
+  "off_verdict": "correct",
+  "off_agreement": "3/3",
+  "off_reasoning": [
+   "The matched catalogue entry name is identical to the normalized receipt text (\"Österreichischer Bergkäse\"), and the nutrition profile (386 kcal, 27g protein/100g) is consistent with a hard Alpine-style cheese like Bergkäse, so this is the same food the shopper bought.",
+   "The matched entry name \"Österreichischer Bergkäse\" is an exact/near-exact match to the cleaned receipt text, and the nutrient values (386 kcal, 27g protein per 100g) are typical for a hard alpine cheese like Bergkäse, confirming it represents the same product the shopper bought.",
+   "The matched name \"Österreichischer Bergkäse\" is an exact string match to the cleaned receipt text, and the nutrition profile (386 kcal, 27g protein/100g) is consistent with a hard Alpine-style cheese like Bergkäse, so this is genuinely the same product."
+  ],
+  "bls_matched_name": null,
+  "bls_verdict": "no_match",
+  "bls_agreement": "3/3",
+  "bls_reasoning": [
+   "BLS returned no candidate above its similarity threshold, so there is no match to judge.",
+   "BLS returned no candidate above its similarity threshold, so there is no match to judge.",
+   "BLS returned no candidate above its similarity threshold, so there is no match to judge."
+  ],
+  "n_judges": 3
+ }
+]

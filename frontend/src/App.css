@@ -18,6 +18,29 @@
   }
 }
 
+/* Page lead (CI §4 · J6): one short orienting sentence under the H1. Quiet
+   secondary tone, capped line length for readability. */
+.page-lead {
+  margin: 0 0 var(--space-6);
+  max-width: 56ch;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+/* Sticky top-nav on every breakpoint (CI §6). Full-width bar so its background
+   + hairline span the viewport when content scrolls under it; the inner
+   .nav-bar keeps content in the centred reading column. z-index sits above the
+   in-content popovers (z-index: 20). */
+.nav-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
 .nav-bar {
   display: flex;
   align-items: center;
@@ -28,6 +51,15 @@
   padding: 20px 24px;
 }
 
+/* Brand lockup (CI §1): leaf badge + wordmark, side by side. */
+.nav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Leaf badge -- soft sage fill, sage-ink leaf (never full-tone accent, §1). */
 .nav-logo {
   display: inline-flex;
   align-items: center;
@@ -36,10 +68,23 @@
   width: 34px;
   height: 34px;
   border-radius: 999px;
-  background: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--sage-soft);
+  color: var(--sage-ink);
+}
+
+.nav-wordmark {
   font-size: 15px;
   font-weight: 600;
+  letter-spacing: -0.3px;
+  color: var(--text-h);
+  white-space: nowrap;
+}
+
+/* Tight screens: keep the badge, drop the wordmark so the tab-pills fit. */
+@media (max-width: 480px) {
+  .nav-wordmark {
+    display: none;
+  }
 }
 
 .nav-links {
@@ -172,7 +217,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin: 16px 0 28px;
+  margin: var(--space-4) 0 var(--space-6);
 }
 
 .recipe-generate-form .form-row {
@@ -189,7 +234,7 @@
 /* ── Targets (Results) ────────────────────────────────────────────────── */
 
 .targets-section {
-  margin: 20px 0;
+  margin: var(--space-5) 0;
 }
 
 .form-error {
@@ -197,18 +242,22 @@
   font-size: 15px;
 }
 
+/* Buttons (CI §8 · J4). One transition + hover lift across variants so every
+   button gives the same "clickable" cue. */
 .btn {
   font: inherit;
   font-weight: 500;
   letter-spacing: -0.1px;
-  padding: 12px 22px;
+  padding: 14px var(--space-6);
   border-radius: 14px;
   border: 1px solid transparent;
   cursor: pointer;
   width: fit-content;
   transition:
     transform 0.15s ease,
-    opacity 0.15s ease;
+    opacity 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .btn:disabled {
@@ -216,13 +265,23 @@
   cursor: not-allowed;
 }
 
+/* High-emphasis full-width CTA (mobile-first, single primary action). */
+.btn--block {
+  width: 100%;
+}
+
+/* The primary CTA reads as the main action: ink fill, a touch larger/heavier. */
 .btn-primary {
   background: var(--accent);
   color: var(--accent-contrast);
+  font-size: 15px;
+  font-weight: 600;
 }
 
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
+/* Primary action in a form fills the column -- the obvious next step. */
+.form .btn-primary,
+.recipe-generate-form .btn-primary {
+  width: 100%;
 }
 
 .btn-secondary {
@@ -232,6 +291,10 @@
   padding: 7px 16px;
   border-radius: 999px;
   font-size: 14px;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .btn-danger {
@@ -241,11 +304,21 @@
   padding: 7px 16px;
   border-radius: 999px;
   font-size: 14px;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .btn-danger:hover:not(:disabled) {
   background: var(--danger);
   color: #fff;
+}
+
+.btn-primary:hover:not(:disabled),
+.btn-secondary:hover:not(:disabled),
+.btn-danger:hover:not(:disabled) {
+  transform: translateY(-1px);
 }
 
 .btn-link {
@@ -263,10 +336,10 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 18px;
+  padding: var(--space-4);
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
 .stat-tile__label {
@@ -294,27 +367,27 @@
 }
 
 .stat-tile--good .stat-tile__value {
-  color: #0ca30c;
+  color: var(--ok);
 }
 .stat-tile--warning .stat-tile__value {
-  color: #c98500;
+  color: var(--caution);
 }
 .stat-tile--critical .stat-tile__value {
-  color: #d03b3b;
+  color: var(--danger);
 }
 
 .macro-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
-  margin: 16px 0;
+  margin: var(--space-4) 0;
 }
 
 .details-panel {
-  margin: 16px 0;
+  margin: var(--space-4) 0;
   background: var(--surface);
-  border: 1px solid var(--border);
   border-radius: 16px;
+  box-shadow: inset 0 0 0 1px var(--border);
   padding: 14px 18px;
 }
 
@@ -361,11 +434,11 @@
 /* ── Upload / review screen ───────────────────────────────────────────── */
 
 .upload-card {
-  margin: 20px 0;
-  padding: 24px;
+  margin: var(--space-5) 0;
+  padding: var(--space-5);
   background: var(--surface);
-  border: 1px solid var(--border);
   border-radius: 20px;
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
 .upload-card__label {
@@ -423,7 +496,7 @@
   border: 1px solid var(--border);
   border-radius: 50%;
   color: var(--text-h);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-raise); /* elevation §3 stufe 1 -- floating icon */
 }
 
 .upload-dropzone__title {
@@ -439,7 +512,7 @@
 .tab-row {
   display: flex;
   gap: 2px;
-  margin: 16px 0;
+  margin: var(--space-4) 0;
   padding: 4px;
   width: fit-content;
   background: var(--surface);
@@ -449,10 +522,10 @@
 
 .tab {
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   background: none;
   border: none;
-  padding: 7px 16px;
+  padding: 7px 14px;
   border-radius: 999px;
   cursor: pointer;
   color: var(--text);
@@ -510,7 +583,7 @@
 }
 
 .upload-progress__step--done .upload-progress__marker {
-  color: #0ca30c;
+  color: var(--ok);
 }
 
 .upload-progress__step--active {
@@ -543,7 +616,7 @@
 
 .review-list {
   list-style: none;
-  margin: 16px 0;
+  margin: var(--space-4) 0;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -585,7 +658,7 @@
 }
 
 .review-row__delete:hover {
-  color: #d03b3b;
+  color: var(--danger);
   background: var(--accent-bg);
 }
 
@@ -635,7 +708,7 @@
 }
 
 .review-row__match--warn {
-  color: #c98500;
+  color: var(--caution);
 }
 
 .review-row__fix-match {
@@ -781,8 +854,9 @@
 }
 
 .callout--warning {
-  background: rgba(250, 178, 25, 0.12);
-  border-color: rgba(250, 178, 25, 0.4);
+  background: var(--caution-soft);
+  border-color: var(--caution);
+  color: var(--caution);
 }
 
 .callout--muted {
@@ -810,8 +884,8 @@
   gap: 8px;
   padding: 16px 12px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1px var(--border);
   text-align: center;
 }
 
@@ -900,14 +974,14 @@
 /* ── Unlock recipes (Results) ─────────────────────────────────────────── */
 
 .unlock-recipes {
-  margin: 28px 0;
-  padding-top: 20px;
+  margin: var(--space-6) 0;
+  padding-top: var(--space-5);
   border-top: 1px solid var(--border);
 }
 
 .section-divider {
-  margin: 28px 0 0;
-  padding-top: 20px;
+  margin: var(--space-6) 0 0;
+  padding-top: var(--space-5);
   border-top: 1px solid var(--border);
 }
 
@@ -922,7 +996,25 @@
   text-align: center;
 }
 
+/* Login brand lockup (CI §1): larger leaf badge + "NutriWise" wordmark. */
 .login-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.login-logo__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 999px;
+  background: var(--sage-soft);
+  color: var(--sage-ink);
+}
+
+.login-logo__word {
   font-size: 32px;
   font-weight: 600;
   letter-spacing: -0.5px;
@@ -1038,7 +1130,7 @@ a.btn {
 }
 
 .chip__remove:hover {
-  color: #d03b3b;
+  color: var(--danger);
 }
 
 .chip-input-row {
@@ -1060,10 +1152,10 @@ a.btn {
   flex-direction: column;
   height: min(75vh, 640px);
   min-height: 420px;
-  margin-top: 16px;
+  margin-top: var(--space-4);
   background: var(--surface);
-  border: 1px solid var(--border);
   border-radius: 20px;
+  box-shadow: inset 0 0 0 1px var(--border);
   overflow: hidden;
 }
 
@@ -1169,7 +1261,7 @@ a.btn {
   font: inherit;
   font-size: 13px;
   font-weight: 500;
-  padding: 8px 16px;
+  padding: 7px 14px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--code-bg);
@@ -1208,22 +1300,25 @@ a.btn {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 16px 0 20px;
+  margin: var(--space-4) 0 var(--space-5);
 }
 
+/* Standalone toggle chips (CI §8 · J5): filter-chip / filter-pill / chat-choice
+   share one spec -- 7px 14px, 13px/500, full-round, --border ring, --code-bg
+   inactive, --accent active. */
 .filter-chip {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 7px 14px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--code-bg);
   color: var(--text);
   font: inherit;
   font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  opacity: 0.55;
 }
 
 .filter-chip--active {
@@ -1239,7 +1334,7 @@ a.btn {
 }
 
 .purchase-group {
-  margin: 24px 0;
+  margin: var(--space-6) 0;
 }
 
 .purchase-group__header {
@@ -1317,15 +1412,15 @@ a.btn {
 }
 
 .qty-basis--weighed {
-  background: rgba(12, 163, 12, 0.18);
+  background: var(--ok-soft);
 }
 
 .qty-basis--piece {
-  background: rgba(250, 178, 25, 0.18);
+  background: var(--caution-soft);
 }
 
 .qty-basis--unknown {
-  background: rgba(208, 59, 59, 0.18);
+  background: var(--danger-soft);
 }
 
 .purchase-row__macros,
@@ -1355,9 +1450,19 @@ a.btn {
 /* Same card styling as .purchase-row, but a 4th column for the
    eaten/removed actions (name · qty+date+store · macros · actions). */
 .pantry-row {
-  /* name (+ macros subtitle) · quantity · actions -- macros moved under the
-     name, so no separate macros column. */
-  grid-template-columns: 2.5fr 1.75fr auto;
+  /* name (+ macros subtitle) · quantity · freshness (urgency + days) · actions.
+     Name takes all slack; quantity/freshness/actions size to content so the
+     product name gets the room. */
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+}
+
+/* Freshness column: urgency (traffic-light) hint on top, age below. */
+.pantry-row__freshness {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  white-space: nowrap;
 }
 
 .pantry-row__name-line {
@@ -1365,6 +1470,18 @@ a.btn {
   align-items: center;
   gap: 6px;
   min-width: 0;
+}
+
+/* Food names read as row titles -- same weight as recipe-card titles. */
+.pantry-row .purchase-row__name {
+  font-weight: 600;
+}
+
+/* Age of the lot -- its own column, right of the quantity. */
+.pantry-row__age {
+  font-size: 12px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Food-group emoji prefix on each lot -- a quick visual category cue. */
@@ -1375,7 +1492,7 @@ a.btn {
 }
 
 .pantry-row__macros-sub {
-  color: var(--text-muted, #888);
+  color: var(--text);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
@@ -1386,7 +1503,7 @@ a.btn {
   padding: 2px 4px;
   font-size: 13px;
   line-height: 1;
-  color: var(--text-muted, #888);
+  color: var(--text);
   cursor: pointer;
   opacity: 0.75;
 }
@@ -1398,7 +1515,7 @@ a.btn {
 
 .pantry-row__icon-btn--active {
   opacity: 1;
-  color: var(--accent, #2f7d5b);
+  color: var(--accent);
 }
 
 .pantry-row__edit {
@@ -1448,11 +1565,11 @@ a.btn {
 
 .pantry-row__action--active {
   opacity: 1;
-  background: rgba(47, 125, 91, 0.16);
+  background: var(--sage-soft);
 }
 
 .btn-secondary--active {
-  outline: 2px solid var(--accent, #2f7d5b);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -1496,7 +1613,7 @@ a.btn {
 
 .pantry-row__slider input[type='range'] {
   flex: 1;
-  accent-color: var(--accent, #2f7d5b);
+  accent-color: var(--accent);
 }
 
 .pantry-row__slider-value {
@@ -1521,12 +1638,12 @@ a.btn {
 .add-item-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 16px;
-  border: 1px solid var(--border, #d9d9d9);
-  border-radius: 10px;
-  background: var(--surface, #fafafa);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1px var(--border);
+  background: var(--surface);
 }
 
 /* Name + amount + unit + search on one line (wraps on narrow screens),
@@ -1590,11 +1707,11 @@ a.btn {
 
 .recipe-card {
   position: relative;
-  margin: 12px 0;
+  margin: var(--space-3) 0;
   padding: 16px 40px 16px 22px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 20px;
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
 /* Two explicit rows -- title alone, then metrics/labels -- instead of one
@@ -1712,15 +1829,17 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12) inset;
 }
 
-/* Ampel hues chosen to hold contrast in light and dark themes. */
+/* Traffic-light urgency via signal tokens (CI §2.2). Non-textual dots, so the
+   -bright amber is allowed; red/green use the standard danger/ok tokens. The
+   inset ring (below) keeps them legible on same-hue backgrounds. */
 .urgency__dot--red {
-  background: #e5484d;
+  background: var(--danger);
 }
 .urgency__dot--yellow {
-  background: #f5a524;
+  background: var(--caution-bright);
 }
 .urgency__dot--green {
-  background: #30a46c;
+  background: var(--ok);
 }
 .urgency__dot--grey {
   background: var(--border);
@@ -1728,7 +1847,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 
 .urgency__label {
   font-size: 12px;
-  color: var(--text-muted, #888);
+  color: var(--text);
 }
 
 /* ── Pantry controls: view toggle (A/B) + filters (kept visually apart) ─── */
@@ -1736,7 +1855,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin: 14px 0 18px;
+  margin: var(--space-4) 0 var(--space-5);
 }
 
 .pantry-controls__views {
@@ -1821,7 +1940,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 
 .filter-btn__count {
   font-variant-numeric: tabular-nums;
-  color: var(--text-muted, #888);
+  color: var(--text);
 }
 
 .filter-btn--active .filter-btn__count {
@@ -1846,7 +1965,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-float); /* elevation §3 stufe 2 -- floating overlay */
 }
 
 .cat-popover__head {
@@ -1860,7 +1979,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 .cat-popover__title {
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-muted, #888);
+  color: var(--text);
 }
 
 .cat-popover__actions {
@@ -1891,12 +2010,13 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 
 /* "Next 3 days" quick filter as a toggle pill. */
 .filter-pill {
-  padding: 6px 12px;
+  padding: 7px 14px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: var(--surface);
+  background: var(--code-bg);
   color: var(--text);
   font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -1943,7 +2063,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--text-muted, #888);
+  color: var(--text);
 }
 
 .pantry-group__toggle:hover {
@@ -1964,16 +2084,16 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   flex: 0 0 auto;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
-  color: var(--text-muted, #888);
+  color: var(--text);
 }
 
 /* ── Shelf-life config panel (not surfaced yet; see PantryPage) ─────────── */
 .shelf-life-panel {
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--surface);
-  padding: 16px;
-  margin: 12px 0 4px;
+  box-shadow: inset 0 0 0 1px var(--border);
+  padding: var(--space-4);
+  margin: var(--space-3) 0 var(--space-1);
 }
 
 .shelf-life-panel__head p {
@@ -2058,9 +2178,12 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   line-height: 1.5;
 }
 
+/* Card primitive (CI §7 · J3): the canonical container. Surface fill, one card
+   radius (20px), inset-ring separation (never a hard border). Panels/cards
+   reuse these values; tiles/embedded boxes use the 16px radius below. */
 .card {
-  margin: 12px 0;
-  padding: 20px;
+  margin: var(--space-3) 0;
+  padding: var(--space-5);
   background: var(--surface);
   border-radius: 20px;
   box-shadow: inset 0 0 0 1px var(--border);
@@ -2145,11 +2268,11 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin: 24px 0;
+  margin: var(--space-6) 0;
 }
 
 .profile-note {
-  margin: 12px 0 24px;
+  margin: var(--space-3) 0 var(--space-6);
   font-size: 13px;
   text-align: center;
 }

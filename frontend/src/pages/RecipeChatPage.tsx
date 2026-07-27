@@ -208,11 +208,10 @@ export function RecipeChatPage() {
         allergies: finalAnswers.allergies,
         dislikes: finalAnswers.dislikes,
       })
-      // Sends the user back into the upload loop rather than Results --
-      // this chat runs right after unlocking recipes, and the natural next
-      // step is to keep feeding the app more receipts, not re-look at the
-      // analysis they just came from.
-      navigate('/upload')
+      // Straight to the Recipes tab -- this chat's whole purpose is
+      // gathering the dietary prefs recipe generation needs, so the next
+      // step is generating one, not detouring through Upload/Results.
+      navigate('/tips')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not save your preferences.')
       setStage('error')

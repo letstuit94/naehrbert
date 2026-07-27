@@ -89,7 +89,12 @@ export function AddItemPanel({
     setBusy(true)
     setError(null)
     try {
-      await createPantryItem({ name: name.trim() || picked.matched_name, quantity: qty, unit, match: picked })
+      await createPantryItem({
+        name: name.trim() || picked.matched_name,
+        quantity: qty,
+        unit,
+        match: picked,
+      })
       onAdded()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not add that item.')
@@ -132,7 +137,11 @@ export function AddItemPanel({
           <label className="add-item-panel__label" htmlFor="add-item-unit">
             Unit
           </label>
-          <select id="add-item-unit" value={unit} onChange={(e) => setUnit(e.target.value)}>
+          <select
+            id="add-item-unit"
+            value={unit}
+            onChange={(e) => setUnit(e.target.value)}
+          >
             {UNIT_OPTIONS.map((u) => (
               <option key={u} value={u}>
                 {u}
@@ -142,7 +151,7 @@ export function AddItemPanel({
         </div>
         <button
           type="button"
-          className="btn-secondary"
+          className="btn btn-secondary"
           onClick={() => {
             setSearching(true)
             void runSearch()
@@ -180,7 +189,10 @@ export function AddItemPanel({
           {candidates && candidates.length > 0 && (
             <ul className="candidate-list">
               {candidates.map((c, i) => (
-                <li key={`${c.source}-${c.off_id ?? c.bls_code ?? i}`} className="candidate-row">
+                <li
+                  key={`${c.source}-${c.off_id ?? c.bls_code ?? i}`}
+                  className="candidate-row"
+                >
                   <div className="candidate-row__main">
                     <span className="candidate-row__source">
                       {c.source === 'off' ? 'OFF' : 'BLS'}
@@ -189,7 +201,8 @@ export function AddItemPanel({
                   </div>
                   <span className="candidate-row__macros">
                     {formatMacro(c.nutrition.calories_kcal)} kcal · P{' '}
-                    {formatMacro(c.nutrition.protein_g)}g · F {formatMacro(c.nutrition.fat_g)}g · C{' '}
+                    {formatMacro(c.nutrition.protein_g)}g · F{' '}
+                    {formatMacro(c.nutrition.fat_g)}g · C{' '}
                     {formatMacro(c.nutrition.carbs_g)}g
                   </span>
                   <button type="button" className="btn-link" onClick={() => pick(c)}>
@@ -211,7 +224,12 @@ export function AddItemPanel({
       {/* "Add to pantry" only appears once a search result is selected. */}
       {picked && (
         <div className="add-item-panel__actions">
-          <button type="button" className="btn-primary" onClick={() => void submit()} disabled={busy}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => void submit()}
+            disabled={busy}
+          >
             Add to pantry
           </button>
           <button type="button" className="btn-link" onClick={onClose}>

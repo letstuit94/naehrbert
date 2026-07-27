@@ -17,7 +17,13 @@ import {
  * A blank field means "no estimate" (the group opts out of urgency and its
  * lots sort to the end), which is exactly how "Other" ships.
  */
-export function ShelfLifePanel({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+export function ShelfLifePanel({
+  onClose,
+  onSaved,
+}: {
+  onClose: () => void
+  onSaved: () => void
+}) {
   const [groups, setGroups] = useState<ShelfLifeGroup[] | null>(null)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
@@ -34,7 +40,9 @@ export function ShelfLifePanel({ onClose, onSaved }: { onClose: () => void; onSa
         )
       })
       .catch((err) =>
-        setError(err instanceof ApiError ? err.message : 'Could not load shelf-life settings.'),
+        setError(
+          err instanceof ApiError ? err.message : 'Could not load shelf-life settings.',
+        ),
       )
   }, [])
 
@@ -73,7 +81,9 @@ export function ShelfLifePanel({ onClose, onSaved }: { onClose: () => void; onSa
       onSaved()
       onClose()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save shelf-life settings.')
+      setError(
+        err instanceof ApiError ? err.message : 'Could not save shelf-life settings.',
+      )
     } finally {
       setSaving(false)
     }
@@ -124,7 +134,12 @@ export function ShelfLifePanel({ onClose, onSaved }: { onClose: () => void; onSa
       )}
 
       <div className="shelf-life-panel__actions">
-        <button type="button" className="btn-secondary" onClick={() => void save()} disabled={saving}>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => void save()}
+          disabled={saving}
+        >
           {saving ? 'Saving…' : 'Save'}
         </button>
         <button type="button" className="btn-link" onClick={onClose}>

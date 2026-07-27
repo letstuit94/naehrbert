@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { getCurrentProfileId } from '../lib/session'
+import { Logo } from './Logo'
 
 // Persistent nav across all logged-in routes, incl. "Results" (Epic 7.3) so
 // users can get back to their latest analysis at any time without
@@ -26,43 +27,53 @@ export function NavBar() {
   if (getCurrentProfileId() === null) return null
 
   return (
-    <nav className="nav-bar">
-      <span className="nav-logo" role="img" aria-label="NutriWise">
-        N
-      </span>
+    // Full-width sticky header (CI §6): the bar itself spans the viewport so its
+    // background/hairline cover the full width when content scrolls under it,
+    // while the inner .nav-bar keeps content in the centred reading column.
+    <header className="nav-header">
+      <nav className="nav-bar">
+        {/* Brand lockup (CI §1): leaf badge + "NutriWise" wordmark. The leaf is
+          decorative; the wordmark provides the accessible brand name. */}
+        <span className="nav-brand">
+          <span className="nav-logo">
+            <Logo size={18} />
+          </span>
+          <span className="nav-wordmark">NutriWise</span>
+        </span>
 
-      <ul className="nav-links">
-        {NAV_LINKS.map((link) => (
-          <li key={link.to}>
-            <NavLink
-              to={link.to}
-              className={({ isActive }) =>
-                isActive ? 'nav-link nav-link--active' : 'nav-link'
-              }
-            >
-              {link.label}
-            </NavLink>
-          </li>
-        ))}
-      </ul>
+        <ul className="nav-links">
+          {NAV_LINKS.map((link) => (
+            <li key={link.to}>
+              <NavLink
+                to={link.to}
+                className={({ isActive }) =>
+                  isActive ? 'nav-link nav-link--active' : 'nav-link'
+                }
+              >
+                {link.label}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
 
-      <NavLink
-        to="/profile"
-        aria-label="Profile"
-        className={({ isActive }) =>
-          isActive ? 'nav-profile-icon nav-profile-icon--active' : 'nav-profile-icon'
-        }
-      >
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2" />
-          <path
-            d="M4 20c0-3.31 3.58-6 8-6s8 2.69 8 6"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        </svg>
-      </NavLink>
-    </nav>
+        <NavLink
+          to="/profile"
+          aria-label="Profile"
+          className={({ isActive }) =>
+            isActive ? 'nav-profile-icon nav-profile-icon--active' : 'nav-profile-icon'
+          }
+        >
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2" />
+            <path
+              d="M4 20c0-3.31 3.58-6 8-6s8 2.69 8 6"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </NavLink>
+      </nav>
+    </header>
   )
 }

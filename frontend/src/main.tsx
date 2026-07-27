@@ -1,6 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+// Self-hosted Instrument Sans (CI §4): Fontsource bundles the woff2 + @font-face
+// locally, so the font ships in our own build -- no runtime Google Fonts request
+// (GDPR / performance / offline). Variable font, weight range 400..700.
+import '@fontsource-variable/instrument-sans'
 import './index.css'
 import App from './App.tsx'
 import { RequireProfile } from './components/RequireProfile.tsx'

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ApiError, listProfiles, type ProfileSummary } from '../lib/api'
 import { setCurrentProfileId } from '../lib/session'
+import { Logo } from '../components/Logo'
 
 type LoadState =
   | { status: 'loading' }
@@ -30,7 +31,12 @@ export function LoginPage() {
 
   return (
     <section className="login-screen">
-      <span className="login-logo">NutriWise</span>
+      <span className="login-logo">
+        <span className="login-logo__badge">
+          <Logo size={30} />
+        </span>
+        <span className="login-logo__word">NutriWise</span>
+      </span>
 
       {state.status === 'loading' && <p className="muted">Loading…</p>}
 

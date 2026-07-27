@@ -268,7 +268,9 @@ export function OnboardingPage() {
         exercise_frequency: finalAnswers.exercise_frequency as ExerciseFrequency,
         daily_movement: finalAnswers.daily_movement as DailyMovement,
         goal: finalAnswers.goal as Goal,
-        household_size: finalAnswers.household_size ? Number(finalAnswers.household_size) : null,
+        household_size: finalAnswers.household_size
+          ? Number(finalAnswers.household_size)
+          : null,
         consumption_share_pct: finalAnswers.consumption_share_pct
           ? Number(finalAnswers.consumption_share_pct)
           : null,

@@ -52,7 +52,8 @@ export function PantryControls({
   useEffect(() => {
     if (!catsOpen) return
     function onPointer(e: MouseEvent) {
-      if (catsRef.current && !catsRef.current.contains(e.target as Node)) setCatsOpen(false)
+      if (catsRef.current && !catsRef.current.contains(e.target as Node))
+        setCatsOpen(false)
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setCatsOpen(false)
@@ -84,7 +85,9 @@ export function PantryControls({
   }
 
   const totalCount = availableGroups.length
-  const shownCount = availableGroups.filter((g) => !filters.hiddenGroups.has(g.group)).length
+  const shownCount = availableGroups.filter(
+    (g) => !filters.hiddenGroups.has(g.group),
+  ).length
   const categoriesFiltered = filters.hiddenGroups.size > 0
   // Only count the category filter as "active" where it actually applies (A),
   // so "Clear" doesn't appear in B for an inert selection.
@@ -114,7 +117,9 @@ export function PantryControls({
             role="radio"
             aria-checked={view === 'category'}
             className={
-              view === 'category' ? 'pantry-toggle pantry-toggle--active' : 'pantry-toggle'
+              view === 'category'
+                ? 'pantry-toggle pantry-toggle--active'
+                : 'pantry-toggle'
             }
             onClick={() => changeView('category')}
           >
@@ -138,7 +143,9 @@ export function PantryControls({
           <div className="cat-filter" ref={catsRef}>
             <button
               type="button"
-              className={categoriesFiltered ? 'filter-btn filter-btn--active' : 'filter-btn'}
+              className={
+                categoriesFiltered ? 'filter-btn filter-btn--active' : 'filter-btn'
+              }
               aria-haspopup="true"
               aria-expanded={catsOpen}
               onClick={() => setCatsOpen((o) => !o)}
@@ -157,10 +164,18 @@ export function PantryControls({
                 <div className="cat-popover__head">
                   <span className="cat-popover__title">Show categories</span>
                   <span className="cat-popover__actions">
-                    <button type="button" className="btn-link" onClick={() => setAllGroups(true)}>
+                    <button
+                      type="button"
+                      className="btn-link"
+                      onClick={() => setAllGroups(true)}
+                    >
                       All
                     </button>
-                    <button type="button" className="btn-link" onClick={() => setAllGroups(false)}>
+                    <button
+                      type="button"
+                      className="btn-link"
+                      onClick={() => setAllGroups(false)}
+                    >
                       None
                     </button>
                   </span>
@@ -186,9 +201,13 @@ export function PantryControls({
 
         <button
           type="button"
-          className={filters.onlyNext3Days ? 'filter-pill filter-pill--on' : 'filter-pill'}
+          className={
+            filters.onlyNext3Days ? 'filter-pill filter-pill--on' : 'filter-pill'
+          }
           aria-pressed={filters.onlyNext3Days}
-          onClick={() => onFiltersChange({ ...filters, onlyNext3Days: !filters.onlyNext3Days })}
+          onClick={() =>
+            onFiltersChange({ ...filters, onlyNext3Days: !filters.onlyNext3Days })
+          }
         >
           Next 3 days
         </button>

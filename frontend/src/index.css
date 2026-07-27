@@ -11,7 +11,18 @@
   --accent-bg: rgba(0, 0, 0, 0.04);
   --accent-border: rgba(0, 0, 0, 0.1);
   --social-bg: rgba(244, 244, 245, 0.6);
-  --shadow: rgba(0, 0, 0, 0.06) 0 10px 15px -3px, rgba(0, 0, 0, 0.03) 0 4px 6px -2px;
+
+  /* ── Spacing scale (CI §6 · J1) ─────────────────────────────────────────
+     One 4px-based rhythm for gaps, paddings and section spacing. Prefer these
+     over ad-hoc px so vertical rhythm stays consistent across screens. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
 
   /* ── CI v2 · Salbeigrün-Akzent (§2.1) ───────────────────────────────────
      Die Guideline nennt Salbeigrün `--accent`; im Code ist `--accent` aber
@@ -45,8 +56,15 @@
   --shadow-raise: 0 8px 22px -14px rgb(29 29 33 / 0.25);
   --shadow-float: 0 1px 2px rgb(29 29 33 / 0.05), 0 10px 28px rgb(29 29 33 / 0.08);
 
-  --sans: 'Instrument Sans', ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: 'Instrument Sans', ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
+  /* Self-hosted via @fontsource-variable/instrument-sans (imported in main.tsx).
+     The Fontsource family name is 'Instrument Sans Variable'; the plain name and
+     the system stack stay as fallbacks. */
+  --sans:
+    'Instrument Sans Variable', 'Instrument Sans', ui-sans-serif, system-ui, 'Segoe UI',
+    Roboto, sans-serif;
+  --heading:
+    'Instrument Sans Variable', 'Instrument Sans', ui-sans-serif, system-ui, 'Segoe UI',
+    Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
@@ -78,7 +96,6 @@
     --accent-bg: rgba(255, 255, 255, 0.06);
     --accent-border: rgba(255, 255, 255, 0.14);
     --social-bg: rgba(38, 38, 46, 0.6);
-    --shadow: rgba(0, 0, 0, 0.5) 0 10px 15px -3px, rgba(0, 0, 0, 0.3) 0 4px 6px -2px;
 
     /* CI v2 Signal-/Akzent-Tokens · Dark (vorläufig, §-Dark noch offen).
        Werte aus dem Mockup-Dark-Set, damit der bestehende Dark-Mode nicht
@@ -105,31 +122,54 @@ body {
   margin: 0;
 }
 
+/* ── Heading hierarchy (CI §4 · J2) ───────────────────────────────────────
+   Three clear, consistent levels. H1 = one page title per screen; H2 = section
+   title (same treatment everywhere); H3 = sub-section. The 11px uppercase
+   .eyebrow is a *label*, not a heading level. */
 h1,
-h2 {
+h2,
+h3 {
   font-family: var(--heading);
-  font-weight: 500;
   color: var(--text-h);
 }
 
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.9px;
+  margin: 0 0 var(--space-5);
   @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+    font-size: 28px;
+    letter-spacing: -0.6px;
+    margin: 0 0 var(--space-4);
   }
 }
+
 h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.2px;
+  margin: var(--space-6) 0 var(--space-2);
   @media (max-width: 1024px) {
-    font-size: 20px;
+    font-size: 18px;
   }
 }
+
+h3 {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: var(--space-4) 0 var(--space-1);
+}
+
+/* Headings that open a card sit flush with the card's top padding. */
+.card h2,
+.card h3 {
+  margin-top: 0;
+}
+
 p {
   margin: 0;
 }
@@ -146,4 +186,18 @@ code {
   line-height: 135%;
   padding: 4px 8px;
   background: var(--code-bg);
+}
+
+/* Reduced motion (CI §11): honour the OS "reduce motion" setting app-wide --
+   near-instant transitions/animations and no smooth scroll, so movement never
+   distracts. Component-level opt-outs (e.g. .skeleton in App.css) apply on top. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

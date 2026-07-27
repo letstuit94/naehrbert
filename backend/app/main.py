@@ -24,6 +24,11 @@ app.include_router(feedback.router)
 app.include_router(pantry.router)
 
 
+@app.get("/")
+def root():
+    return {"name": app.title, "version": app.version, "docs": "/docs", "health": "/health"}
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}

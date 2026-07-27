@@ -88,8 +88,13 @@ export function ResultsPage() {
   return (
     <section>
       <h1>
-        Your results <span className="title-note">(calculated over the last 28 days)</span>
+        Your results{' '}
+        <span className="title-note">(calculated over the last 28 days)</span>
       </h1>
+      <p className="page-lead">
+        How your recent shopping stacks up against your targets — trends, not exact
+        values.
+      </p>
 
       {!noReceiptsYet && composition.data && (
         <p className="muted">
@@ -285,13 +290,16 @@ function TargetsSection({
 // Ring color reflects how far actual is from target in EITHER direction --
 // being well under is just as much a signal as being well over, so this is
 // symmetric around 100% rather than only escalating above it.
+// Signal tokens (CI §2.2), theme-aware. Used only as a ring-fill here
+// (non-textual), collapsed onto the 4-state scale: far off target -> danger,
+// then warn/caution, on-track (within ±10%) -> ok. The ±10% band matches the
+// KEEP/REDUCE/INCREASE action logic below.
 function ringTierColor(ratioPct: number): string {
   const distance = Math.abs(ratioPct - 100)
-  if (distance > 30) return '#d03b3b' // red
-  if (distance > 20) return '#e07b1f' // orange
-  if (distance > 10) return '#d1a300' // yellow
-  if (distance > 5) return '#5cab1e' // bright green
-  return '#0ca30c' // green
+  if (distance > 30) return 'var(--danger)'
+  if (distance > 20) return 'var(--warn)'
+  if (distance > 10) return 'var(--caution)'
+  return 'var(--ok)'
 }
 
 function MacroRingTile({
@@ -317,7 +325,13 @@ function MacroRingTile({
   const fillPct = ratioPct !== null ? Math.min(100, ratioPct) : 0
   // More than 10% over/under target -> act on it; within that band, on track.
   const action =
-    ratioPct === null ? null : ratioPct > 110 ? 'REDUCE' : ratioPct < 90 ? 'INCREASE' : 'KEEP'
+    ratioPct === null
+      ? null
+      : ratioPct > 110
+        ? 'REDUCE'
+        : ratioPct < 90
+          ? 'INCREASE'
+          : 'KEEP'
 
   return (
     <div className="macro-ring-tile">
@@ -366,9 +380,7 @@ function ClosenessScore({ comparison }: { comparison: TargetComparisonResult }) 
   const diffs = CLOSENESS_MACRO_ROWS.map((row) => comparison.delta_pct[row.macro]).filter(
     (d): d is number => d !== null,
   )
-  const totalDiff = diffs.length
-    ? diffs.reduce((sum, d) => sum + Math.abs(d), 0)
-    : null
+  const totalDiff = diffs.length ? diffs.reduce((sum, d) => sum + Math.abs(d), 0) : null
 
   return (
     <div>
@@ -409,14 +421,16 @@ function ClosenessScore({ comparison }: { comparison: TargetComparisonResult }) 
   )
 }
 
-// Same 4-color scale as ringTierColor above, re-purposed for an absolute
-// count instead of a %-of-target ratio: red under 10 distinct plants,
-// orange under 20, yellow under the 28-30 target range, green at/above it.
+// Same 4-state signal scale as ringTierColor, re-purposed for an absolute count
+// instead of a %-of-target ratio: danger under 10 distinct plants, warn under
+// 20, caution under the 28-30 target range, ok at/above it. Uses the AA-safe
+// text tones (not the -bright variants) because this value also colours the
+// count text in PlantDiversitySection, not just the progress-bar fill (§2.2).
 function plantDiversityColor(count: number): string {
-  if (count < 10) return '#d03b3b' // red
-  if (count < 20) return '#e07b1f' // orange
-  if (count < 28) return '#d1a300' // yellow
-  return '#0ca30c' // green
+  if (count < 10) return 'var(--danger)'
+  if (count < 20) return 'var(--warn)'
+  if (count < 28) return 'var(--caution)'
+  return 'var(--ok)'
 }
 
 function PlantDiversitySection({ diversity }: { diversity: PlantDiversityResult }) {
@@ -441,9 +455,8 @@ function PlantDiversitySection({ diversity }: { diversity: PlantDiversityResult 
     <div className="section-divider">
       <h2>Plant diversity</h2>
       <p className="muted">
-        Eat 30 different plants regularly to maximize gut
-        microbiome diversity, improve immune function, and lower the risk of
-        chronic diseases.
+        Eat 30 different plants regularly to maximize gut microbiome diversity, improve
+        immune function, and lower the risk of chronic diseases.
       </p>
       <div
         className="progress-bar"

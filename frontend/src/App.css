@@ -9,24 +9,62 @@
    the heading's own much larger size -- e.g. Results' "(calculated over
    the last 28 days)". */
 .title-note {
-  font-size: 18px;
+  font-size: var(--fs-h3);
   font-weight: 400;
   letter-spacing: normal;
   color: var(--text);
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
 /* Page lead (CI §4 · J6): one short orienting sentence under the H1. Quiet
    secondary tone, capped line length for readability. */
 .page-lead {
   margin: 0 0 var(--space-6);
-  max-width: 56ch;
+  max-width: 60ch;
   color: var(--text);
-  font-size: 15px;
+  font-size: var(--fs-lead);
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+/* Supplementary help under a lead/heading (§4.1 micro/hint). Deliberately a
+   step *smaller* than the 15px lead so the hierarchy reads H1 › lead › hint,
+   never lead < body — the bug on Upload where a `.muted` paragraph inherited
+   the 18px root size and dwarfed its own lead. */
+.help-note {
+  margin: calc(-1 * var(--space-3)) 0 var(--space-6);
+  max-width: 60ch;
+  color: var(--text);
+  font-size: var(--fs-sm);
   line-height: 1.5;
   text-wrap: pretty;
+}
+
+/* Scannable "for a good scan" tips (Upload): a quiet embedded box with one
+   short, icon-led line per idea — faster to parse than a run-on paragraph. */
+.upload-tips {
+  list-style: none;
+  margin: calc(-1 * var(--space-3)) 0 var(--space-6);
+  padding: var(--space-3) var(--space-4);
+  max-width: 60ch;
+  background: var(--code-bg);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.upload-tips li {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.upload-tips__icon {
+  flex: 0 0 auto;
+  font-size: 15px;
+  line-height: 1.3;
 }
 
 /* Sticky top-nav on every breakpoint (CI §6). Full-width bar so its background
@@ -110,15 +148,44 @@
 }
 
 .nav-link {
-  display: inline-block;
-  padding: 7px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
   border-radius: 999px;
   color: var(--text);
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
-  transition: color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.nav-link svg {
+  flex: 0 0 auto;
+}
+
+/* Two separate nav pills side by side (Upload | Results·Pantry·Recipes), with a
+   clear gap between them. Scrolls horizontally as one unit on tight widths. */
+.nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* Upload is the "add data" action, not a view — its own ring sets it apart from
+   the analysis tabs (Results / Pantry / Recipes). */
+.nav-links--solo {
+  flex: 0 0 auto;
 }
 
 .nav-link:hover {
@@ -126,12 +193,12 @@
 }
 
 .nav-link--active {
-  background: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--action);
+  color: var(--action-contrast);
 }
 
 .nav-link--active:hover {
-  color: var(--accent-contrast);
+  color: var(--action-contrast);
 }
 
 .nav-profile-icon {
@@ -160,13 +227,13 @@
 }
 
 .nav-profile-icon--active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--action);
+  border-color: var(--action);
+  color: var(--action-contrast);
 }
 
 .nav-profile-icon--active:hover {
-  color: var(--accent-contrast);
+  color: var(--action-contrast);
 }
 
 .app-content {
@@ -204,11 +271,58 @@
 .form-field select,
 .form-field textarea {
   font: inherit;
+  /* Controls sit on their own compact scale (15px, like the buttons), not the
+     18px body size, so field text/placeholders don't tower over their labels. */
+  font-size: 15px;
   padding: 10px 14px;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface);
   color: var(--text-h);
+}
+
+/* "Your recipes" search + filter cluster (Recipes page). The search field
+   reuses the shared input spec (§9) so it reads as one family with the
+   generation-form fields and every other input; the dietary filter chips sit
+   directly below it as one tidy group. */
+.recipe-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  margin: var(--space-4) 0 var(--space-5);
+}
+
+/* Filters sit left and grow; search sits to their right, dropping to its own
+   full-width row only when they no longer fit side by side. */
+.recipe-filters .filter-bar {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+.recipe-search-input {
+  font: inherit;
+  font-size: 15px;
+  flex: 0 1 240px;
+  min-width: 200px;
+  margin-left: auto;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-h);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Focus (§9) — always a visible sage ring, shared by every text input/select so
+   keyboard focus looks the same everywhere. */
+.form-field input:focus-visible,
+.form-field select:focus-visible,
+.form-field textarea:focus-visible,
+.recipe-search-input:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 1px;
 }
 
 /* ── Recipe generation form (Results) -- 3 inputs side by side ──────────── */
@@ -270,12 +384,23 @@
   width: 100%;
 }
 
-/* The primary CTA reads as the main action: ink fill, a touch larger/heavier. */
+/* The primary CTA reads as the main action: brand-green fill, a touch
+   larger/heavier. Green = "do this" (see --action in index.css). */
 .btn-primary {
-  background: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--action);
+  color: var(--action-contrast);
   font-size: 15px;
   font-weight: 600;
+}
+
+/* Green modifier for secondary-shaped action buttons (compact pill) that are
+   still important actions — "Upload more", "Add item manually". Same brand-
+   green as the primary CTA, lighter footprint. `.btn.btn-accent` keeps
+   specificity above `.btn-secondary` regardless of source order. */
+.btn.btn-accent {
+  background: var(--action);
+  border-color: var(--action);
+  color: var(--action-contrast);
 }
 
 /* Primary action in a form fills the column -- the obvious next step. */
@@ -284,13 +409,16 @@
   width: 100%;
 }
 
+/* Secondary & danger share the primary's shape/size (base .btn: 14px radius,
+   14px 24px padding, CI §15) — differing only by fill vs outline — so a
+   primary+secondary (or danger+cancel) pair always reads as one matched set,
+   never rect-vs-pill. Compact one-offs (e.g. .pantry-expand-toggle) opt back
+   out with their own padding/radius. */
 .btn-secondary {
   background: var(--surface);
   border-color: var(--border);
   color: var(--text);
-  padding: 7px 16px;
-  border-radius: 999px;
-  font-size: 14px;
+  font-size: 15px;
   transition:
     transform 0.15s ease,
     background 0.15s ease,
@@ -301,9 +429,7 @@
   background: var(--surface);
   border-color: var(--danger);
   color: var(--danger);
-  padding: 7px 16px;
-  border-radius: 999px;
-  font-size: 14px;
+  font-size: 15px;
   transition:
     transform 0.15s ease,
     background 0.15s ease,
@@ -321,13 +447,27 @@
   transform: translateY(-1px);
 }
 
+/* System / auxiliary commands (Cancel · Undo · Clear · Close · Fix match …).
+   One quiet, consistent text-command treatment: subordinate secondary tone
+   (never competing with the green primary actions), a clear hover (darken +
+   underline), a real hit area via padding, and the shared sage focus ring.
+   This is the single primitive for every low-emphasis command in the app. */
 .btn-link {
   font: inherit;
+  font-weight: 500;
   background: none;
   border: none;
-  color: var(--text-h);
+  padding: 3px 6px;
+  border-radius: 8px;
+  color: var(--text);
   cursor: pointer;
-  padding: 0;
+  text-underline-offset: 2px;
+  transition: color 0.15s ease;
+}
+
+.btn-link:hover {
+  color: var(--text-h);
+  text-decoration: underline;
 }
 
 /* ── Stat tiles (Targets, Results) ────────────────────────────────────── */
@@ -348,13 +488,13 @@
 }
 
 .stat-tile__value {
-  font-size: 28px;
+  font-size: var(--fs-stat);
   font-weight: 600;
   color: var(--text-h);
 }
 
 .stat-tile__sub {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text);
 }
 
@@ -363,7 +503,7 @@
 }
 
 .stat-tile--hero .stat-tile__value {
-  font-size: 48px;
+  font-size: var(--fs-display);
 }
 
 .stat-tile--good .stat-tile__value {
@@ -383,18 +523,41 @@
   margin: var(--space-4) 0;
 }
 
+/* Inline disclosure (§10) — a quiet, embedded "details" block, deliberately
+   secondary so it doesn't compete with the real content. A rotating caret and
+   the muted ruhige Sekundärfläche (--code-bg) read it as "optional detail",
+   not a headline card. */
 .details-panel {
   margin: var(--space-4) 0;
-  background: var(--surface);
-  border-radius: 16px;
-  box-shadow: inset 0 0 0 1px var(--border);
-  padding: 14px 18px;
+  background: var(--code-bg);
+  border-radius: 12px;
+  padding: 10px var(--space-4);
 }
 
 .details-panel summary {
   cursor: pointer;
-  font-weight: 600;
-  color: var(--text-h);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text);
+}
+
+.details-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.details-panel summary::before {
+  content: '▸';
+  font-size: 10px;
+  color: var(--text);
+  transition: transform 0.15s ease;
+}
+
+.details-panel[open] summary::before {
+  transform: rotate(90deg);
 }
 
 .kv-list {
@@ -532,9 +695,9 @@
 }
 
 .tab--active {
-  background: var(--accent);
-  color: var(--accent-contrast);
-  font-weight: 500;
+  background: var(--action);
+  color: var(--action-contrast);
+  font-weight: 600;
 }
 
 /* ── Upload progress (Upload) ──────────────────────────────────────────── */
@@ -755,7 +918,7 @@
 
 .candidate-row__source {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text);
   background: var(--code-bg);
@@ -831,10 +994,10 @@
 
 .upload-confirmed-actions {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: stretch;
+  gap: var(--space-3);
   flex-wrap: wrap;
-  margin-top: 20px;
+  margin-top: var(--space-5);
 }
 
 /* ── Callouts ──────────────────────────────────────────────────────────── */
@@ -853,9 +1016,16 @@
   color: var(--sage-ink);
 }
 
+/* Warning callout: the soft fill + border carry the signal, but the body text
+   stays neutral/readable (a whole amber paragraph is heavy and hurts legibility)
+   — only the lead emphasis is tinted with the caution tone. */
 .callout--warning {
   background: var(--caution-soft);
   border-color: var(--caution);
+  color: var(--text-h);
+}
+
+.callout--warning strong {
   color: var(--caution);
 }
 
@@ -873,6 +1043,8 @@
 
 .muted {
   color: var(--text);
+  font-size: var(--fs-meta);
+  line-height: 1.5;
 }
 
 /* ── Macro ring tiles (Results, "Your targets") ───────────────────────── */
@@ -928,19 +1100,19 @@
 }
 
 .macro-ring__ratio {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
 .macro-ring-tile__caption {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
 .macro-ring-tile__action {
-  font-size: 13.75px; /* was 11px */
+  font-size: var(--fs-label);
   font-weight: 700;
   color: var(--text-h);
 }
@@ -1274,9 +1446,10 @@ a.btn {
 }
 
 .chat-choice--selected {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--surface);
+  border-color: var(--text-h);
+  color: var(--text-h);
+  font-weight: 600;
 }
 
 .chat-input-row {
@@ -1287,6 +1460,7 @@ a.btn {
 .chat-input-row input {
   flex: 1;
   font: inherit;
+  font-size: 15px;
   padding: 9px 14px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -1321,11 +1495,21 @@ a.btn {
   cursor: pointer;
 }
 
+/* Active chip: a NEUTRAL outlined-selected state — not green (green is reserved
+   for actions/nav), not heavy black. The darker text + ring plus a leading ✓
+   carry the "selected" cue beyond colour alone (§13). */
 .filter-chip--active {
-  background: var(--accent);
-  color: var(--accent-contrast);
-  border-color: var(--accent);
+  background: var(--surface);
+  color: var(--text-h);
+  border-color: var(--text-h);
+  font-weight: 600;
   opacity: 1;
+}
+
+.filter-chip__check {
+  font-size: 11px;
+  line-height: 1;
+  margin-right: -1px;
 }
 
 .filter-chip__count {
@@ -1485,9 +1669,20 @@ a.btn {
 }
 
 /* Food-group emoji prefix on each lot -- a quick visual category cue. */
+/* Category emoji framed in the brand's round sage-soft badge (same family as
+   the leaf logo / coach avatar, CI §1): keeps the instantly-recognisable food
+   emoji, but presents it as a consistent, designed chip rather than a bare
+   glyph. The soft circle sits behind the emoji's own colours. */
 .pantry-row__cat-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
-  font-size: 16px;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--sage-soft);
+  font-size: 14px;
   line-height: 1;
 }
 
@@ -1631,8 +1826,28 @@ a.btn {
 }
 
 /* Manual "add item" affordance (Vorrat.md) */
+/* Manual-add prompt: hint + button in a quiet grey panel, matching the
+   Upload page's tips box so "add by hand" reads as the same kind of aside. */
+.pantry-add {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background: var(--code-bg);
+  border-radius: 12px;
+}
+
+.pantry-add__hint {
+  max-width: 60ch;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
 .pantry-add-btn {
-  margin-bottom: 16px;
+  margin: 0;
 }
 
 .add-item-panel {
@@ -1878,9 +2093,11 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   cursor: pointer;
 }
 
+/* Active view (Use first / By category): a light sage fill (like the profile
+   logout / soft buttons), not a heavy black — a friendly "this view is on". */
 .pantry-toggle--active {
-  background: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--sage-soft);
+  color: var(--sage-ink);
   font-weight: 600;
 }
 
@@ -1977,14 +2194,21 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 }
 
 .cat-popover__title {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text);
 }
 
 .cat-popover__actions {
   display: inline-flex;
-  gap: 10px;
+  gap: var(--space-2);
+}
+
+/* "All" / "None" are system commands — keep them small and quiet (shared
+   .btn-link command style), sized to the popover, not big dark text. */
+.cat-popover__actions .btn-link {
+  font-size: var(--fs-sm);
+  padding: 2px 6px;
 }
 
 .cat-popover__list {
@@ -2021,9 +2245,9 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 }
 
 .filter-pill--on {
-  background: var(--accent);
-  color: var(--accent-contrast);
-  border-color: var(--accent);
+  background: var(--surface);
+  color: var(--text-h);
+  border-color: var(--text-h);
   font-weight: 600;
 }
 
@@ -2037,54 +2261,129 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 .pantry-group-tools {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 10px;
+  margin-bottom: var(--space-3);
+}
+
+/* Expand/collapse-all is a real action, not an afterthought — a compact soft
+   pill (§8) with a caret that mirrors the accordion carets, so it reads as
+   "operate all the groups below". */
+.pantry-expand-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pantry-expand-toggle__caret {
+  font-size: 10px;
+}
+
+/* Each food group is one card: a tappable header (emoji · name · count · caret)
+   over its lots, which sit flat inside — separated by hairlines rather than each
+   being its own bordered box, so the group reads as a single tidy unit. */
+.pantry-group {
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1px var(--border);
+  overflow: hidden;
 }
 
 .pantry-group + .pantry-group {
-  margin-top: 18px;
+  margin-top: var(--space-3);
 }
 
 .pantry-group__head {
-  margin: 0 0 6px;
+  margin: 0;
 }
 
 /* Accordion header: full-width clickable row that expands/collapses its lots. */
 .pantry-group__toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
-  padding: 6px 4px;
+  padding: 12px var(--space-4);
   border: none;
   background: none;
   cursor: pointer;
   text-align: left;
-  font-size: 13px;
+  font-size: var(--fs-h3);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text);
+  color: var(--text-h);
+  transition: background 0.15s ease;
 }
 
 .pantry-group__toggle:hover {
-  color: var(--text);
+  background: var(--code-bg);
 }
 
-.pantry-group__caret {
-  font-size: 10px;
-  width: 12px;
+/* Same sage-soft badge framing as the row emoji, a touch larger for the header. */
+.pantry-group__emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--sage-soft);
+  font-size: 16px;
+  line-height: 1;
 }
 
+/* Name stays its natural width so the count badge sits right beside it. */
 .pantry-group__label {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pantry-group__count {
   flex: 0 0 auto;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--sage-soft);
+  color: var(--sage-ink);
+  font-size: var(--fs-sm);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  font-weight: 500;
+}
+
+/* Caret is the expand affordance, pushed to the far right edge. */
+.pantry-group__caret {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-size: 11px;
   color: var(--text);
+}
+
+/* Lots sit flat inside the card, hairline-separated, under a header divider. */
+.pantry-group--open .purchase-list {
+  gap: 0;
+  padding: 0 var(--space-4) var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.pantry-group .pantry-row {
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 12px 0;
+}
+
+.pantry-group .pantry-row + .pantry-row {
+  border-top: 1px solid var(--border);
 }
 
 /* ── Shelf-life config panel (not surfaced yet; see PantryPage) ─────────── */
@@ -2141,7 +2440,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 }
 
 .shelf-life-row__tag {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--accent);
@@ -2192,7 +2491,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 /* Eyebrow / section label (§4) */
 .eyebrow {
   display: block;
-  font-size: 11px;
+  font-size: var(--fs-eyebrow);
   font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -2297,6 +2596,67 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 @media (prefers-reduced-motion: reduce) {
   .skeleton {
     animation: none;
+  }
+}
+
+/* PageSkeleton scaffold (§12) — cards self-space via their own .card margin, so
+   no extra gap here (that would double it). The lead line stands in for the
+   .page-lead height so the data area doesn't shift when real content arrives. */
+.page-skeleton {
+  margin-top: var(--space-3);
+}
+
+.skeleton-lead {
+  margin: var(--space-2) 0 var(--space-5);
+}
+
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Loose skeleton rows (no card scaffold) — e.g. ShelfLifePanel groups. */
+.skeleton-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Empty states (§12) — friendly, centred, one orienting line + one clear
+   action. Used wherever a filter/search returns nothing, so every "no results"
+   view reads the same: an emoji cue, a plain sentence, a way out. */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--text);
+}
+
+.empty-state__emoji {
+  font-size: 32px;
+  line-height: 1;
+}
+
+/* Route transition (§11) — a short, functional fade so a page swap reads as one
+   calm step instead of a hard cut. Keyed on the pathname in App.tsx, so it
+   retriggers on every navigation. Honoured by the global reduced-motion rule in
+   index.css (animation-duration is forced near-zero there). */
+.page-enter {
+  animation: page-enter 180ms ease-out both;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -2420,7 +2780,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   display: block;
   flex: none;
   margin-bottom: 10px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.07em;

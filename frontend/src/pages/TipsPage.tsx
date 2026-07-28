@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { PageSkeleton } from '../components/Skeleton'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
@@ -134,6 +135,11 @@ export function TipsPage() {
     })
   }
 
+  function resetFilters() {
+    setSearch('')
+    setActiveLabels(new Set(LABEL_FILTERS.map((f) => f.value)))
+  }
+
   useEffect(() => {
     if (!loading && window.location.hash) {
       document.getElementById(window.location.hash.slice(1))?.scrollIntoView()
@@ -142,9 +148,9 @@ export function TipsPage() {
 
   if (loading) {
     return (
-      <section>
+      <section aria-busy="true">
         <h1>Recipes</h1>
-        <p>Loading…</p>
+        <PageSkeleton cards={3} lines={2} />
       </section>
     )
   }
@@ -177,6 +183,33 @@ export function TipsPage() {
 
           {allRecipes.length > 0 && (
             <div className="recipe-filters">
+              <div
+                className="filter-bar"
+                role="group"
+                aria-label="Filter by dietary label"
+              >
+                {LABEL_FILTERS.map((filter) => {
+                  const active = activeLabels.has(filter.value)
+                  return (
+                    <button
+                      key={filter.value}
+                      type="button"
+                      className={
+                        active ? 'filter-chip filter-chip--active' : 'filter-chip'
+                      }
+                      aria-pressed={active}
+                      onClick={() => toggleLabelFilter(filter.value)}
+                    >
+                      {active && (
+                        <span className="filter-chip__check" aria-hidden="true">
+                          ✓
+                        </span>
+                      )}
+                      {filter.label}
+                    </button>
+                  )
+                })}
+              </div>
               <input
                 type="search"
                 className="recipe-search-input"
@@ -185,31 +218,19 @@ export function TipsPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 aria-label="Search recipes"
               />
-              <div
-                className="filter-bar"
-                role="group"
-                aria-label="Filter by dietary label"
-              >
-                {LABEL_FILTERS.map((filter) => (
-                  <button
-                    key={filter.value}
-                    type="button"
-                    className={
-                      activeLabels.has(filter.value)
-                        ? 'filter-chip filter-chip--active'
-                        : 'filter-chip'
-                    }
-                    onClick={() => toggleLabelFilter(filter.value)}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
-              </div>
             </div>
           )}
 
           {allRecipes.length > 0 && visibleRecipes.length === 0 && (
-            <p className="muted">No recipes match your search or filter.</p>
+            <div className="empty-state">
+              <span className="empty-state__emoji" aria-hidden="true">
+                🔍
+              </span>
+              <p>No recipes match your search or filters.</p>
+              <button type="button" className="btn btn-soft" onClick={resetFilters}>
+                Clear filters
+              </button>
+            </div>
           )}
 
           {visibleRecipes.map((recipe) => (

@@ -24,6 +24,42 @@
   --space-8: 32px;
   --space-10: 40px;
 
+  /* ── Type scale (CI §4) ──────────────────────────────────────────────────
+     One documented size ramp so every screen shares the same hierarchy and
+     relations. Anchored on readability: body (Fließtext) = 18px (the preferred,
+     most legible base; 16px on mobile — never smaller), secondary text = 14px,
+     and a hard 12px floor so nothing on any screen drops below a legible size.
+     Read top-down as strictly descending importance:
+       display  40  hero metric (Results daily calories, score)
+       h1       36 / 28 mobile   — one page title
+       stat     28  stat-tile values
+       h2       22 / 19 mobile   — section titles (clear step above body)
+       h3       18  sub-section (= body, set apart by weight)
+       body     18  running paragraph text (16 on mobile)
+       lead     17  subtitle under H1 (below every heading — never out-sizes one)
+       meta     14  secondary / meta lines (.muted)
+       label    14  form labels, secondary controls
+       sm       13  chips, captions, hints
+       xs       12  dense micro-captions (floor)
+       eyebrow  12  uppercase kicker labels (floor)
+     Relations: 40 › 36 › 28 › 22 › 18 › 17 › 14 › 13 › 12. Every heading
+     (h1/h2/h3) sits at or above body; the lead sits below every heading; the
+     smallest reading text is 12px. */
+  --fs-display: 40px;
+  --fs-h1: 36px;
+  --fs-h1-mobile: 28px;
+  --fs-stat: 28px;
+  --fs-h2: 22px;
+  --fs-h2-mobile: 19px;
+  --fs-h3: 18px;
+  --fs-body: 18px;
+  --fs-lead: 17px;
+  --fs-meta: 14px;
+  --fs-label: 14px;
+  --fs-sm: 13px;
+  --fs-xs: 12px;
+  --fs-eyebrow: 12px;
+
   /* ── CI v2 · Salbeigrün-Akzent (§2.1) ───────────────────────────────────
      Die Guideline nennt Salbeigrün `--accent`; im Code ist `--accent` aber
      bereits der Ink-Vollton (Buttons/Nav, §8). Salbeigrün liegt daher unter
@@ -35,6 +71,16 @@
   --sage: #7c9a6a;
   --sage-soft: #eef2ea;
   --sage-ink: #4f6b3c;
+
+  /* ── Action accent (brand-green) ────────────────────────────────────────
+     Green is the app's ACTION + active-navigation colour: primary CTAs, the
+     upload mode picker, "Add item", "Upload more", and the selected top-nav
+     pill. It intentionally uses the *deep* sage (`--sage-ink`, not `--sage`)
+     so a filled button clears WCAG AA against its contrast text in both themes
+     (light: #4f6b3c on #fbfbfa ≈ 5.9:1). Reserved for actions/nav — filters,
+     toggles and disclosures stay neutral so green keeps meaning "do this". */
+  --action: var(--sage-ink);
+  --action-contrast: var(--accent-contrast);
 
   /* ── Funktions-/Signalebene (§2.2) ──────────────────────────────────────
      Nur für Status, nie Deko. Text-Töne sind AA-abgedunkelt; die hellen
@@ -67,7 +113,9 @@
     Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
+  /* Readable 18px base (Fließtext) — the most legible body size; steps down to
+     16px on phones, never below. */
+  font: 18px/1.5 var(--sans);
   letter-spacing: 0;
   color-scheme: light dark;
   color: var(--text);
@@ -134,31 +182,31 @@ h3 {
 }
 
 h1 {
-  font-size: 36px;
+  font-size: var(--fs-h1);
   font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.9px;
   margin: 0 0 var(--space-5);
   @media (max-width: 1024px) {
-    font-size: 28px;
+    font-size: var(--fs-h1-mobile);
     letter-spacing: -0.6px;
     margin: 0 0 var(--space-4);
   }
 }
 
 h2 {
-  font-size: 20px;
+  font-size: var(--fs-h2);
   font-weight: 600;
   line-height: 1.25;
   letter-spacing: -0.2px;
   margin: var(--space-6) 0 var(--space-2);
   @media (max-width: 1024px) {
-    font-size: 18px;
+    font-size: var(--fs-h2-mobile);
   }
 }
 
 h3 {
-  font-size: 15px;
+  font-size: var(--fs-h3);
   font-weight: 600;
   line-height: 1.3;
   margin: var(--space-4) 0 var(--space-1);
@@ -172,6 +220,15 @@ h3 {
 
 p {
   margin: 0;
+}
+
+/* Placeholders (§9) — one consistent treatment across every input/textarea:
+   the secondary text tone, only lightly muted so it stays legible and matches
+   the app's other secondary text, yet still reads as a hint rather than a
+   filled value. */
+::placeholder {
+  color: var(--text);
+  opacity: 0.75;
 }
 
 code {

@@ -16,11 +16,8 @@
 name: keepalive
 
 on:
-  # Ping pausiert: Zeitplan auskommentiert, damit das Backend NICHT rund um
-  # die Uhr wachgehalten wird (spart Render-Instanzstunden). Zum Reaktivieren
-  # einfach die beiden schedule-Zeilen wieder einkommentieren.
-  # schedule:
-  #   - cron: "*/12 * * * *" # alle 12 Min < Renders 15-Min-Schlafgrenze
+  schedule:
+    - cron: "*/12 * * * *" # alle 12 Min < Renders 15-Min-Schlafgrenze
   workflow_dispatch: {} # bleibt: manuelles Auslösen (Actions-Tab) weiter möglich
 
 jobs:
@@ -28,7 +25,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping /health
+        env:
+          HEALTH_URL: ${{ secrets.BACKEND_HEALTH_URL }}
         run: |
+          if [ -z "$HEALTH_URL" ]; then
+            echo "::warning::BACKEND_HEALTH_URL nicht gesetzt – Ping übersprungen."
+            exit 0
+          fi
           curl --fail --show-error --silent \
                --retry 3 --retry-delay 20 --max-time 90 \
-               "${{ secrets.BACKEND_HEALTH_URL }}"
+               "$HEALTH_URL"

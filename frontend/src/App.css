@@ -522,6 +522,10 @@
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
   margin: var(--space-4) 0;
+  /* Anchors .macro-drivers-overlay's absolute positioning to this grid
+     (not the page) -- an absolutely positioned child is taken out of grid
+     flow entirely, so it doesn't consume a 5th track. */
+  position: relative;
 }
 
 /* Inline disclosure (§10) — a quiet, embedded "details" block, deliberately
@@ -579,6 +583,38 @@
   font-size: var(--fs-sm);
   font-weight: 400;
   color: var(--text);
+}
+
+/* Micronutrients table (Results) -- a genuine 3-column grid (nutrient /
+   purchased / target), unlike .kv-list's 2-column dt/dd rows, so it's a
+   real <table> rather than reusing that pattern. */
+.table-scroll {
+  margin: 12px 0 0;
+  overflow-x: auto;
+}
+
+.micronutrient-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.micronutrient-table th,
+.micronutrient-table td {
+  padding: 6px 12px 6px 0;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.micronutrient-table th {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.micronutrient-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .plant-diversity-group {
@@ -1061,6 +1097,86 @@
   border-radius: 16px;
   box-shadow: inset 0 0 0 1px var(--border);
   text-align: center;
+  /* Grid items default to min-width: auto, which lets unbreakable content
+     (the driver list below) grow the tile past its 1fr track and overflow
+     into the next column instead of wrapping -- min-width: 0 lets it shrink
+     back down to the track's actual width. */
+  min-width: 0;
+}
+
+/* Plain button styled like .details-panel summary's pill/caret look, but
+   decoupled from <details> -- the macro tiles no longer own their own
+   disclosure; they just report a click up to the shared overlay below,
+   which is why this needs its own class rather than reusing .details-panel
+   summary (that selector only ever matches a real <summary>). */
+.driver-toggle {
+  margin: 0;
+  background: var(--code-bg);
+  border: none;
+  border-radius: 12px;
+  padding: 10px var(--space-4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text);
+}
+
+.driver-toggle::before {
+  content: '▸';
+  font-size: 10px;
+  color: var(--text);
+  transition: transform 0.15s ease;
+}
+
+.driver-toggle[aria-expanded='true']::before {
+  transform: rotate(90deg);
+}
+
+/* Shared "Learn more" panel (one at a time, see ResultsPage.tsx's
+   expandedMacro state) -- absolutely positioned so it spans the full grid
+   width and floats above whatever's below it, instead of being squeezed
+   into a single 140px-wide card. */
+.macro-drivers-overlay {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin-top: 8px;
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.macro-drivers-overlay__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.driver-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.driver-list li {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.driver-list li:last-child {
+  border-bottom: none;
 }
 
 .macro-ring-tile__label {

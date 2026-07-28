@@ -12,6 +12,7 @@ import {
   type DietaryStyle,
   type ExerciseFrequency,
   type Goal,
+  type LifeStage,
   type Profile,
   type Sex,
 } from '../lib/api'
@@ -23,6 +24,16 @@ import {
 } from '../lib/chatSteps'
 import { ALLERGEN_OPTIONS, DIETARY_STYLE_OPTIONS } from '../lib/recipePrefsSteps'
 import { ChipListInput, type ChipListInputHandle } from '../components/ChipListInput'
+
+/** Profile-page-only (not part of onboarding or the recipe-prefs chat) --
+ * the DGE reference table's pregnancy/nursing life stages. */
+const LIFE_STAGE_OPTIONS: { value: LifeStage; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'pregnant_t1', label: 'Pregnant — 1st trimester' },
+  { value: 'pregnant_t2', label: 'Pregnant — 2nd trimester' },
+  { value: 'pregnant_t3', label: 'Pregnant — 3rd trimester' },
+  { value: 'nursing', label: 'Nursing' },
+]
 
 type LoadState =
   | { status: 'loading' }
@@ -41,6 +52,7 @@ type FormState = {
   goal: Goal | ''
   household_size: string
   consumption_share_pct: string
+  life_stage: LifeStage | ''
 }
 
 const EMPTY_FORM: FormState = {
@@ -54,6 +66,7 @@ const EMPTY_FORM: FormState = {
   goal: '',
   household_size: '',
   consumption_share_pct: '',
+  life_stage: '',
 }
 
 /** Fields saved via the dietary-preferences endpoint rather than the core
@@ -108,6 +121,7 @@ function toForm(profile: Profile): FormState {
     household_size: profile.household_size != null ? String(profile.household_size) : '',
     consumption_share_pct:
       profile.consumption_share_pct != null ? String(profile.consumption_share_pct) : '',
+    life_stage: profile.life_stage ?? 'none',
   }
 }
 
@@ -288,6 +302,7 @@ export function ProfilePage() {
           consumption_share_pct: form.consumption_share_pct
             ? Number(form.consumption_share_pct)
             : null,
+          life_stage: (form.life_stage || 'none') as LifeStage,
         })
         setProfile(updated)
         resetForm(updated)
@@ -534,6 +549,13 @@ export function ProfilePage() {
                   autoFocus
                 />,
               )}
+              {profile.sex !== 'male' &&
+                renderRow(
+                  'life_stage',
+                  'Pregnancy / nursing',
+                  readableLabel(LIFE_STAGE_OPTIONS, profile.life_stage ?? 'none'),
+                  selectEditor('life_stage', LIFE_STAGE_OPTIONS),
+                )}
             </div>
           </div>
 

@@ -67,6 +67,21 @@ function purchaseInfoLine(receipt: Receipt): string | null {
   return store ? `Purchase from ${date} at ${store}` : `Purchase from ${date}`
 }
 
+// Matches backend/app/api/analysis.py's _RESULTS_WINDOW_DAYS and
+// services/plant_diversity.py's PLANT_DIVERSITY_WINDOW_DAYS -- Results'
+// macro split/closeness score and the plant-diversity count both only look
+// at confirmed receipts from the last this-many days (Konsum.md Stufe 1),
+// so an older receipt is real pantry stock but invisible to either.
+const RESULTS_WINDOW_DAYS = 28
+
+function isOlderThanResultsWindow(purchasedAt: string | null): boolean {
+  if (!purchasedAt) return false
+  const purchaseDate = new Date(`${purchasedAt}T00:00:00`)
+  if (Number.isNaN(purchaseDate.getTime())) return false
+  const ageDays = (Date.now() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24)
+  return ageDays > RESULTS_WINDOW_DAYS
+}
+
 function UploadArrowIcon() {
   return (
     <svg
@@ -369,6 +384,15 @@ export function UploadPage() {
         )}
         <p>Fix anything the scan got wrong, mark non-food items, then confirm.</p>
         {purchaseInfo && <p className="review-purchase-info">{purchaseInfo}</p>}
+
+        {isOlderThanResultsWindow(receipt.purchased_at) && (
+          <p className="callout callout--warning">
+            This receipt is more than {RESULTS_WINDOW_DAYS} days old. Once confirmed,
+            it'll still stock your pantry, but it won't count toward your health score
+            or gap analysis on the Results page — those only look at the last{' '}
+            {RESULTS_WINDOW_DAYS} days.
+          </p>
+        )}
 
         {scanLooksIncomplete ? (
           <p className="callout callout--warning">

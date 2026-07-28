@@ -29,6 +29,10 @@ export type DailyMovement =
  * auto-inferred from purchase history or confirmed/corrected by the user. */
 export type DietaryStyle = 'omnivore' | 'pescatarian' | 'vegetarian' | 'vegan'
 
+/** Pregnancy/nursing status -- the DGE's micronutrient reference values
+ * (see getMicronutrients()) differ materially by this on top of age/sex. */
+export type LifeStage = 'none' | 'pregnant_t1' | 'pregnant_t2' | 'pregnant_t3' | 'nursing'
+
 // ── Profile / Targets (Epic 1, Epic 2) ───────────────────────────────────
 
 /** The core onboarding fields (clean_rebuild_epics.md Epic 1) plus `name`
@@ -47,6 +51,9 @@ export interface ProfileInput {
    * fields keep working unchanged. */
   household_size?: number | null
   consumption_share_pct?: number | null
+  /** Defaults to 'none' server-side when omitted -- see models/profile.py's
+   * LifeStage.NONE. */
+  life_stage?: LifeStage
 }
 
 export interface Profile extends ProfileInput {
@@ -261,9 +268,17 @@ export interface CompositionResult {
   protein_pct: number | null
   fat_pct: number | null
   carb_pct: number | null
-  /** Calories not attributable to a macro -- see basket_composition.py's
-   * policy note on low-confidence category-fallback matches. */
+  /** Calories not attributable to a macro at all (e.g. a sparse product
+   * match missing fat/carbs) -- see basket_composition.py's policy note.
+   * Distinct from `fallback_share_pct`: a fallback-matched item normally
+   * DOES have a full macro breakdown and only shows up here if it's one of
+   * the rare categories still missing a value. */
   unaccounted_pct: number | null
+  /** Share of the counted calories that came from a category-estimate
+   * match (MatchType.FALLBACK) rather than an identified product -- already
+   * included in the macro split above; this is a confidence label, not an
+   * exclusion. */
+  fallback_share_pct: number | null
   kcal_total: number | null
   /** Fiber isn't part of the %-of-calories split above -- see
    * ideal_profile.py's FIBER_G_PER_1000KCAL -- so it's reported in the same
@@ -322,11 +337,24 @@ export interface BucketsResult {
   buckets: BucketedItem[]
 }
 
+/** A purchased item's per-100g density for this macro -- NOT scaled by how
+ * much was bought, so this ranks "which foods you buy are concentrated
+ * sources of X", not "what's actually driving your total" (that's
+ * top_source/top_share_pct below). */
+export interface DiversityDriver {
+  name: string
+  grams_per_100g: number
+}
+
 export interface DiversityGroup {
   diversity_score: number | null
   source_count: number
   top_source: string | null
   top_share_pct: number | null
+  /** Up to 10 purchased items ranked by per-100g density for this macro,
+   * most concentrated first -- backs the Results page's per-macro
+   * "Learn more". */
+  top_drivers: DiversityDriver[]
 }
 
 /** GET /analysis/diversity */
@@ -334,6 +362,7 @@ export interface DiversityResult {
   protein: DiversityGroup
   fat: DiversityGroup
   carb: DiversityGroup
+  fiber: DiversityGroup
   recommendations: string[]
 }
 
@@ -354,6 +383,49 @@ export interface PlantDiversityResult {
   target: number
   window_days: number
   items: PlantDiversityItem[]
+}
+
+/** GET /analysis/meal-coverage -- how much of the daily calorie target the
+ * last `window_days` of grocery purchases would cover if fully consumed,
+ * shown inline on the Results page's Daily calories card. */
+export interface MealCoverageResult {
+  window_days: number
+  kcal_purchased: number
+  /** From Profile.consumption_share_pct, or 100 (assume all groceries are
+   * yours) when the profile hasn't set it. */
+  consumption_share_pct: number
+  effective_kcal: number
+  daily_target_kcal: number
+}
+
+/** GET /analysis/micronutrients -- 28-day BLS-sourced micronutrient totals,
+ * plus DGE daily reference values for this profile's age/sex/life_stage
+ * (services/dge_matcher.py) -- an external reference table, not one of
+ * this app's own IdealProfile formulas. */
+export interface MicronutrientTotals {
+  vitamin_d_ug: number
+  folate_ug: number
+  vitamin_b12_ug: number
+  vitamin_c_mg: number
+  sodium_mg: number
+  potassium_mg: number
+  calcium_mg: number
+  magnesium_mg: number
+  iron_mg: number
+  zinc_mg: number
+  iodine_ug: number
+}
+
+export interface MicronutrientsResult {
+  window_days: number
+  totals: MicronutrientTotals
+  /** Share of the counted calories that came from an item carrying real
+   * micronutrient data (BLS-tier or bridged-OFF) -- the trust signal for
+   * how much to read into the totals above. */
+  micro_coverage_pct: number | null
+  /** DGE daily targets for this profile's age/sex/life_stage, or null if
+   * the profile's age can't be resolved (e.g. incomplete profile). */
+  targets: MicronutrientTotals | null
 }
 
 // ── Recipe recommendations feature ────────────────────────────────────────
@@ -573,6 +645,14 @@ export function getDiversity(): Promise<DiversityResult> {
 
 export function getPlantDiversity(): Promise<PlantDiversityResult> {
   return request<PlantDiversityResult>('/analysis/plant-diversity')
+}
+
+export function getMealCoverage(): Promise<MealCoverageResult> {
+  return request<MealCoverageResult>('/analysis/meal-coverage')
+}
+
+export function getMicronutrients(): Promise<MicronutrientsResult> {
+  return request<MicronutrientsResult>('/analysis/micronutrients')
 }
 
 // ── Dietary preferences (recipe recommendations feature) ─────────────────

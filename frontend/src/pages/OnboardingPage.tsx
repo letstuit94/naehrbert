@@ -255,6 +255,39 @@ export function OnboardingPage() {
     setEditingKey(null)
   }
 
+  // Placeholder profile for users who'd rather fill in their details on the
+  // Profile page than through the chat -- ProfileCreate requires all 7
+  // biometric fields (no defaults), so a genuinely empty profile isn't
+  // possible; every value here is immediately editable on /profile via the
+  // same createProfile() call ProfilePage's saveField() already reuses.
+  async function skipOnboarding() {
+    setPhase('saving')
+    setError(null)
+    try {
+      const result = await createProfile({
+        name: null,
+        sex: 'prefer_not_to_say',
+        date_of_birth: '2000-01-01',
+        height_cm: 170,
+        weight_kg: 70,
+        exercise_frequency: 'none',
+        daily_movement: 'mostly_sitting',
+        goal: 'maintain',
+        household_size: null,
+        consumption_share_pct: null,
+      })
+      setCurrentProfileId(result.profile.id)
+      navigate('/profile')
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : 'Could not skip onboarding. Please try again.',
+      )
+      setPhase('chat')
+    }
+  }
+
   async function submit(finalAnswers: Answers) {
     setPhase('saving')
     setError(null)
@@ -336,7 +369,14 @@ export function OnboardingPage() {
 
   return (
     <section>
-      <h1>Onboarding</h1>
+      <div className="summary-line">
+        <h1>Onboarding</h1>
+        {!busy && (
+          <button type="button" className="btn-link" onClick={skipOnboarding}>
+            Skip onboarding
+          </button>
+        )}
+      </div>
       <div className="chat-card">
         <div ref={historyRef} className="chat-history">
           {answeredSteps.map((step, stepPos) => {

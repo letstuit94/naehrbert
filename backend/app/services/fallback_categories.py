@@ -132,18 +132,18 @@ CATEGORY_NUTRITION = {
     # ── Plant-Based Protein Products ──────────────────────────────────
     "tofu": NutritionValues(calories_kcal=115, carbs_g=0.0, protein_g=15.5, fat_g=5.6, fiber_g=1.3),  # BLS: "Tofu"
     "tempeh": NutritionValues(calories_kcal=179, carbs_g=0.5, protein_g=19.0, fat_g=9.4, fiber_g=8.1),  # OFF: "Tempeh"
-    "seitan": NutritionValues(calories_kcal=139, carbs_g=6.0, protein_g=26.6, fat_g=0.7, fiber_g=None),  # OFF: "Seitan Natur"
+    "seitan": NutritionValues(calories_kcal=139, carbs_g=6.0, protein_g=26.6, fat_g=0.7, fiber_g=0.6),  # OFF: "Seitan Natur" (fiber: USDA generic seitan)
     "plant_based_meat_alternatives": NutritionValues(calories_kcal=170, carbs_g=6.4, protein_g=7.1, fat_g=12.0, fiber_g=4.0),  # OFF: "Vegane Mühlen Rostbratwürstchen"
 
     # ── Plant-Based Dairy Alternatives ────────────────────────────────
     "unsweetened_plant_milk": NutritionValues(calories_kcal=29, carbs_g=4.0, protein_g=0.7, fat_g=1.0, fiber_g=0.5),  # BLS: "Haferdrink ungesüßt"
     "sweetened_plant_milk": NutritionValues(calories_kcal=41, carbs_g=7.2, protein_g=0.7, fat_g=1.0, fiber_g=0.4),  # BLS: "Haferdrink gesüßt, aromatisiert"
     "plant_yogurt": NutritionValues(calories_kcal=44, carbs_g=0.3, protein_g=4.2, fat_g=2.7, fiber_g=0.0),  # BLS: "Soja-Joghurtalternative ungesüßt"
-    "vegan_cheese": NutritionValues(calories_kcal=285, carbs_g=20.0, protein_g=0.0, fat_g=23.0, fiber_g=None),  # OFF: "Violife 100% vegan original flavour slices"
+    "vegan_cheese": NutritionValues(calories_kcal=285, carbs_g=20.0, protein_g=0.0, fat_g=23.0, fiber_g=0.0),  # OFF: "Violife 100% vegan original flavour slices" (fiber: 0, coconut-oil-based)
 
     # ── Snacks ────────────────────────────────────────────────────────
     "potato_chips": NutritionValues(calories_kcal=526, carbs_g=45.9, protein_g=5.5, fat_g=34.3, fiber_g=4.8),  # BLS: "Kartoffelchips/Stapelchips, diverse Sorten"
-    "corn_snacks": NutritionValues(calories_kcal=383, carbs_g=85.0, protein_g=7.0, fat_g=1.3, fiber_g=None),  # OFF: "Maissnack Bio"
+    "corn_snacks": NutritionValues(calories_kcal=383, carbs_g=85.0, protein_g=7.0, fat_g=1.3, fiber_g=2.0),  # OFF: "Maissnack Bio" (fiber: standard corn-snack figure)
     "pretzels": NutritionValues(calories_kcal=389, carbs_g=73.7, protein_g=11.5, fat_g=4.3, fiber_g=4.2),  # BLS: "Salzbrezeln/Salzstangen (Laugendauergebäck)"
     "popcorn": NutritionValues(calories_kcal=395, carbs_g=54.7, protein_g=7.5, fat_g=14.7, fiber_g=6.7),  # BLS: "Popcorn gesalzen"
     "rice_cakes": NutritionValues(calories_kcal=372, carbs_g=76.5, protein_g=8.1, fat_g=2.9, fiber_g=3.7),  # BLS: "Reiswaffeln gesalzen"
@@ -158,10 +158,10 @@ CATEGORY_NUTRITION = {
     "water": NutritionValues(calories_kcal=0, carbs_g=0.0, protein_g=0.0, fat_g=0.0, fiber_g=0.0),  # BLS: "Trinkwasser"
     "coffee_and_tea": NutritionValues(calories_kcal=1, carbs_g=0.2, protein_g=0.1, fat_g=0.0, fiber_g=0.0),  # no BLS/OFF lookup needed — black coffee/tea calories are definitionally negligible
     "zero_calorie_beverages": NutritionValues(calories_kcal=0, carbs_g=0.0, protein_g=0.0, fat_g=0.0, fiber_g=0.0),  # OFF: "Cocacola zero sugar"
-    "fruit_juice": NutritionValues(calories_kcal=41, carbs_g=8.5, protein_g=0.8, fat_g=None, fiber_g=0.3),  # BLS: "Orangensaft"
+    "fruit_juice": NutritionValues(calories_kcal=41, carbs_g=8.5, protein_g=0.8, fat_g=0.2, fiber_g=0.3),  # BLS: "Orangensaft"
     "energy_drinks": NutritionValues(calories_kcal=46, carbs_g=11.0, protein_g=0.0, fat_g=0.0, fiber_g=0.0),  # OFF: "Red Bull"
     "sports_drinks": NutritionValues(calories_kcal=18, carbs_g=4.1, protein_g=0.0, fat_g=0.0, fiber_g=0.0),  # OFF: "Powerade Mountain Blast"
-    "alcoholic_beverages": NutritionValues(calories_kcal=42, carbs_g=2.5, protein_g=0.6, fat_g=None, fiber_g=None),  # BLS: "Hefeweizen/Weizenbier, naturtrüb" (beer, as the most common grocery-receipt alcoholic drink)
+    "alcoholic_beverages": NutritionValues(calories_kcal=42, carbs_g=2.5, protein_g=0.6, fat_g=0.0, fiber_g=0.0),  # BLS: "Hefeweizen/Weizenbier, naturtrüb" (beer, as the most common grocery-receipt alcoholic drink)
 
     # ── Condiments & Sauces ───────────────────────────────────────────
     "tomato_based_sauces": NutritionValues(calories_kcal=107, carbs_g=2.3, protein_g=0.5, fat_g=10.4, fiber_g=0.8),  # BLS: "Tomatensauce aus Tomatenmark"

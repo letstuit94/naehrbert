@@ -164,7 +164,7 @@ export function TipsPage() {
     <section>
       <h1>Recipes</h1>
       <p className="page-lead">
-        Recipes built from what&apos;s in your basket. Generate a new one or revisit your
+        Recipes based on your purchases. Generate a new one or revisit your
         saved ideas.
       </p>
 
@@ -540,14 +540,27 @@ function RecipeSummaryCard({
           ))}
         </ol>
 
-        <p className="recipe-card__macros">
-          {Math.round(recipe.calories_kcal)} kcal · P {Math.round(recipe.protein_g)}g · F{' '}
-          {Math.round(recipe.fat_g)}g · C {Math.round(recipe.carbs_g)}g · Fiber{' '}
-          {Math.round(recipe.fiber_g)}g
-        </p>
+        <h3>Nutrition</h3>
+        <div className="recipe-card__nutrition">
+          <span className="nutrient-chip">
+            <strong>{Math.round(recipe.calories_kcal)}</strong> kcal
+          </span>
+          <span className="nutrient-chip">
+            <strong>{Math.round(recipe.protein_g)}g</strong> protein
+          </span>
+          <span className="nutrient-chip">
+            <strong>{Math.round(recipe.fat_g)}g</strong> fat
+          </span>
+          <span className="nutrient-chip">
+            <strong>{Math.round(recipe.carbs_g)}g</strong> carbs
+          </span>
+          <span className="nutrient-chip">
+            <strong>{Math.round(recipe.fiber_g)}g</strong> fiber
+          </span>
+        </div>
         <p className="muted recipe-card__estimate-note">
-          Estimated by Nährbert — shop these ingredients and upload the receipt to log the
-          exact numbers.
+          Whole recipe, estimated by Nährbert — shop these ingredients and upload the
+          receipt to log the exact numbers.
         </p>
 
         <div className="recipe-card__feedback">

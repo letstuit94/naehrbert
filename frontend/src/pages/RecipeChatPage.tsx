@@ -423,8 +423,13 @@ export function RecipeChatPage() {
                       }
                     }}
                   />
-                  <button type="button" className="btn-link" onClick={addCustomAllergy}>
-                    Add
+                  <button
+                    type="button"
+                    className="chip-add-btn"
+                    aria-label="Add"
+                    onClick={addCustomAllergy}
+                  >
+                    +
                   </button>
                 </div>
                 {answers.allergies.length > 0 && (

@@ -2008,15 +2008,95 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   margin-bottom: 4px;
 }
 
-.recipe-card__macros {
-  font-weight: 600;
-  color: var(--text-h);
+/* Sage keyboard focus on the card header (§9) — replaces the browser's default
+   blue outline; only on keyboard focus, so a mouse click doesn't ring it. */
+.recipe-card__summary:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+/* Nutrition as a tidy row of value chips (embedded --code-bg pills) instead of
+   a bold text run — scannable and on-brand with the app's chip aesthetic. */
+.recipe-card__nutrition {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+.nutrient-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--code-bg);
+  font-size: 13px;
+  color: var(--text);
   font-variant-numeric: tabular-nums;
+}
+
+.nutrient-chip strong {
+  color: var(--text-h);
+  font-weight: 600;
 }
 
 .recipe-card__estimate-note {
   margin-top: 4px;
   font-size: 13px;
+}
+
+/* Clear separation between the recipe body and the feedback prompt. */
+.recipe-card__feedback {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.recipe-card__feedback .muted {
+  margin-right: auto;
+}
+
+/* Thumbs up/down — round icon-buttons (§15); active choice framed in sage-soft. */
+.recipe-card__feedback-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 16px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.recipe-card__feedback-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.recipe-card__feedback-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.recipe-card__feedback-btn--active {
+  background: var(--sage-soft);
+  border-color: var(--sage);
+}
+
+.recipe-card__feedback-btn:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 2px;
 }
 
 /* ── Pantry: urgency traffic-light + soft label ─────────────────────────── */

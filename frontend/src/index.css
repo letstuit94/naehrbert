@@ -27,38 +27,41 @@
   /* ── Type scale (CI §4) ──────────────────────────────────────────────────
      One documented size ramp so every screen shares the same hierarchy and
      relations. Anchored on readability: body (Fließtext) = 18px (the preferred,
-     most legible base; 16px on mobile — never smaller), secondary text = 14px,
-     and a hard 12px floor so nothing on any screen drops below a legible size.
+     most legible base; 16px on mobile — never smaller), secondary text = 17px,
+     and a 16px floor so nothing a user reads drops below the browser's default
+     legible size. The ramp was scaled up (body 18→20) while keeping every
+     relation intact. Two deliberate sub-16 exceptions, neither reading text:
+     uppercase kicker labels (.eyebrow, 14px) and graphical glyphs (16px).
      Read top-down as strictly descending importance:
-       display  40  hero metric (Results daily calories, score)
-       h1       36 / 28 mobile   — one page title
-       stat     28  stat-tile values
-       h2       22 / 19 mobile   — section titles (clear step above body)
-       h3       18  sub-section (= body, set apart by weight)
-       body     18  running paragraph text (16 on mobile)
-       lead     17  subtitle under H1 (below every heading — never out-sizes one)
-       meta     14  secondary / meta lines (.muted)
-       label    14  form labels, secondary controls
-       sm       13  chips, captions, hints
-       xs       12  dense micro-captions (floor)
-       eyebrow  12  uppercase kicker labels (floor)
-     Relations: 40 › 36 › 28 › 22 › 18 › 17 › 14 › 13 › 12. Every heading
+       display  44  hero metric (Results daily calories, score)
+       h1       40 / 31 mobile   — one page title
+       stat     31  stat-tile values
+       h2       25 / 22 mobile   — section titles (clear step above body)
+       h3       20  sub-section (= body, set apart by weight)
+       body     20  running paragraph text (16 on mobile)
+       lead     18  subtitle under H1 (below every heading — never out-sizes one)
+       meta     17  secondary / meta lines (.muted)
+       label    17  form labels, secondary controls
+       sm       16  chips, captions, hints
+       xs       16  dense micro-captions
+       eyebrow  14  uppercase kicker labels (non-reading exception)
+     Relations: 44 › 40 › 31 › 25 › 20 › 18 › 17 › 16. Every heading
      (h1/h2/h3) sits at or above body; the lead sits below every heading; the
-     smallest reading text is 12px. */
-  --fs-display: 40px;
-  --fs-h1: 36px;
-  --fs-h1-mobile: 28px;
-  --fs-stat: 28px;
-  --fs-h2: 22px;
-  --fs-h2-mobile: 19px;
-  --fs-h3: 18px;
-  --fs-body: 18px;
-  --fs-lead: 17px;
-  --fs-meta: 14px;
-  --fs-label: 14px;
-  --fs-sm: 13px;
-  --fs-xs: 12px;
-  --fs-eyebrow: 12px;
+     smallest reading text is 16px. */
+  --fs-display: 44px;
+  --fs-h1: 40px;
+  --fs-h1-mobile: 31px;
+  --fs-stat: 31px;
+  --fs-h2: 25px;
+  --fs-h2-mobile: 22px;
+  --fs-h3: 20px;
+  --fs-body: 20px;
+  --fs-lead: 18px;
+  --fs-meta: 17px;
+  --fs-label: 17px;
+  --fs-sm: 16px;
+  --fs-xs: 16px;
+  --fs-eyebrow: 14px;
 
   /* ── CI v2 · Salbeigrün-Akzent (§2.1) ───────────────────────────────────
      Die Guideline nennt Salbeigrün `--accent`; im Code ist `--accent` aber
@@ -113,9 +116,9 @@
     Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
-  /* Readable 18px base (Fließtext) — the most legible body size; steps down to
-     16px on phones, never below. */
-  font: 18px/1.5 var(--sans);
+  /* Readable 20px base (Fließtext) — the enlarged, comfortable body size; steps
+     down to 16px on phones, never below. */
+  font: 20px/1.5 var(--sans);
   letter-spacing: 0;
   color-scheme: light dark;
   color: var(--text);
@@ -239,7 +242,7 @@ code {
 }
 
 code {
-  font-size: 15px;
+  font-size: 18px;
   line-height: 135%;
   padding: 4px 8px;
   background: var(--code-bg);

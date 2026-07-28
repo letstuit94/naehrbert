@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { PageSkeleton } from '../components/Skeleton'
 import { Link } from 'react-router-dom'
 import {
   getComposition,
@@ -76,9 +77,9 @@ export function ResultsPage() {
 
   if (loading) {
     return (
-      <section>
+      <section aria-busy="true">
         <h1>Your results</h1>
-        <p>Loading…</p>
+        <PageSkeleton cards={2} lines={3} />
       </section>
     )
   }
@@ -92,17 +93,12 @@ export function ResultsPage() {
         <span className="title-note">(calculated over the last 28 days)</span>
       </h1>
       <p className="page-lead">
-        How your recent shopping stacks up against your targets — trends, not exact
-        values.
+        How your recent shopping stacks up against your targets — think trends, not exact
+        numbers. Based on your purchases, weighted toward what's recent — this reflects
+        your diet, not a food log.
       </p>
 
-      {!noReceiptsYet && composition.data && (
-        <p className="muted">
-          Based on what you've <strong>bought</strong>, weighted toward your recent
-          purchases — not necessarily what you eat. Purchases are a proxy for your diet,
-          not a food log.
-        </p>
-      )}
+      {!noReceiptsYet && composition.data && <p className="muted"></p>}
 
       {noReceiptsYet && (
         <p className="callout">
@@ -123,7 +119,7 @@ export function ResultsPage() {
             item
             {summary.data.items_count === 1 ? '' : 's'}).
           </p>
-          <Link to="/upload" className="btn btn-secondary">
+          <Link to="/upload" className="btn btn-secondary btn-accent">
             Upload more
           </Link>
         </div>

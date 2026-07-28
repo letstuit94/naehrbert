@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { PageSkeleton } from '../components/Skeleton'
 import { Link } from 'react-router-dom'
 import {
   ApiError,
@@ -8,12 +9,7 @@ import {
   type ItemCorrection,
   type PurchaseItem,
 } from '../lib/api'
-import {
-  matchInfo,
-  matchCategory,
-  MATCH_CATEGORY_LABEL,
-  type MatchCategory,
-} from '../lib/matchInfo'
+import { matchInfo } from '../lib/matchInfo'
 import {
   quantityBasis,
   QUANTITY_BASIS_LABEL,
@@ -34,7 +30,6 @@ type ReceiptGroup = {
   items: PurchaseItem[]
 }
 
-const MATCH_CATEGORIES: MatchCategory[] = ['verified', 'fallback', 'none', 'non_food']
 const UNIT_OPTIONS = ['g', 'kg', 'ml', 'l', 'piece'] as const
 
 const QUANTITY_BASIS_ICON: Record<QuantityBasis, string> = {
@@ -82,9 +77,6 @@ function groupByReceipt(items: PurchaseItem[]): ReceiptGroup[] {
 
 export function PurchasesPage() {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
-  const [activeFilters, setActiveFilters] = useState<Set<MatchCategory>>(
-    new Set(MATCH_CATEGORIES),
-  )
   const [actionError, setActionError] = useState<string | null>(null)
 
   function load() {
@@ -108,15 +100,6 @@ export function PurchasesPage() {
   useEffect(() => {
     void load()
   }, [])
-
-  function toggleFilter(category: MatchCategory) {
-    setActiveFilters((prev) => {
-      const next = new Set(prev)
-      if (next.has(category)) next.delete(category)
-      else next.add(category)
-      return next
-    })
-  }
 
   // Quantity/unit/match corrections are written against the *stored*
   // receipt_items row (per-100g values), but this page shows *actual*
@@ -148,9 +131,9 @@ export function PurchasesPage() {
 
   if (state.status === 'loading') {
     return (
-      <section>
+      <section aria-busy="true">
         <h1>Purchases</h1>
-        <p>Loading…</p>
+        <PageSkeleton cards={3} lines={1} />
       </section>
     )
   }
@@ -178,48 +161,19 @@ export function PurchasesPage() {
     )
   }
 
-  const counts = MATCH_CATEGORIES.reduce<Record<MatchCategory, number>>(
-    (acc, category) => ({ ...acc, [category]: 0 }),
-    { verified: 0, fallback: 0, none: 0, non_food: 0 },
-  )
-  for (const item of state.items) counts[matchCategory(item)] += 1
-
-  const visibleItems = state.items.filter((item) =>
-    activeFilters.has(matchCategory(item)),
-  )
-  const groups = groupByReceipt(visibleItems)
+  const groups = groupByReceipt(state.items)
 
   return (
     <section>
       <h1>Purchases</h1>
-      <p>Everything you've uploaded and confirmed, grouped by receipt.</p>
-
-      <div className="filter-bar" role="group" aria-label="Filter by match type">
-        {MATCH_CATEGORIES.map((category) => (
-          <button
-            key={category}
-            type="button"
-            className={
-              activeFilters.has(category)
-                ? 'filter-chip filter-chip--active'
-                : 'filter-chip'
-            }
-            onClick={() => toggleFilter(category)}
-          >
-            {MATCH_CATEGORY_LABEL[category]}
-            <span className="filter-chip__count">{counts[category]}</span>
-          </button>
-        ))}
-      </div>
+      <p className="page-lead">
+        Everything you've uploaded and confirmed, grouped by receipt.
+      </p>
 
       {actionError && (
         <p className="form-error" role="alert">
           {actionError}
         </p>
-      )}
-
-      {visibleItems.length === 0 && (
-        <p className="callout callout--muted">No purchases match the selected filters.</p>
       )}
 
       {groups.map((group) => (

@@ -9,11 +9,68 @@ import { Logo } from './Logo'
 // "Add new user" button, not a page an already-logged-in user revisits.
 // "Profile" lives as its own icon on the far right, not in this list.
 const NAV_LINKS = [
-  { to: '/upload', label: 'Upload' },
-  { to: '/results', label: 'Results' },
-  { to: '/pantry', label: 'Pantry' },
-  { to: '/tips', label: 'Recipes' },
+  { to: '/upload', label: 'Upload', icon: 'upload' as const },
+  { to: '/results', label: 'Results', icon: 'results' as const },
+  { to: '/pantry', label: 'Pantry', icon: 'pantry' as const },
+  { to: '/tips', label: 'Recipes', icon: 'recipes' as const },
 ]
+
+type NavIconName = (typeof NAV_LINKS)[number]['icon']
+
+// Thin inline line-icons in the same family as the profile icon and the leaf
+// logo (stroke=currentColor, no fill, round caps) -- so they inherit the link
+// colour, including the light tone on the active green pill. Decorative: the
+// label carries the accessible name.
+function NavIcon({ name }: { name: NavIconName }) {
+  const props = {
+    width: 16,
+    height: 16,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.8,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+  }
+  switch (name) {
+    case 'upload': // plus = add (a new receipt / data)
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 8v8" />
+          <path d="M8 12h8" />
+        </svg>
+      )
+    case 'results': // ascending bar chart
+      return (
+        <svg {...props}>
+          <path d="M5 20v-7" />
+          <path d="M12 20V8" />
+          <path d="M19 20V4" />
+        </svg>
+      )
+    case 'pantry': // shopping basket
+      return (
+        <svg {...props}>
+          <path d="m5 11 4-7" />
+          <path d="m19 11-4-7" />
+          <path d="M2 11h20" />
+          <path d="m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.6-7.4" />
+          <path d="m9 11 1 9" />
+          <path d="m15 11-1 9" />
+        </svg>
+      )
+    case 'recipes': // open book
+      return (
+        <svg {...props}>
+          <path d="M12 7v13" />
+          <path d="M12 7C10.3 5.3 7.5 4.7 4 5v12c3.5-.3 6.3.3 8 2" />
+          <path d="M12 7c1.7-1.7 4.5-2.3 8-2v12c-3.5-.3-6.3.3-8 2" />
+        </svg>
+      )
+  }
+}
 
 export function NavBar() {
   // useLocation() ties this read to the router's own location context, so
@@ -41,20 +98,41 @@ export function NavBar() {
           <span className="nav-wordmark">NutriWise</span>
         </span>
 
-        <ul className="nav-links">
-          {NAV_LINKS.map((link) => (
-            <li key={link.to}>
-              <NavLink
-                to={link.to}
-                className={({ isActive }) =>
-                  isActive ? 'nav-link nav-link--active' : 'nav-link'
-                }
-              >
-                {link.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
+        {/* Two separate pills: Upload (the "add data" action) stands alone in
+            its own ring, set apart from the analysis views that follow. */}
+        <div className="nav-tabs">
+          <ul className="nav-links nav-links--solo">
+            {NAV_LINKS.filter((l) => l.to === '/upload').map((link) => (
+              <li key={link.to}>
+                <NavLink
+                  to={link.to}
+                  className={({ isActive }) =>
+                    isActive ? 'nav-link nav-link--active' : 'nav-link'
+                  }
+                >
+                  <NavIcon name={link.icon} />
+                  <span className="nav-link__label">{link.label}</span>
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+
+          <ul className="nav-links">
+            {NAV_LINKS.filter((l) => l.to !== '/upload').map((link) => (
+              <li key={link.to}>
+                <NavLink
+                  to={link.to}
+                  className={({ isActive }) =>
+                    isActive ? 'nav-link nav-link--active' : 'nav-link'
+                  }
+                >
+                  <NavIcon name={link.icon} />
+                  <span className="nav-link__label">{link.label}</span>
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </div>
 
         <NavLink
           to="/profile"

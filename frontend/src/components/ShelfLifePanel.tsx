@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Skeleton } from './Skeleton'
 import {
   ApiError,
   getShelfLife,
@@ -106,7 +107,11 @@ export function ShelfLifePanel({
       )}
 
       {groups === null ? (
-        <p>Loading…</p>
+        <div className="skeleton-rows" aria-hidden="true">
+          <Skeleton h={32} />
+          <Skeleton h={32} />
+          <Skeleton h={32} />
+        </div>
       ) : (
         <ul className="shelf-life-list">
           {groups.map((g) => (

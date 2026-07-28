@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Skeleton } from '../components/Skeleton'
 import { useNavigate } from 'react-router-dom'
 import {
   ApiError,
@@ -291,10 +292,12 @@ export function RecipeChatPage() {
 
   if (stage === 'loading') {
     return (
-      <section>
+      <section aria-busy="true">
         <h1>Recipe recommendations</h1>
-        <div className="chat-card">
-          <p>Loading…</p>
+        <div className="chat-card skeleton-card">
+          <Skeleton w="40%" h={12} />
+          <Skeleton h={40} />
+          <Skeleton w="70%" h={40} />
         </div>
       </section>
     )
@@ -329,6 +332,9 @@ export function RecipeChatPage() {
   return (
     <section>
       <h1>Recipe recommendations</h1>
+      <p className="page-lead">
+        Tell me what you're after and I'll build recipes around what's in your pantry.
+      </p>
       <div className="chat-card">
         <div ref={historyRef} className="chat-history">
           {finished.map((turn, i) => (

@@ -63,7 +63,7 @@
 
 .upload-tips__icon {
   flex: 0 0 auto;
-  font-size: 15px;
+  font-size: 18px;
   line-height: 1.3;
 }
 
@@ -111,7 +111,7 @@
 }
 
 .nav-wordmark {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.3px;
   color: var(--text-h);
@@ -130,7 +130,7 @@
   gap: 2px;
   list-style: none;
   margin: 0;
-  padding: 4px;
+  padding: 6px;
   max-width: 100%;
   overflow-x: auto;
   scrollbar-width: none;
@@ -151,10 +151,10 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px;
+  padding: 9px 16px;
   border-radius: 999px;
   color: var(--text);
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
@@ -262,7 +262,7 @@
 }
 
 .form-field label {
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--text-h);
 }
@@ -273,7 +273,7 @@
   font: inherit;
   /* Controls sit on their own compact scale (15px, like the buttons), not the
      18px body size, so field text/placeholders don't tower over their labels. */
-  font-size: 15px;
+  font-size: 18px;
   padding: 10px 14px;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -302,7 +302,7 @@
 
 .recipe-search-input {
   font: inherit;
-  font-size: 15px;
+  font-size: 18px;
   flex: 0 1 240px;
   min-width: 200px;
   margin-left: auto;
@@ -353,7 +353,7 @@
 
 .form-error {
   color: var(--danger);
-  font-size: 15px;
+  font-size: 18px;
 }
 
 /* Buttons (CI §8 · J4). One transition + hover lift across variants so every
@@ -389,7 +389,7 @@
 .btn-primary {
   background: var(--action);
   color: var(--action-contrast);
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
 }
 
@@ -418,7 +418,7 @@
   background: var(--surface);
   border-color: var(--border);
   color: var(--text);
-  font-size: 15px;
+  font-size: 18px;
   transition:
     transform 0.15s ease,
     background 0.15s ease,
@@ -429,7 +429,7 @@
   background: var(--surface);
   border-color: var(--danger);
   color: var(--danger);
-  font-size: 15px;
+  font-size: 18px;
   transition:
     transform 0.15s ease,
     background 0.15s ease,
@@ -454,10 +454,11 @@
    This is the single primitive for every low-emphasis command in the app. */
 .btn-link {
   font: inherit;
+  font-size: var(--fs-sm);
   font-weight: 500;
   background: none;
   border: none;
-  padding: 3px 6px;
+  padding: 5px 9px;
   border-radius: 8px;
   color: var(--text);
   cursor: pointer;
@@ -483,7 +484,7 @@
 }
 
 .stat-tile__label {
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text);
 }
 
@@ -555,7 +556,7 @@
 
 .details-panel summary::before {
   content: '▸';
-  font-size: 10px;
+  font-size: 16px;
   color: var(--text);
   transition: transform 0.15s ease;
 }
@@ -571,7 +572,7 @@
 .kv-list > div {
   display: flex;
   justify-content: space-between;
-  padding: 4px 0;
+  padding: 6px 0;
   border-bottom: 1px solid var(--border);
   font-variant-numeric: tabular-nums;
 }
@@ -579,6 +580,7 @@
 .kv-list dt,
 .kv-list dd {
   margin: 0;
+  font-size: var(--fs-sm);
   font-weight: 400;
   color: var(--text);
 }
@@ -624,7 +626,7 @@
 }
 
 .plant-diversity-group__label {
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--text-h);
   margin: 0 0 6px;
@@ -641,7 +643,7 @@
 }
 
 .upload-card__label {
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -704,7 +706,7 @@
 }
 
 .upload-dropzone__subtitle {
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text);
 }
 
@@ -712,7 +714,7 @@
   display: flex;
   gap: 2px;
   margin: var(--space-4) 0;
-  padding: 4px;
+  padding: 6px;
   width: fit-content;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -721,10 +723,10 @@
 
 .tab {
   font: inherit;
-  font-size: 13px;
+  font-size: 17px;
   background: none;
   border: none;
-  padding: 7px 14px;
+  padding: 9px 16px;
   border-radius: 999px;
   cursor: pointer;
   color: var(--text);
@@ -765,7 +767,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 17px;
   color: var(--text);
 }
 
@@ -800,7 +802,7 @@
 
 .upload-progress__note {
   margin-top: 10px;
-  font-size: 13px;
+  font-size: 17px;
 }
 
 @keyframes upload-progress-pulse {
@@ -847,7 +849,7 @@
   width: 24px;
   height: 24px;
   font: inherit;
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1;
   background: none;
   border: none;
@@ -887,7 +889,7 @@
 }
 
 .review-row__field-label {
-  font-size: 12px;
+  font-size: 16px;
   color: var(--text-h);
 }
 
@@ -899,7 +901,7 @@
 }
 
 .review-row__match {
-  font-size: 12px;
+  font-size: 16px;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
@@ -911,7 +913,7 @@
 }
 
 .review-row__fix-match {
-  font-size: 12px;
+  font-size: 16px;
 }
 
 .review-row__search-panel {
@@ -937,11 +939,11 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 10px;
+  padding: 9px 12px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  font-size: 13px;
+  font-size: 17px;
 }
 
 .candidate-row__main {
@@ -959,7 +961,7 @@
   color: var(--text);
   background: var(--code-bg);
   border-radius: 4px;
-  padding: 1px 5px;
+  padding: 3px 8px;
 }
 
 .candidate-row__name {
@@ -980,8 +982,8 @@
 .review-row__qty,
 .review-row__unit {
   font: inherit;
-  font-size: 14px;
-  padding: 7px 10px;
+  font-size: 17px;
+  padding: 9px 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
@@ -995,12 +997,12 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 6px 12px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface);
   color: var(--text);
-  font-size: 12px;
+  font-size: 16px;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -1023,7 +1025,7 @@
 
 .review-purchase-info {
   margin-top: 8px;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--text-h);
 }
@@ -1178,7 +1180,7 @@
 }
 
 .macro-ring-tile__label {
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text);
 }
 
@@ -1209,7 +1211,7 @@
 }
 
 .macro-ring__value {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-h);
   font-variant-numeric: tabular-nums;
@@ -1252,11 +1254,11 @@
 }
 
 .bucket-list li {
-  padding: 9px 14px;
+  padding: 11px 16px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  font-size: 14px;
+  font-size: 17px;
 }
 
 /* ── Unlock recipes (Results) ─────────────────────────────────────────── */
@@ -1303,7 +1305,7 @@
 }
 
 .login-logo__word {
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 600;
   letter-spacing: -0.5px;
   color: var(--text-h);
@@ -1400,11 +1402,11 @@ a.btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 6px 12px;
   border-radius: 999px;
   background: var(--code-bg);
   border: 1px solid var(--border);
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 .chip__remove {
@@ -1486,14 +1488,14 @@ a.btn {
   justify-content: center;
   border-radius: 50%;
   background: var(--accent-bg);
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .chat-bubble {
   max-width: 80%;
   padding: 10px 14px;
   border-radius: 16px;
-  font-size: 14px;
+  font-size: 17px;
   line-height: 145%;
 }
 
@@ -1528,7 +1530,7 @@ a.btn {
 }
 
 .chat-edit-row .btn-link {
-  font-size: 12px;
+  font-size: 16px;
   color: var(--text);
 }
 
@@ -1547,9 +1549,9 @@ a.btn {
 
 .chat-choice {
   font: inherit;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 500;
-  padding: 7px 14px;
+  padding: 9px 16px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--code-bg);
@@ -1576,8 +1578,8 @@ a.btn {
 .chat-input-row input {
   flex: 1;
   font: inherit;
-  font-size: 15px;
-  padding: 9px 14px;
+  font-size: 18px;
+  padding: 11px 16px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface);
@@ -1600,13 +1602,13 @@ a.btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px;
+  padding: 9px 16px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--code-bg);
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 500;
   cursor: pointer;
 }
@@ -1623,7 +1625,7 @@ a.btn {
 }
 
 .filter-chip__check {
-  font-size: 11px;
+  font-size: 16px;
   line-height: 1;
   margin-right: -1px;
 }
@@ -1638,7 +1640,7 @@ a.btn {
 }
 
 .purchase-group__header {
-  font-size: 16px;
+  font-size: 18px;
   margin-bottom: 8px;
 }
 
@@ -1648,7 +1650,9 @@ a.btn {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  /* Match the recipe cards' vertical rhythm on the Recipes page (.recipe-card
+     uses margin: var(--space-3) 0). */
+  gap: var(--space-3);
 }
 
 .purchase-row {
@@ -1660,7 +1664,7 @@ a.btn {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .purchase-row--non-food {
@@ -1680,7 +1684,7 @@ a.btn {
 
 .purchase-row__edit-toggle {
   align-self: flex-start;
-  font-size: 12px;
+  font-size: 16px;
 }
 
 .purchase-row__edit-panel {
@@ -1706,7 +1710,7 @@ a.btn {
   height: 16px;
   flex-shrink: 0;
   border-radius: 50%;
-  font-size: 10px;
+  font-size: 16px;
   line-height: 1;
   cursor: default;
 }
@@ -1779,7 +1783,7 @@ a.btn {
 
 /* Age of the lot -- its own column, right of the quantity. */
 .pantry-row__age {
-  font-size: 12px;
+  font-size: 16px;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -1798,21 +1802,21 @@ a.btn {
   height: 26px;
   border-radius: 999px;
   background: var(--sage-soft);
-  font-size: 14px;
+  font-size: 17px;
   line-height: 1;
 }
 
 .pantry-row__macros-sub {
   color: var(--text);
-  font-size: 12px;
+  font-size: 16px;
   font-variant-numeric: tabular-nums;
 }
 
 .pantry-row__icon-btn {
   border: none;
   background: none;
-  padding: 2px 4px;
-  font-size: 13px;
+  padding: 4px 7px;
+  font-size: 17px;
   line-height: 1;
   color: var(--text);
   cursor: pointer;
@@ -1861,8 +1865,8 @@ a.btn {
 .pantry-row__action {
   border: 1px solid var(--border);
   background: none;
-  padding: 4px 8px;
-  font-size: 18px;
+  padding: 6px 10px;
+  font-size: 20px;
   line-height: 1;
   border-radius: 8px;
   cursor: pointer;
@@ -1899,7 +1903,7 @@ a.btn {
 
 .pantry-row__panel-label {
   color: var(--text-h);
-  font-size: 13px;
+  font-size: 17px;
 }
 
 .pantry-row__amount {
@@ -2003,7 +2007,7 @@ a.btn {
 
 .add-item-panel__label {
   color: var(--text-h);
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 600;
 }
 
@@ -2013,7 +2017,7 @@ a.btn {
 
 .add-item-panel__picked {
   margin: 0;
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text-h);
 }
 
@@ -2068,7 +2072,7 @@ a.btn {
 .recipe-card__title-row::before {
   content: '▸';
   color: var(--text);
-  font-size: 12px;
+  font-size: 16px;
   flex-shrink: 0;
 }
 
@@ -2079,7 +2083,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 .recipe-card__title {
   font-weight: 600;
   color: var(--text-h);
-  font-size: 16px;
+  font-size: 20px;
 }
 
 .recipe-card__meta-row {
@@ -2091,14 +2095,14 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 }
 
 .recipe-card__meta {
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
 .recipe-card__label {
-  font-size: 12px;
-  padding: 3px 9px;
+  font-size: 16px;
+  padding: 5px 11px;
   margin-left: auto; /* pins it to the bottom-right corner of the card header */
   flex-shrink: 0;
 }
@@ -2113,10 +2117,18 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   border-top: 1px dashed var(--border);
 }
 
+/* Section headings inside a recipe (Ingredients / Steps / Nutrition) sit below
+   the card title (20px) — a distinct step, not louder than the title. */
+.recipe-card__body h3 {
+  font-size: 18px;
+}
+
 .recipe-card__ingredients,
 .recipe-card__steps {
   margin: 8px 0 16px;
   padding-left: 20px;
+  /* Recipe running text reads a step below the title. */
+  font-size: 17px;
 }
 
 .recipe-card__ingredients li,
@@ -2124,15 +2136,95 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   margin-bottom: 4px;
 }
 
-.recipe-card__macros {
-  font-weight: 600;
-  color: var(--text-h);
+/* Sage keyboard focus on the card header (§9) — replaces the browser's default
+   blue outline; only on keyboard focus, so a mouse click doesn't ring it. */
+.recipe-card__summary:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+/* Nutrition as a tidy row of value chips (embedded --code-bg pills) instead of
+   a bold text run — scannable and on-brand with the app's chip aesthetic. */
+.recipe-card__nutrition {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+.nutrient-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: var(--code-bg);
+  font-size: 17px;
+  color: var(--text);
   font-variant-numeric: tabular-nums;
+}
+
+.nutrient-chip strong {
+  color: var(--text-h);
+  font-weight: 600;
 }
 
 .recipe-card__estimate-note {
   margin-top: 4px;
-  font-size: 13px;
+  font-size: 17px;
+}
+
+/* Clear separation between the recipe body and the feedback prompt. */
+.recipe-card__feedback {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.recipe-card__feedback .muted {
+  margin-right: auto;
+}
+
+/* Thumbs up/down — round icon-buttons (§15); active choice framed in sage-soft. */
+.recipe-card__feedback-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 18px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.recipe-card__feedback-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.recipe-card__feedback-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.recipe-card__feedback-btn--active {
+  background: var(--sage-soft);
+  border-color: var(--sage);
+}
+
+.recipe-card__feedback-btn:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 2px;
 }
 
 /* ── Pantry: urgency traffic-light + soft label ─────────────────────────── */
@@ -2177,7 +2269,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 }
 
 .urgency__label {
-  font-size: 12px;
+  font-size: 16px;
   color: var(--text);
 }
 
@@ -2192,7 +2284,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 .pantry-controls__views {
   display: inline-flex;
   gap: 2px;
-  padding: 3px;
+  padding: 5px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -2202,9 +2294,9 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 .pantry-toggle {
   border: none;
   background: none;
-  padding: 6px 12px;
+  padding: 8px 14px;
   border-radius: 7px;
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text);
   cursor: pointer;
 }
@@ -2229,12 +2321,12 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 .pantry-search {
   flex: 0 1 240px;
   min-width: 160px;
-  padding: 7px 10px;
+  padding: 9px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
-  font-size: 13px;
+  font-size: 17px;
 }
 
 /* Row 2: filter bar, set apart from the sort row by a hairline. */
@@ -2256,12 +2348,12 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 8px 13px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
-  font-size: 13px;
+  font-size: 17px;
   cursor: pointer;
 }
 
@@ -2281,7 +2373,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 }
 
 .filter-btn__caret {
-  font-size: 10px;
+  font-size: 16px;
   opacity: 0.7;
 }
 
@@ -2294,7 +2386,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   min-width: 220px;
   max-height: 320px;
   overflow-y: auto;
-  padding: 8px;
+  padding: 10px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -2305,7 +2397,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 6px 8px;
+  padding: 6px 9px 10px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -2324,7 +2416,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
    .btn-link command style), sized to the popover, not big dark text. */
 .cat-popover__actions .btn-link {
   font-size: var(--fs-sm);
-  padding: 2px 6px;
+  padding: 4px 9px;
 }
 
 .cat-popover__list {
@@ -2337,9 +2429,9 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px;
+  padding: 8px;
   border-radius: 7px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text);
   cursor: pointer;
 }
@@ -2350,12 +2442,12 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 
 /* "Next 3 days" quick filter as a toggle pill. */
 .filter-pill {
-  padding: 7px 14px;
+  padding: 9px 16px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--code-bg);
   color: var(--text);
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 500;
   cursor: pointer;
 }
@@ -2369,7 +2461,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 
 .pantry-clear {
   margin-left: auto;
-  font-size: 13px;
+  font-size: 17px;
 }
 
 /* ── Pantry "by category" view: group headers ───────────────────────────── */
@@ -2387,14 +2479,14 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 8px 14px;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 600;
 }
 
 .pantry-expand-toggle__caret {
-  font-size: 10px;
+  font-size: 16px;
 }
 
 /* Each food group is one card: a tappable header (emoji · name · count · caret)
@@ -2446,7 +2538,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   height: 30px;
   border-radius: 999px;
   background: var(--sage-soft);
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1;
 }
 
@@ -2479,7 +2571,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 .pantry-group__caret {
   flex: 0 0 auto;
   margin-left: auto;
-  font-size: 11px;
+  font-size: 16px;
   color: var(--text);
 }
 
@@ -2513,7 +2605,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 
 .shelf-life-panel__head p {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: 16px;
 }
 
 .shelf-life-list {
@@ -2533,7 +2625,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 }
 
 .shelf-life-row__label {
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text);
 }
 
@@ -2546,12 +2638,12 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 
 .shelf-life-row__input input {
   width: 68px;
-  padding: 5px 8px;
+  padding: 7px 10px;
   border: 1px solid var(--border);
   border-radius: 7px;
   background: var(--bg);
   color: var(--text);
-  font-size: 13px;
+  font-size: 17px;
   text-align: right;
 }
 
@@ -2562,7 +2654,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   color: var(--accent);
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 1px 6px;
+  padding: 3px 9px;
 }
 
 .shelf-life-panel__actions {
@@ -2589,7 +2681,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 .profile-lead {
   margin: 0 0 8px;
   max-width: 56ch;
-  font-size: 14px;
+  font-size: 17px;
   line-height: 1.5;
 }
 
@@ -2666,14 +2758,14 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 }
 
 .profile-header__name {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--text-h);
 }
 
 .profile-header__meta {
   margin-top: 2px;
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
@@ -2688,7 +2780,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 
 .profile-note {
   margin: var(--space-3) 0 var(--space-6);
-  font-size: 13px;
+  font-size: 17px;
   text-align: center;
 }
 
@@ -2753,7 +2845,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 }
 
 .empty-state__emoji {
-  font-size: 32px;
+  font-size: 36px;
   line-height: 1;
 }
 
@@ -2788,9 +2880,9 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 .btn-soft {
   background: var(--sage-soft);
   color: var(--sage-ink);
-  padding: 7px 16px;
+  padding: 9px 18px;
   border-radius: 999px;
-  font-size: 14px;
+  font-size: 17px;
   box-shadow: inset 0 0 0 1px var(--border);
 }
 
@@ -2849,14 +2941,14 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 
 .profile-field__label {
   flex: 0 0 42%;
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text);
 }
 
 .profile-field__value {
   flex: 1;
   min-width: 0;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--text-h);
   text-align: right;
@@ -2916,7 +3008,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
 .profile-field__editor textarea {
   width: 100%;
   font: inherit;
-  font-size: 14px;
+  font-size: 17px;
   padding: 11px 14px;
   border: 0;
   border-radius: 12px;
@@ -2951,7 +3043,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   justify-content: center;
   width: 40px;
   height: 40px;
-  font-size: 22px;
+  font-size: 24px;
   line-height: 1;
   border: 0;
   border-radius: 12px;
@@ -2990,7 +3082,7 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   width: 100%;
   padding: 13px 22px;
   border-radius: 16px;
-  font-size: 15px;
+  font-size: 18px;
 }
 
 .profile-logout {

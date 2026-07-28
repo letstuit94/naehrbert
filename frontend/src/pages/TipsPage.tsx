@@ -164,8 +164,9 @@ export function TipsPage() {
     <section>
       <h1>Recipes</h1>
       <p className="page-lead">
-        Recipes built from what&apos;s in your basket. Generate a new one or revisit your
-        saved ideas.
+        Recipes are generated to help close the macro gap from your Results page, using
+        your saved dietary preferences plus whatever cuisine, time, and servings you set
+        below.
       </p>
 
       {unlockStatus.data?.unlocked && unlockStatus.data.prefs_completed ? (

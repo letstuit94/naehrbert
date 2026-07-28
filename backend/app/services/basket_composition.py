@@ -21,13 +21,16 @@ arithmetic, no filtering.
 
 Epic 5.1 explicitly asks for a documented policy on unmatched/low-
 confidence items. Policy: their calories still count toward `kcal_total`
-(it should reflect what was actually purchased), but the lowest-confidence
-match tier (services/fallback_categories.py's category estimate) only
-models protein/fiber/sugar/calories, never fat/carbs — so an item resolved
-there contributes calories without a matching fat/carb contribution, and
-protein_pct + fat_pct + carb_pct can legitimately fall short of 100%. That
-gap is surfaced explicitly as `unaccounted_pct` rather than hidden or
-silently absorbed into one of the three macros.
+(it should reflect what was actually purchased) and, per the current
+fallback_categories.py data, the lowest-confidence match tier (category
+estimate) carries a full protein/fat/carb/fiber breakdown for every
+category — so fallback items are already included in the macro split, not
+held out of it. `unaccounted_pct` still exists for the rare residual case
+(e.g. a sparse OFF match missing a macro), surfaced explicitly rather than
+hidden or silently absorbed into one of the three macros. Whether an item's
+calories came from a category estimate at all — as opposed to whether that
+estimate has full data — is reported separately as `fallback_share_pct`, a
+confidence label rather than an exclusion.
 """
 
 from datetime import date, datetime
@@ -145,7 +148,7 @@ def compute_basket_composition(
     """
 
     protein_total = fat_total = carb_total = fiber_total = kcal_total = 0.0
-    kcal_macro_covered = kcal_confident = kcal_measured_qty = 0.0
+    kcal_macro_covered = kcal_confident = kcal_fallback = kcal_measured_qty = 0.0
     considered = 0
     receipt_ids = set()
 
@@ -190,8 +193,11 @@ def compute_basket_composition(
         kcal_total += kcal_contrib
         if protein_g is not None and fat_g is not None and carbs_g is not None:
             kcal_macro_covered += kcal_contrib
-        if (item.get("match_type") or "").lower() in _CONFIDENT_MATCH_TYPES:
+        match_type = (item.get("match_type") or "").lower()
+        if match_type in _CONFIDENT_MATCH_TYPES:
             kcal_confident += kcal_contrib
+        if match_type == "fallback":
+            kcal_fallback += kcal_contrib
         qty = item.get("quantity")
         if (item.get("unit") or "").strip().lower() in _MEASURED_UNITS and isinstance(
             qty, (int, float)
@@ -217,6 +223,7 @@ def compute_basket_composition(
     # are.
     macro_coverage_pct = round(kcal_macro_covered / kcal_total * 100, 1)
     match_coverage_pct = round(kcal_confident / kcal_total * 100, 1)
+    fallback_share_pct = round(kcal_fallback / kcal_total * 100, 1)
     quantity_coverage_pct = round(kcal_measured_qty / kcal_total * 100, 1)
     receipts_considered = len(receipt_ids)
 
@@ -235,6 +242,7 @@ def compute_basket_composition(
         "receipts_considered": receipts_considered,
         "macro_coverage_pct": macro_coverage_pct,
         "match_coverage_pct": match_coverage_pct,
+        "fallback_share_pct": fallback_share_pct,
         "quantity_coverage_pct": quantity_coverage_pct,
         "low_confidence": low_confidence,
     }

@@ -11,12 +11,15 @@ from backend.app.db import repo
 from backend.app.models.profile import Profile
 from backend.app.services.basket_composition import compute_basket_composition
 from backend.app.services.bucketing import compute_buckets
+from backend.app.services.dge_matcher import get_micronutrient_targets
 from backend.app.services.diversity import compute_diversity
 from backend.app.services.ideal_profile import (
     FIBER_G_PER_1000KCAL,
+    _age_from_dob,
     compute_ideal_profile,
     macro_percentages,
 )
+from backend.app.services.micronutrients import compute_micronutrient_totals
 from backend.app.services.nutrition_profile import grams_for
 from backend.app.services.plant_diversity import compute_plant_diversity
 
@@ -42,6 +45,7 @@ _EMPTY_COMPOSITION = {
     "receipts_considered": 0,
     "macro_coverage_pct": None,
     "match_coverage_pct": None,
+    "fallback_share_pct": None,
     "quantity_coverage_pct": None,
     "low_confidence": True,
 }
@@ -208,6 +212,62 @@ def get_diversity(profile_id: int = Depends(require_profile_id)):
 
     items = repo.get_all_confirmed_receipt_items(profile_id)
     return compute_diversity(items)
+
+
+@router.get("/meal-coverage")
+def get_meal_coverage(profile_id: int = Depends(require_profile_id)):
+    """Konsum.md Stufe 5 — how much of the daily calorie target the last
+    _RESULTS_WINDOW_DAYS of grocery purchases would cover if fully
+    consumed, as a fraction of that target (shown inline on the Daily
+    calories card, not as its own tile).
+
+    Uses an (effectively) undecayed composition -- this answers "how much
+    food do you physically have", not the EWMA-weighted current macro mix
+    compute_basket_composition's default half_life_days models elsewhere."""
+
+    stored = repo.get_profile(profile_id)
+    if not stored:
+        raise HTTPException(status_code=404, detail="No profile yet")
+    targets = compute_ideal_profile(Profile(**stored))
+    if targets is None:
+        raise HTTPException(status_code=422, detail="Profile is incomplete")
+
+    items = repo.get_all_confirmed_receipt_items(profile_id)
+    raw = compute_basket_composition(
+        items, reference_date=_today(), window_days=_RESULTS_WINDOW_DAYS, half_life_days=1e6,
+    )
+    kcal_purchased = (raw or {}).get("kcal_total") or 0.0
+    share_pct = stored.get("consumption_share_pct") or 100.0
+    effective_kcal = kcal_purchased * share_pct / 100.0
+
+    return {
+        "window_days": _RESULTS_WINDOW_DAYS,
+        "kcal_purchased": round(kcal_purchased, 1),
+        "consumption_share_pct": share_pct,
+        "effective_kcal": round(effective_kcal, 1),
+        "daily_target_kcal": targets.calories_kcal,
+    }
+
+
+@router.get("/micronutrients")
+def get_micronutrients(profile_id: int = Depends(require_profile_id)):
+    """28-day BLS-sourced micronutrient totals + a trust metric, alongside
+    the DGE's daily reference values (services/dge_matcher.py) for this
+    profile's age/sex/life_stage -- unlike IdealProfile's macro targets,
+    these come from an external reference table, not this app's own
+    formulas, so they're returned here rather than folded into IdealProfile."""
+
+    items = repo.get_all_confirmed_receipt_items(profile_id)
+    result = compute_micronutrient_totals(items, reference_date=_today(), window_days=_RESULTS_WINDOW_DAYS)
+
+    stored = repo.get_profile(profile_id)
+    targets = None
+    if stored:
+        age = _age_from_dob(stored["date_of_birth"])
+        if age is not None:
+            targets = get_micronutrient_targets(age, stored["sex"], stored.get("life_stage") or "none")
+    result["targets"] = targets
+    return result
 
 
 @router.get("/plant-diversity")

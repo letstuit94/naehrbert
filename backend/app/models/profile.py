@@ -12,7 +12,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Sex(str, Enum):
@@ -63,6 +63,20 @@ class DietaryStyle(str, Enum):
     VEGAN = "vegan"
 
 
+class LifeStage(str, Enum):
+    """Pregnancy/nursing status — the DGE's daily micronutrient reference
+    values (services/dge_matcher.py) differ materially by this on top of
+    age/sex (e.g. Folat 550µg vs 300µg, Eisen 27mg vs 16mg while pregnant).
+    Edited on the Profile page, defaults to NONE so existing profiles that
+    predate this field keep getting the plain age/sex reference values."""
+
+    NONE = "none"
+    PREGNANT_T1 = "pregnant_t1"
+    PREGNANT_T2 = "pregnant_t2"
+    PREGNANT_T3 = "pregnant_t3"
+    NURSING = "nursing"
+
+
 # Sane biometric bounds (Epic 1.1 "plausible numeric ranges").
 _HEIGHT_CM = Field(ge=100.0, le=250.0)
 _WEIGHT_KG = Field(ge=30.0, le=300.0)
@@ -94,6 +108,22 @@ class ProfileCreate(BaseModel):
     # other optional fields on Profile below.
     household_size: Optional[int] = Field(default=None, ge=1, le=20)
     consumption_share_pct: Optional[float] = Field(default=None, ge=1, le=100)
+
+    # Defaults to NONE (not Optional[None]) since "not pregnant/nursing" is
+    # itself a meaningful, always-correct default -- unlike household_size/
+    # consumption_share_pct above, this is never genuinely "unanswered".
+    life_stage: LifeStage = LifeStage.NONE
+
+    @field_validator("life_stage", mode="before")
+    @classmethod
+    def _null_life_stage_means_none(cls, value):
+        # migration 0013 added this column nullable with no backfill, so
+        # every profile row that predates it comes back as an *explicit*
+        # life_stage=None from the DB -- Pydantic only applies a field's
+        # default when the key is missing, not when it's present-but-None,
+        # so without this the field default above never actually fires for
+        # any pre-existing profile and validation fails outright.
+        return LifeStage.NONE if value is None else value
 
 
 class Profile(ProfileCreate):

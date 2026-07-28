@@ -13,6 +13,7 @@ import {
   type PantryRemovalReason,
 } from '../lib/api'
 import { AddItemPanel } from '../components/AddItemPanel'
+import { PageSkeleton } from '../components/Skeleton'
 import { PantryControls } from '../components/PantryControls'
 import { MatchSearchPanel } from '../components/MatchSearchPanel'
 // ShelfLifePanel (per-category shelf-life editor) is intentionally NOT
@@ -287,9 +288,9 @@ export function PantryPage() {
 
   if (state.status === 'loading') {
     return (
-      <section>
+      <section aria-busy="true">
         <h1>Pantry</h1>
-        <p>Loading…</p>
+        <PageSkeleton cards={3} lines={2} />
       </section>
     )
   }
@@ -322,13 +323,19 @@ export function PantryPage() {
   const addControls = adding ? (
     <AddItemPanel onAdded={handleAdded} onClose={() => setAdding(false)} />
   ) : (
-    <button
-      type="button"
-      className="btn btn-secondary pantry-add-btn"
-      onClick={() => setAdding(true)}
-    >
-      ＋ Add item manually
-    </button>
+    <div className="pantry-add">
+      <p className="pantry-add__hint">
+        Got food at home that didn't come from an uploaded receipt? Add it here by hand so
+        your pantry stays complete.
+      </p>
+      <button
+        type="button"
+        className="btn btn-secondary btn-accent pantry-add-btn"
+        onClick={() => setAdding(true)}
+      >
+        ＋ Add item manually
+      </button>
+    </div>
   )
 
   if (state.status === 'empty') {
@@ -407,7 +414,19 @@ export function PantryPage() {
       />
 
       {visible.length === 0 ? (
-        <p className="callout callout--muted">No items match the current filters.</p>
+        <div className="empty-state">
+          <span className="empty-state__emoji" aria-hidden="true">
+            🔍
+          </span>
+          <p>No items match the current filters.</p>
+          <button
+            type="button"
+            className="btn btn-soft"
+            onClick={() => setFilters(NO_FILTERS)}
+          >
+            Clear filters
+          </button>
+        </div>
       ) : view === 'category' ? (
         (() => {
           const cats = groupByCategory(visible)
@@ -417,13 +436,17 @@ export function PantryPage() {
               <div className="pantry-group-tools">
                 <button
                   type="button"
-                  className="btn-link"
+                  className="btn btn-secondary pantry-expand-toggle"
+                  aria-expanded={allExpanded}
                   onClick={() =>
                     setExpandedGroups(
                       allExpanded ? new Set() : new Set(cats.map((cat) => cat.group)),
                     )
                   }
                 >
+                  <span className="pantry-expand-toggle__caret" aria-hidden="true">
+                    {allExpanded ? '▾' : '▸'}
+                  </span>
                   {allExpanded ? 'Collapse all' : 'Expand all'}
                 </button>
               </div>
@@ -431,7 +454,12 @@ export function PantryPage() {
                 const expanded = expandedGroups.has(cat.group)
                 const listId = `pantry-group-${cat.group}`
                 return (
-                  <div key={cat.group} className="pantry-group">
+                  <div
+                    key={cat.group}
+                    className={
+                      expanded ? 'pantry-group pantry-group--open' : 'pantry-group'
+                    }
+                  >
                     <h2 className="pantry-group__head">
                       <button
                         type="button"
@@ -440,11 +468,14 @@ export function PantryPage() {
                         aria-controls={listId}
                         onClick={() => toggleGroupExpanded(cat.group)}
                       >
-                        <span className="pantry-group__caret" aria-hidden="true">
-                          {expanded ? '▾' : '▸'}
+                        <span className="pantry-group__emoji" aria-hidden="true">
+                          {categoryEmoji(cat.items[0])}
                         </span>
                         <span className="pantry-group__label">{cat.label}</span>
                         <span className="pantry-group__count">{cat.items.length}</span>
+                        <span className="pantry-group__caret" aria-hidden="true">
+                          {expanded ? '▾' : '▸'}
+                        </span>
                       </button>
                     </h2>
                     {expanded && (

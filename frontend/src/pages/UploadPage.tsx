@@ -408,7 +408,12 @@ export function UploadPage() {
             />
           ))}
         </ul>
-        {items.length === 0 && <p>No items left -- delete was maybe too enthusiastic?</p>}
+        {items.length === 0 && (
+          <p className="callout callout--muted">
+            No items left on this receipt — add one back to confirm, or upload a different
+            one.
+          </p>
+        )}
 
         <button
           className="btn btn-primary"
@@ -424,13 +429,29 @@ export function UploadPage() {
   return (
     <section>
       <h1>Upload a receipt</h1>
-      <p className="muted">
-        A photo only needs to clearly show the store name, the purchase date, and the
-        purchased items with their prices (quantities help too) — everything else on the
-        receipt is irrelevant and can be blurry or cut off. Even better: if your store has
-        a loyalty app, download the digital receipt from there instead of a photo — it
-        scans far more reliably.
+      <p className="page-lead">
+        Add a receipt and I'll turn it into pantry items and nutrition insights.
       </p>
+      <ul className="upload-tips">
+        <li>
+          <span className="upload-tips__icon" aria-hidden="true">
+            -
+          </span>
+          <span>
+            Keep the store name, date, and priced item lines readable — the rest can be
+            blurry or cut off.
+          </span>
+        </li>
+        <li>
+          <span className="upload-tips__icon" aria-hidden="true">
+            -
+          </span>
+          <span>
+            Got a store loyalty app? A digital receipt from there scans even more reliably
+            than a photo.
+          </span>
+        </li>
+      </ul>
       <div className="upload-card">
         <p className="upload-card__label">Add a new receipt</p>
         <div className="tab-row">

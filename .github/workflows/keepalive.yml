@@ -1,7 +1,7 @@
 # Hält das Render-Free-Backend wach, damit die Demo keinen ~50 s Kaltstart
 # hat (Render Free schläft nach 15 Min Inaktivität ein).
 #
-# Kostenlose Alternative zu cron-job.org — nutzt die GitHub Actions, die das
+# Kostenlose Alternative — nutzt die GitHub Actions, die das
 # Repo ohnehin schon verwendet, kein weiterer Drittanbieter nötig.
 #
 # Setup: Repo → Settings → Secrets and variables → Actions → New secret

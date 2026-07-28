@@ -268,7 +268,7 @@ _NAME_KEYWORDS = {
     "shellfish": ["garnele", "garnelen", "krabbe", "krabben", "muschel", "muscheln", "hummer", "languste", "jakobsmuschel", "scampi"],
 
     # Eggs
-    "eggs": ["ei", "eier"],
+    "eggs": ["ei", "eier", "hühnereier"],
 
     # Dairy
     "skim_dairy": ["magermilch", "magerjoghurt", "magerquark"],

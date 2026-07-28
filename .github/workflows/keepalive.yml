@@ -28,7 +28,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping /health
+        env:
+          HEALTH_URL: ${{ secrets.BACKEND_HEALTH_URL }}
         run: |
+          if [ -z "$HEALTH_URL" ]; then
+            echo "::warning::BACKEND_HEALTH_URL nicht gesetzt – Ping übersprungen."
+            exit 0
+          fi
           curl --fail --show-error --silent \
                --retry 3 --retry-delay 20 --max-time 90 \
-               "${{ secrets.BACKEND_HEALTH_URL }}"
+               "$HEALTH_URL"

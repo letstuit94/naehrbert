@@ -16,11 +16,8 @@
 name: keepalive
 
 on:
-  # Ping pausiert: Zeitplan auskommentiert, damit das Backend NICHT rund um
-  # die Uhr wachgehalten wird (spart Render-Instanzstunden). Zum Reaktivieren
-  # einfach die beiden schedule-Zeilen wieder einkommentieren.
-  # schedule:
-  #   - cron: "*/12 * * * *" # alle 12 Min < Renders 15-Min-Schlafgrenze
+  schedule:
+    - cron: "*/12 * * * *" # alle 12 Min < Renders 15-Min-Schlafgrenze
   workflow_dispatch: {} # bleibt: manuelles Auslösen (Actions-Tab) weiter möglich
 
 jobs:

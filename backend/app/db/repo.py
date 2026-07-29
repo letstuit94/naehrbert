@@ -117,6 +117,25 @@ def set_receipt_status(receipt_id: str, status: str) -> None:
     get_client().table("receipts").update({"status": status}).eq("id", receipt_id).execute()
 
 
+def update_receipt(receipt_id: str, fields: dict) -> dict:
+    res = get_client().table("receipts").update(fields).eq("id", receipt_id).execute()
+    return res.data[0]
+
+
+def get_distinct_stores(profile_id: int) -> List[str]:
+    """Every store name this profile has used before, for the upload
+    review screen's "pick an existing store" option when a receipt's own
+    store couldn't be detected. Excludes the parser's "unknown" sentinel
+    (services/receipt_text_parser.py's _detect_store) -- that's a
+    not-found marker, never a real store name."""
+
+    res = get_client().table("receipts").select("store").eq("profile_id", profile_id).execute()
+    stores = {
+        row["store"] for row in (res.data or []) if row.get("store") and row["store"] != "unknown"
+    }
+    return sorted(stores)
+
+
 # ── receipt_items ───────────────────────────────────────────────────────
 
 def insert_receipt_items(receipt_id: str, items: List[dict]) -> List[dict]:

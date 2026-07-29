@@ -288,14 +288,23 @@ function TargetsSection({
       <h2>Your targets</h2>
 
       <div className="stat-tile stat-tile--hero">
-        <span className="stat-tile__label">Daily calories</span>
-        <span className="stat-tile__value">
-          {targets.calories_kcal.toLocaleString()} kcal
-        </span>
+        <div className="stat-tile__row">
+          <div className="stat-tile__col">
+            <span className="stat-tile__label">Daily average from purchases</span>
+            <span className="stat-tile__value">
+              {avgDailyKcal !== null ? avgDailyKcal.toLocaleString() : '—'} kcal
+            </span>
+          </div>
+          <div className="stat-tile__col">
+            <span className="stat-tile__label">Daily calorie target</span>
+            <span className="stat-tile__value">
+              {targets.calories_kcal.toLocaleString()} kcal
+            </span>
+          </div>
+        </div>
         {avgDailyKcal !== null && pctOfTarget !== null && (
           <span className="muted">
-            {avgDailyKcal.toLocaleString()} kcal/day from purchases ({pctOfTarget}% of
-            target, last {mealCoverage?.window_days} days)
+            ({pctOfTarget}% of target, last {mealCoverage?.window_days} days)
           </span>
         )}
         {avgDailyKcal !== null && shareWasDefaulted && (
@@ -432,6 +441,25 @@ function ringTierColor(ratioPct: number): string {
   return 'var(--ok)'
 }
 
+// Under target: a single-color partial ring, same as before -- the filled
+// share IS how much of the target was reached, colored by how far under,
+// growing clockwise from 12 o'clock as that share increases.
+// Over target: the ring is full (you've consumed at least the whole
+// target), split into the over-target surplus share and the up-to-target
+// share (green -- you got there). The surplus is drawn FIRST (0% onward)
+// so it grows clockwise from 12 o'clock exactly like the under-target
+// fill does, with green filling whatever's left -- putting green first
+// instead (surplus as the second/remainder stop) made the surplus's
+// leading edge retreat counterclockwise as it grew, since a conic-gradient
+// stop only ever advances forward from wherever the previous one ended.
+function ringGradient(ratioPct: number): string {
+  if (ratioPct <= 100) {
+    return `conic-gradient(${ringTierColor(ratioPct)} ${ratioPct}%, var(--code-bg) 0)`
+  }
+  const surplusSharePct = 100 - (100 / ratioPct) * 100
+  return `conic-gradient(${ringTierColor(ratioPct)} ${surplusSharePct}%, var(--ok) 0)`
+}
+
 function MacroRingTile({
   label,
   macroKey,
@@ -461,7 +489,7 @@ function MacroRingTile({
   const hasTracking = actualValue !== null && targetValue !== null && targetValue > 0
   const ratioPct = hasTracking ? Math.round((actualValue / targetValue) * 100) : null
   const color = ratioPct !== null ? ringTierColor(ratioPct) : 'var(--code-bg)'
-  const fillPct = ratioPct !== null ? Math.min(100, ratioPct) : 0
+  const ringBackground = ratioPct !== null ? ringGradient(ratioPct) : 'var(--code-bg)'
   // More than 10% over/under target -> act on it; within that band, on track.
   const action =
     ratioPct === null
@@ -476,10 +504,7 @@ function MacroRingTile({
     <div className="macro-ring-tile">
       <span className="macro-ring-tile__label">{label}</span>
       <div className="macro-ring">
-        <div
-          className="macro-ring__fill"
-          style={{ background: `conic-gradient(${color} ${fillPct}%, var(--code-bg) 0)` }}
-        />
+        <div className="macro-ring__fill" style={{ background: ringBackground }} />
         <div className="macro-ring__hole">
           <span className="macro-ring__value">{grams} g</span>
           {ratioPct !== null && (
@@ -667,6 +692,23 @@ const MICRONUTRIENT_LABELS: { key: keyof MicronutrientsResult['totals']; label: 
 function MicronutrientsSection({ micronutrients }: { micronutrients: MicronutrientsResult }) {
   const { totals, targets, micro_coverage_pct, window_days } = micronutrients
 
+  // Lowest coverage first -- surfaces the nutrients furthest from target at
+  // the top rather than in a fixed, alphabetical-ish order. Nutrients with
+  // no resolvable target (coveragePct null) sort last since they can't be
+  // ranked at all.
+  const rows = MICRONUTRIENT_LABELS.map(({ key, label, unit }) => {
+    const purchasedPerDay = totals[key] / window_days
+    const target = targets?.[key] ?? null
+    const coveragePct = target !== null && target > 0
+      ? Math.round((purchasedPerDay / target) * 100)
+      : null
+    return { key, label, unit, purchasedPerDay, target, coveragePct }
+  }).sort((a, b) => {
+    if (a.coveragePct === null) return 1
+    if (b.coveragePct === null) return -1
+    return a.coveragePct - b.coveragePct
+  })
+
   return (
     <div className="section-divider">
       <h2>Micronutrients</h2>
@@ -682,22 +724,20 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
               <th>Nutrient</th>
               <th>Purchased</th>
               <th>Target</th>
+              <th>Coverage</th>
             </tr>
           </thead>
           <tbody>
-            {MICRONUTRIENT_LABELS.map(({ key, label, unit }) => {
-              const purchasedPerDay = totals[key] / window_days
-              const target = targets?.[key] ?? null
-              return (
-                <tr key={key}>
-                  <td>{label}</td>
-                  <td>
-                    {purchasedPerDay.toFixed(1)} {unit}
-                  </td>
-                  <td>{target !== null ? `${target.toFixed(1)} ${unit}` : '—'}</td>
-                </tr>
-              )
-            })}
+            {rows.map(({ key, label, unit, purchasedPerDay, target, coveragePct }) => (
+              <tr key={key}>
+                <td>{label}</td>
+                <td>
+                  {purchasedPerDay.toFixed(1)} {unit}
+                </td>
+                <td>{target !== null ? `${target.toFixed(1)} ${unit}` : '—'}</td>
+                <td>{coveragePct !== null ? `${coveragePct}%` : '—'}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

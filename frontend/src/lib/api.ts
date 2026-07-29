@@ -251,6 +251,7 @@ export interface PurchaseItem {
   matched_name: string | null
   fallback_category: string | null
   confidence: number | null
+  price: number | null
   calories_kcal: number | null
   protein_g: number | null
   fat_g: number | null
@@ -564,6 +565,26 @@ export function uploadReceiptText(text: string): Promise<UploadResponse> {
 
 export function getReceipt(receiptId: string): Promise<UploadResponse> {
   return request<UploadResponse>(`/receipts/${receiptId}`)
+}
+
+export interface ReceiptUpdate {
+  store?: string
+  purchased_at?: string
+}
+
+/** Fills in a receipt's store/purchase date when the scan couldn't detect
+ * them -- required by the review screen before Confirm in that case. */
+export function updateReceipt(receiptId: string, fields: ReceiptUpdate): Promise<Receipt> {
+  return request<Receipt>(`/receipts/${receiptId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(fields),
+  })
+}
+
+/** Distinct store names this profile has used before -- backs the review
+ * screen's "pick an existing store" option. */
+export function getReceiptStores(): Promise<string[]> {
+  return request<{ stores: string[] }>('/receipts/stores').then((r) => r.stores)
 }
 
 export function updateReceiptItem(

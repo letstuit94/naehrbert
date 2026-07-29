@@ -127,6 +127,7 @@ def get_purchases(profile_id: int = Depends(require_profile_id)):
                 "matched_name": row.get("matched_name"),
                 "fallback_category": row.get("fallback_category"),
                 "confidence": row.get("confidence"),
+                "price": row.get("price"),
                 **actual,
             }
         )

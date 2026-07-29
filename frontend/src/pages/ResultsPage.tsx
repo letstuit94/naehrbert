@@ -717,29 +717,31 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
         from the German BLS food database, against your personal daily target.
       </p>
       <p className="callout callout--muted">{PURCHASES_ONLY_NOTE}</p>
-      <div className="table-scroll">
-        <table className="micronutrient-table">
-          <thead>
-            <tr>
-              <th>Nutrient</th>
-              <th>Purchased</th>
-              <th>Target</th>
-              <th>Coverage</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ key, label, unit, purchasedPerDay, target, coveragePct }) => (
-              <tr key={key}>
-                <td>{label}</td>
-                <td>
-                  {purchasedPerDay.toFixed(1)} {unit}
-                </td>
-                <td>{target !== null ? `${target.toFixed(1)} ${unit}` : '—'}</td>
-                <td>{coveragePct !== null ? `${coveragePct}%` : '—'}</td>
+      <div className="card micronutrient-card">
+        <div className="table-scroll">
+          <table className="micronutrient-table">
+            <thead>
+              <tr>
+                <th>Nutrient</th>
+                <th>Purchased</th>
+                <th>Target</th>
+                <th>Coverage</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map(({ key, label, unit, purchasedPerDay, target, coveragePct }) => (
+                <tr key={key}>
+                  <td>{label}</td>
+                  <td>
+                    {purchasedPerDay.toFixed(1)} {unit}
+                  </td>
+                  <td>{target !== null ? `${target.toFixed(1)} ${unit}` : '—'}</td>
+                  <td>{coveragePct !== null ? `${coveragePct}%` : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
       <p className="muted">
         Target values are personalized to your age, sex, and life stage, sourced from

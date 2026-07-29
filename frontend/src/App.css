@@ -611,6 +611,13 @@
   overflow-x: auto;
 }
 
+/* The micronutrient table sits on its own card (like the stat-tiles /
+   macro-ring-tiles elsewhere on Results). The card supplies its own padding,
+   so drop .table-scroll's leading margin to keep the table flush inside. */
+.micronutrient-card .table-scroll {
+  margin: 0;
+}
+
 .micronutrient-table {
   width: 100%;
   /* Fixed, not auto: with auto layout each column's width is driven by its

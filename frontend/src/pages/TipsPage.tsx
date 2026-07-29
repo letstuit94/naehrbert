@@ -164,8 +164,8 @@ export function TipsPage() {
     <section>
       <h1>Recipes</h1>
       <p className="page-lead">
-        Recipes based on your purchases. Generate a new one or revisit your
-        saved ideas.
+        Recipes are to generated to help close the gap from your Result page, using your saved dietary
+        preferences plus whatever cuisine, time and servings you set below.
       </p>
 
       {unlockStatus.data?.unlocked && unlockStatus.data.prefs_completed ? (
@@ -367,7 +367,7 @@ function RecipeGenerationForm({
     <form className="recipe-generate-form" onSubmit={handleGenerate}>
       <div className="form-row">
         <div className="form-field">
-          <label htmlFor="recipe-cuisine">Cuisine (optional)</label>
+          <label htmlFor="recipe-cuisine">Cuisine</label>
           <input
             id="recipe-cuisine"
             type="text"
@@ -378,7 +378,7 @@ function RecipeGenerationForm({
         </div>
 
         <div className="form-field">
-          <label htmlFor="recipe-max-time">Max. cooking time (minutes)</label>
+          <label htmlFor="recipe-max-time">Max. cooking time </label>
           <input
             id="recipe-max-time"
             type="number"

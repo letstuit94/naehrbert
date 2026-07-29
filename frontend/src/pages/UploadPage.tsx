@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, DragEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
@@ -6,6 +6,8 @@ import {
   confirmReceipt,
   correctReceiptItem,
   deleteReceiptItem,
+  getReceiptStores,
+  updateReceipt,
   updateReceiptItem,
   uploadReceiptFile,
   uploadReceiptText,
@@ -13,6 +15,7 @@ import {
   type ItemCorrection,
   type Receipt,
   type ReceiptItem,
+  type ReceiptUpdate,
 } from '../lib/api'
 import { matchInfo } from '../lib/matchInfo'
 import { MatchSearchPanel } from '../components/MatchSearchPanel'
@@ -120,7 +123,34 @@ export function UploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const progressTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
+  // Store/purchase-date follow-up (Epic 3.4 gap-fill): a scan whose store
+  // or date couldn't be detected must have both filled in here before
+  // Confirm, so purchase-history sorting/display (keyed on purchased_at)
+  // never has to silently stand in the upload timestamp for a real one.
+  const [existingStores, setExistingStores] = useState<string[]>([])
+  const [metaDate, setMetaDate] = useState('')
+  const [metaStore, setMetaStore] = useState('')
+  const [metaIsNewStore, setMetaIsNewStore] = useState(false)
+  const [metaNewStoreName, setMetaNewStoreName] = useState('')
+  const [metaError, setMetaError] = useState<string | null>(null)
+
   const current = receiptsData[reviewIndex] as ReceiptData | undefined
+  const currentReceiptId = current?.receipt.id
+
+  useEffect(() => {
+    getReceiptStores().then(setExistingStores).catch(() => {})
+  }, [])
+
+  // Reset the follow-up form whenever review moves to a different receipt
+  // (a fresh upload, or advancing through a multi-file batch) -- each
+  // receipt's missing-field state is independent of the last one's.
+  useEffect(() => {
+    setMetaDate('')
+    setMetaStore('')
+    setMetaIsNewStore(false)
+    setMetaNewStoreName('')
+    setMetaError(null)
+  }, [currentReceiptId])
 
   function startProgress(steps: readonly string[], delaysMs: number[]) {
     setProgressSteps(steps)
@@ -280,10 +310,45 @@ export function UploadPage() {
 
   async function handleConfirm() {
     if (!current) return
+    const { receipt } = current
+    const needsDate = !receipt.purchased_at
+    const needsStore = receipt.store === 'unknown'
+
+    if (needsDate || needsStore) {
+      const finalStore = metaIsNewStore ? metaNewStoreName.trim() : metaStore
+      if (needsDate && !metaDate) {
+        setMetaError('Please enter the purchase date.')
+        return
+      }
+      if (needsStore && !finalStore) {
+        setMetaError('Please select or enter a store.')
+        return
+      }
+      setMetaError(null)
+      setBusy(true)
+      setError(null)
+      try {
+        const patch: ReceiptUpdate = {}
+        if (needsDate) patch.purchased_at = metaDate
+        if (needsStore) patch.store = finalStore
+        const updatedReceipt = await updateReceipt(receipt.id, patch)
+        setReceiptsData((prev) =>
+          prev.map((rd, i) => (i === reviewIndex ? { ...rd, receipt: updatedReceipt } : rd)),
+        )
+        if (needsStore && !existingStores.includes(finalStore)) {
+          setExistingStores((prev) => [...prev, finalStore].sort())
+        }
+      } catch {
+        setBusy(false)
+        setMetaError('Could not save those details. Please try again.')
+        return
+      }
+    }
+
     setBusy(true)
     setError(null)
     try {
-      const result = await confirmReceipt(current.receipt.id)
+      const result = await confirmReceipt(receipt.id)
       setConfirmResults((prev) => [...prev, result])
       if (reviewIndex + 1 < receiptsData.length) {
         setReviewIndex((i) => i + 1)
@@ -373,6 +438,8 @@ export function UploadPage() {
     const multi = receiptsData.length > 1
     const isLastReceipt = reviewIndex + 1 >= receiptsData.length
     const purchaseInfo = purchaseInfoLine(receipt)
+    const needsDate = !receipt.purchased_at
+    const needsStore = receipt.store === 'unknown'
 
     return (
       <section>
@@ -384,6 +451,75 @@ export function UploadPage() {
         )}
         <p>Fix anything the scan got wrong, mark non-food items, then confirm.</p>
         {purchaseInfo && <p className="review-purchase-info">{purchaseInfo}</p>}
+
+        {(needsDate || needsStore) && (
+          <div className="callout callout--muted receipt-meta-form">
+            <p>
+              We couldn't detect{' '}
+              {needsDate && needsStore
+                ? 'a purchase date or store'
+                : needsDate
+                  ? 'a purchase date'
+                  : 'a store'}{' '}
+              for this receipt — please fill it in before confirming.
+            </p>
+            {needsDate && (
+              <div className="form-field">
+                <label htmlFor="meta-date">Purchase date</label>
+                <input
+                  id="meta-date"
+                  type="date"
+                  value={metaDate}
+                  onChange={(e) => setMetaDate(e.target.value)}
+                  max={new Date().toISOString().slice(0, 10)}
+                />
+              </div>
+            )}
+            {needsStore && (
+              <div className="form-field">
+                <label htmlFor="meta-store">Store</label>
+                <select
+                  id="meta-store"
+                  value={metaIsNewStore ? '__new__' : metaStore}
+                  onChange={(e) => {
+                    if (e.target.value === '__new__') {
+                      setMetaIsNewStore(true)
+                      setMetaStore('')
+                    } else {
+                      setMetaIsNewStore(false)
+                      setMetaStore(e.target.value)
+                    }
+                  }}
+                >
+                  <option value="" disabled>
+                    Select a store
+                  </option>
+                  {existingStores.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                  <option value="__new__">+ Add a new store</option>
+                </select>
+                {metaIsNewStore && (
+                  <input
+                    type="text"
+                    placeholder="Store name"
+                    value={metaNewStoreName}
+                    onChange={(e) => setMetaNewStoreName(e.target.value)}
+                    aria-label="New store name"
+                    autoFocus
+                  />
+                )}
+              </div>
+            )}
+            {metaError && (
+              <p className="form-error" role="alert">
+                {metaError}
+              </p>
+            )}
+          </div>
+        )}
 
         {isOlderThanResultsWindow(receipt.purchased_at) && (
           <p className="callout callout--warning">
@@ -577,6 +713,12 @@ export function UploadPage() {
           {error}
         </p>
       )}
+
+      <div className="card profile-action-card">
+        <Link to="/purchases" className="btn btn-secondary">
+          Receipt history
+        </Link>
+      </div>
     </section>
   )
 }

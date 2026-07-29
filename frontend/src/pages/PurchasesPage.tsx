@@ -38,6 +38,14 @@ const QUANTITY_BASIS_ICON: Record<QuantityBasis, string> = {
   unknown: '?',
 }
 
+/** Same "unknown" sentinel handling as the review screen (services/
+ * receipt_text_parser.py never returns a real null for store, only this
+ * string) -- the one place that mapping happens, used both for the group
+ * header and as the filter chips' grouping key so they can't disagree. */
+function storeLabel(store: string | null): string {
+  return store && store !== 'unknown' ? store : 'Unknown store'
+}
+
 function formatDate(iso: string | null): string {
   if (!iso) return 'Unknown date'
   const d = new Date(iso)
@@ -51,6 +59,10 @@ function formatDate(iso: string | null): string {
 
 function formatGrams(value: number | null): string {
   return value === null ? '—' : `${Math.round(value)}g`
+}
+
+function formatPrice(value: number): string {
+  return `€${value.toFixed(2)}`
 }
 
 // Items already arrive sorted by purchased_at desc (GET /analysis/purchases);
@@ -75,9 +87,32 @@ function groupByReceipt(items: PurchaseItem[]): ReceiptGroup[] {
   return groups
 }
 
+function groupTotal(group: ReceiptGroup): number {
+  return group.items.reduce((sum, item) => sum + (item.price ?? 0), 0)
+}
+
+/** Per-store totals across every loaded item (not just the currently
+ * visible ones) -- the chip row is meant to stay stable and complete as a
+ * menu of what CAN be shown, while toggling only affects what IS shown. */
+function storeTotals(items: PurchaseItem[]): { label: string; total: number }[] {
+  const totals = new Map<string, number>()
+  for (const item of items) {
+    const label = storeLabel(item.store)
+    totals.set(label, (totals.get(label) ?? 0) + (item.price ?? 0))
+  }
+  return [...totals.entries()]
+    .map(([label, total]) => ({ label, total }))
+    .sort((a, b) => b.total - a.total)
+}
+
 export function PurchasesPage() {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [actionError, setActionError] = useState<string | null>(null)
+  // Which store labels are currently shown -- starts as "everything" on the
+  // first load, then left alone on later reloads (e.g. after an edit) so an
+  // in-progress filter choice doesn't get silently reset out from under the
+  // user.
+  const [activeStores, setActiveStores] = useState<Set<string>>(new Set())
 
   function load() {
     return getPurchases()
@@ -86,6 +121,9 @@ export function PurchasesPage() {
           result.items.length === 0
             ? { status: 'empty' }
             : { status: 'ready', items: result.items },
+        )
+        setActiveStores((prev) =>
+          prev.size === 0 ? new Set(result.items.map((i) => storeLabel(i.store))) : prev,
         )
       })
       .catch((err) => {
@@ -161,7 +199,19 @@ export function PurchasesPage() {
     )
   }
 
-  const groups = groupByReceipt(state.items)
+  const groups = groupByReceipt(state.items).filter((group) =>
+    activeStores.has(storeLabel(group.store)),
+  )
+  const totals = storeTotals(state.items)
+
+  function toggleStore(label: string) {
+    setActiveStores((prev) => {
+      const next = new Set(prev)
+      if (next.has(label)) next.delete(label)
+      else next.add(label)
+      return next
+    })
+  }
 
   return (
     <section>
@@ -169,6 +219,31 @@ export function PurchasesPage() {
       <p className="page-lead">
         Everything you've uploaded and confirmed, grouped by receipt.
       </p>
+
+      {totals.length > 1 && (
+        <div className="filter-bar" role="group" aria-label="Filter by store">
+          {totals.map(({ label, total }) => {
+            const active = activeStores.has(label)
+            return (
+              <button
+                key={label}
+                type="button"
+                className={active ? 'filter-chip filter-chip--active' : 'filter-chip'}
+                aria-pressed={active}
+                onClick={() => toggleStore(label)}
+              >
+                {active && (
+                  <span className="filter-chip__check" aria-hidden="true">
+                    ✓
+                  </span>
+                )}
+                {label}
+                <span className="filter-chip__count">{formatPrice(total)}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {actionError && (
         <p className="form-error" role="alert">
@@ -179,8 +254,11 @@ export function PurchasesPage() {
       {groups.map((group) => (
         <div key={group.receiptId} className="purchase-group">
           <h2 className="purchase-group__header">
-            {group.store ?? 'Unknown store'}{' '}
-            <span className="muted">· {formatDate(group.purchasedAt)}</span>
+            <span>
+              {storeLabel(group.store)}{' '}
+              <span className="muted">· {formatDate(group.purchasedAt)}</span>
+            </span>
+            <span className="purchase-group__total">{formatPrice(groupTotal(group))}</span>
           </h2>
           <ul className="purchase-list">
             {group.items.map((item) => (

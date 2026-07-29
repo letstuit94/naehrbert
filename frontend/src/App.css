@@ -499,6 +499,24 @@
   color: var(--text);
 }
 
+/* Two side-by-side stat blocks within one hero tile (Results' Daily
+   calorie target card: purchases average on the left, target on the
+   right) -- same label/value styling as the single-number layout above,
+   just repeated per column. */
+.stat-tile__row {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.stat-tile__col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 140px;
+}
+
 .stat-tile--hero {
   margin: 16px 0;
 }
@@ -585,9 +603,9 @@
   color: var(--text);
 }
 
-/* Micronutrients table (Results) -- a genuine 3-column grid (nutrient /
-   purchased / target), unlike .kv-list's 2-column dt/dd rows, so it's a
-   real <table> rather than reusing that pattern. */
+/* Micronutrients table (Results) -- a genuine 4-column grid (nutrient /
+   purchased / target / coverage), unlike .kv-list's 2-column dt/dd rows,
+   so it's a real <table> rather than reusing that pattern. */
 .table-scroll {
   margin: 12px 0 0;
   overflow-x: auto;
@@ -595,6 +613,13 @@
 
 .micronutrient-table {
   width: 100%;
+  /* Fixed, not auto: with auto layout each column's width is driven by its
+     widest cell, and micronutrient totals span wildly different magnitudes
+     (sodium in the thousands of mg vs. B12 in single-digit µg) -- that made
+     columns resize unpredictably per row and read as ragged/empty-looking
+     gaps. Fixed widths keep the 3 number columns a consistent, tight group
+     on the right, with all the extra room going to the Nutrient column. */
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
@@ -603,9 +628,20 @@
 .micronutrient-table th,
 .micronutrient-table td {
   padding: 6px 12px 6px 0;
-  text-align: left;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
+}
+
+.micronutrient-table th:first-child,
+.micronutrient-table td:first-child {
+  width: 46%;
+  text-align: left;
+}
+
+.micronutrient-table th:not(:first-child),
+.micronutrient-table td:not(:first-child) {
+  width: 18%;
+  text-align: right;
 }
 
 .micronutrient-table th {
@@ -1640,8 +1676,17 @@ a.btn {
 }
 
 .purchase-group__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
   font-size: 18px;
   margin-bottom: 8px;
+}
+
+.purchase-group__total {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .purchase-list {
@@ -2669,13 +2714,6 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-/* Padding stays inside declared widths — full-width buttons/inputs never
-   overhang their card. */
-.profile-page,
-.profile-page * {
-  box-sizing: border-box;
 }
 
 .profile-lead {

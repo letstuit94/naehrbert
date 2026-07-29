@@ -173,6 +173,18 @@ body {
   margin: 0;
 }
 
+/* Border-box everywhere: padding/border count toward a declared width
+   instead of adding to it, so a full-width button/input (e.g. the
+   "Receipt history" card's button) never overhangs its card regardless of
+   which page it's used on. This was previously scoped to just .profile-page
+   (see its own comment there) and reproduced as a right-edge overflow the
+   first time that same card markup got reused on the Upload page. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 /* ── Heading hierarchy (CI §4 · J2) ───────────────────────────────────────
    Three clear, consistent levels. H1 = one page title per screen; H2 = section
    title (same treatment everywhere); H3 = sub-section. The 11px uppercase

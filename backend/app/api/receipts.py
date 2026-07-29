@@ -66,6 +66,11 @@ class ItemCorrection(BaseModel):
     nutrition: dict = {}
 
 
+class ReceiptUpdate(BaseModel):
+    store: Optional[str] = None
+    purchased_at: Optional[str] = None
+
+
 def _persist_parsed(parsed: dict, source: str, raw_text: Optional[str], profile_id: int) -> dict:
     if parsed.get("error"):
         raise HTTPException(status_code=422, detail=parsed["error"])
@@ -151,10 +156,38 @@ def upload_receipt_text(
     return _persist_parsed(parsed, "pasted_text", payload.text, profile_id)
 
 
+@router.get("/stores")
+def list_stores(profile_id: int = Depends(require_profile_id)):
+    """Distinct store names this profile has used before -- backs the
+    upload review screen's "pick an existing store" option when a
+    receipt's store couldn't be detected. Registered before the
+    /{receipt_id} route below so "stores" is never matched as an id."""
+
+    return {"stores": repo.get_distinct_stores(profile_id)}
+
+
 @router.get("/{receipt_id}")
 def get_receipt(receipt_id: str, profile_id: int = Depends(require_profile_id)):
     receipt = _owned_receipt_or_404(receipt_id, profile_id)
     return {"receipt": receipt, "items": repo.get_receipt_items(receipt_id)}
+
+
+@router.patch("/{receipt_id}")
+def update_receipt(
+    receipt_id: str, payload: ReceiptUpdate, profile_id: int = Depends(require_profile_id)
+):
+    """Fills in a receipt's store/purchase date when the scan couldn't
+    detect them (services/receipt_text_parser.py's _detect_store/_detect_date).
+    The review screen requires this before Confirm whenever either is
+    missing, so purchase-history sorting/display (which keys on
+    purchased_at) reflects when the shopping actually happened rather than
+    silently falling back to the upload timestamp."""
+
+    _owned_receipt_or_404(receipt_id, profile_id)
+    fields = payload.model_dump(exclude_unset=True, exclude_none=True)
+    if not fields:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    return repo.update_receipt(receipt_id, fields)
 
 
 @router.patch("/{receipt_id}/items/{item_id}")

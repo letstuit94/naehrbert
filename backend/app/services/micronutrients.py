@@ -12,9 +12,9 @@ actually carries a `micros` dict -- is reported alongside the totals for
 exactly that reason: it's the same "don't fake precision" policy
 basket_composition.py already applies to macros, extended to micros.
 
-No micronutrient *targets* exist anywhere in the app yet (IdealProfile is
-explicitly macro-only, see models/profile.py) -- this reports absolute
-28-day totals, not %-of-target.
+No micronutrient targets are computed by this app's own formulas (IdealProfile
+is explicitly macro-only, see models/profile.py) -- daily targets for these
+come from the DGE's external reference table instead (services/dge_matcher.py).
 """
 
 from datetime import date
@@ -23,19 +23,38 @@ from typing import List, Optional
 from backend.app.services.basket_composition import _item_purchase_date
 from backend.app.services.nutrition_profile import grams_for
 
-# Same 11 keys as bls_matcher._MICRO_COLS / NutritionValues.micros.
+# Same keys as bls_matcher._MICRO_COLS / NutritionValues.micros -- every
+# micronutrient BLS provides real data for (Selenium is the one nutrient
+# micronutrients.md covers that BLS 4.0 has no column for at all).
 _MICRO_KEYS = (
+    "vitamin_a_ug",
     "vitamin_d_ug",
+    "vitamin_e_mg",
+    "vitamin_k_ug",
+    "vitamin_b1_mg",
+    "vitamin_b2_mg",
+    "niacin_mg",
+    "pantothenic_acid_mg",
+    "vitamin_b6_mg",
+    "biotin_ug",
     "folate_ug",
     "vitamin_b12_ug",
     "vitamin_c_mg",
     "sodium_mg",
+    "chloride_mg",
     "potassium_mg",
     "calcium_mg",
+    "phosphorus_mg",
     "magnesium_mg",
+    "sulfur_mg",
     "iron_mg",
     "zinc_mg",
+    "copper_mg",
+    "manganese_mg",
     "iodine_ug",
+    "fluoride_mg",
+    "chromium_ug",
+    "molybdenum_ug",
 )
 
 
@@ -75,7 +94,13 @@ def compute_micronutrient_totals(
         for key, value in micros.items():
             if key in totals and value is not None:
                 totals[key] += value * factor
-                density[key].setdefault(name, value)
+                # A real reported 0 still counts toward the total (it's a
+                # measured amount), but isn't a "driver" of anything -- left
+                # in, top_drivers would pad out to 5 entries with items
+                # that contribute nothing, rather than honestly showing
+                # fewer when fewer than 5 items actually have any.
+                if value > 0:
+                    density[key].setdefault(name, value)
 
         kcal_total += kcal_contrib
         items_considered += 1

@@ -412,17 +412,34 @@ export interface MealCoverageResult {
  * (services/dge_matcher.py) -- an external reference table, not one of
  * this app's own IdealProfile formulas. */
 export interface MicronutrientTotals {
+  vitamin_a_ug: number
   vitamin_d_ug: number
+  vitamin_e_mg: number
+  vitamin_k_ug: number
+  vitamin_b1_mg: number
+  vitamin_b2_mg: number
+  niacin_mg: number
+  pantothenic_acid_mg: number
+  vitamin_b6_mg: number
+  biotin_ug: number
   folate_ug: number
   vitamin_b12_ug: number
   vitamin_c_mg: number
   sodium_mg: number
+  chloride_mg: number
   potassium_mg: number
   calcium_mg: number
+  phosphorus_mg: number
   magnesium_mg: number
+  sulfur_mg: number
   iron_mg: number
   zinc_mg: number
+  copper_mg: number
+  manganese_mg: number
   iodine_ug: number
+  fluoride_mg: number
+  chromium_ug: number
+  molybdenum_ug: number
 }
 
 /** A purchased item's per-100g density for this micronutrient -- same
@@ -448,11 +465,19 @@ export interface MicronutrientsResult {
   items_with_micros_count: number
   items_considered: number
   /** DGE daily targets for this profile's age/sex/life_stage, or null if
-   * the profile's age can't be resolved (e.g. incomplete profile). */
-  targets: MicronutrientTotals | null
+   * the profile's age can't be resolved (e.g. incomplete profile).
+   * Partial, not full, because the DGE publishes no reference value for
+   * sulfur_mg at all (see services/dge_matcher.py) -- that key is simply
+   * absent here rather than present with some placeholder. */
+  targets: Partial<MicronutrientTotals> | null
   /** Up to 5 purchased items ranked by per-100g density, per micronutrient
    * -- backs each row's "Show drivers" expansion. */
   top_drivers: Record<keyof MicronutrientTotals, MicronutrientDriver[]>
+  /** Plain-language reference content parsed from the repo-root
+   * micronutrients.md (services/micronutrient_info.py), one ordered list
+   * of {title, body} sections per tracked micronutrient -- shown above the
+   * "Drivers from your purchases" list in each row's expansion. */
+  nutrient_info: Record<keyof MicronutrientTotals, { title: string; body: string }[]>
 }
 
 // ── Recipe recommendations feature ────────────────────────────────────────

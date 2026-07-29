@@ -695,6 +695,21 @@
   margin: 0;
 }
 
+.micronutrient-info-section {
+  max-width: 60ch;
+  margin-bottom: 10px;
+}
+
+.micronutrient-info-section:last-child {
+  margin-bottom: 0;
+}
+
+.micronutrient-info-section__title {
+  font-weight: 600;
+  color: var(--text-h);
+  margin-bottom: 2px;
+}
+
 .micronutrient-table tbody tr:last-child td {
   border-bottom: none;
 }

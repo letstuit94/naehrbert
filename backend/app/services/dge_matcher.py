@@ -5,15 +5,20 @@ DGE_data/DGE-Referenzwerte.xlsx (the DGE's own published Referenzwerte
 table), cached to a JSON sidecar next to this file -- mirrors bls_matcher.py's
 cache-once-then-load convention, so a normal run never needs openpyxl.
 
-Only the 11 micronutrients services/micronutrients.py already tracks are
-extracted, across the 8 population groups the sheet covers: 4 adult age
-brackets x male/female, plus the 3 pregnancy trimesters and nursing (all
-listed under the sheet's 'Weiblich'/female column). There's no under-19
-bracket in this workbook -- ages below 19 fall back to the lowest bracket
-(19 bis unter 25) as the closest available reference, not because that
-bracket is actually validated for a minor.
+Every micronutrient services/micronutrients.py tracks *and* that the DGE
+sheet actually has a reference value for is extracted, across the 8
+population groups the sheet covers: 4 adult age brackets x male/female,
+plus the 3 pregnancy trimesters and nursing (all listed under the sheet's
+'Weiblich'/female column). There's no under-19 bracket in this workbook --
+ages below 19 fall back to the lowest bracket (19 bis unter 25) as the
+closest available reference, not because that bracket is actually
+validated for a minor. Sulfur (sulfur_mg) is the one tracked micronutrient
+with no DGE row at all -- the DGE simply doesn't publish a reference value
+for it (isolated sulfur deficiency isn't a recognized condition, see
+micronutrients.md), so it has no entry in _NUTRIENT_MAP and its target is
+always None.
 
-Two simplifications, both because this app doesn't track the extra
+Simplifications, all because this app doesn't track the extra
 distinguishing factor the DGE table itself offers:
   - Eisen (iron) for women 25-65 is given as a compound
     "Prämenopausal 16 Postmenopausal 14" -- the premenopausal (higher,
@@ -22,6 +27,10 @@ distinguishing factor the DGE table itself offers:
   - Zink (zinc) is given at three phytate-intake tiers (low/medium/high --
     phytate, common in whole grains/legumes, reduces zinc absorption); the
     medium tier is used as the general-population default.
+  - Kupfer/Mangan/Chrom/Molybdän (copper/manganese/chromium/molybdenum) are
+    published as a range ("1,0-1,5 mg/Tag") rather than a single value --
+    DGE's own hedge for less precise "Schätzwert" (estimated) data; the
+    midpoint is used as a single comparable target number.
 """
 
 import json
@@ -38,19 +47,36 @@ _XLSX_PATH = Path(__file__).resolve().parents[3] / "DGE_data" / "DGE-Referenzwer
 _CACHE_PATH = Path(__file__).parent / "_dge_cache.json"
 _SHEET_NAME = "Referenzwerte"
 
-# Our micro key -> the sheet's German "Nährstoff" label.
+# Our micro key -> the sheet's German "Nährstoff" label. sulfur_mg has no
+# entry here on purpose -- see the module docstring.
 _NUTRIENT_MAP = {
+    "vitamin_a_ug": "Vitamin A",
     "vitamin_d_ug": "Vitamin D",
+    "vitamin_e_mg": "Vitamin E",
+    "vitamin_k_ug": "Vitamin K",
+    "vitamin_b1_mg": "Thiamin",
+    "vitamin_b2_mg": "Riboflavin",
+    "niacin_mg": "Niacin",
+    "pantothenic_acid_mg": "Pantothensäure",
+    "vitamin_b6_mg": "Vitamin B6",
+    "biotin_ug": "Biotin",
     "folate_ug": "Folat",
     "vitamin_b12_ug": "Vitamin B12 (Cobalamine)",
     "vitamin_c_mg": "Vitamin C",
     "sodium_mg": "Natrium",
+    "chloride_mg": "Chlorid",
     "potassium_mg": "Kalium",
     "calcium_mg": "Calcium",
+    "phosphorus_mg": "Phosphor",
     "magnesium_mg": "Magnesium",
     "iron_mg": "Eisen",
     "zinc_mg": "Zink bei mittlerer Phytatzufuhr",
+    "copper_mg": "Kupfer",
+    "manganese_mg": "Mangan",
     "iodine_ug": "Jod",
+    "fluoride_mg": "Fluorid",
+    "chromium_ug": "Chrom",
+    "molybdenum_ug": "Molybdän",
 }
 
 _PREGNANCY_GROUP = {
@@ -63,7 +89,9 @@ _PREGNANCY_GROUP = {
 
 def _parse_value(raw) -> Optional[float]:
     """The sheet's 'Referenzwert' column mixes plain numbers, German-comma
-    decimals ("4,0"), and the odd compound string -- never a silent 0."""
+    decimals ("4,0"), a compound premenopausal/postmenopausal string, and a
+    handful of "low-high" ranges ("1,0-1,5") for less precise trace-mineral
+    estimates -- never a silent 0."""
 
     if isinstance(raw, (int, float)):
         return float(raw)
@@ -74,6 +102,10 @@ def _parse_value(raw) -> Optional[float]:
     if premenopausal:
         text = premenopausal.group(1)
     text = text.replace(",", ".")
+    range_match = re.match(r"^([\d.]+)-([\d.]+)$", text)
+    if range_match:
+        low, high = (float(v) for v in range_match.groups())
+        return round((low + high) / 2, 3)
     try:
         return float(text)
     except ValueError:

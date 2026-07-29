@@ -86,6 +86,12 @@ def _persist_parsed(parsed: dict, source: str, raw_text: Optional[str], profile_
     items = [
         {
             "name": item["name"],
+            # Snapshot of the parser's cleaned name, taken once here and
+            # never touched again -- `name` itself is user-editable (PATCH
+            # .../items/{id}), but correct_item's verified-match key needs
+            # to stay anchored to what the parser will actually reproduce
+            # on a future upload, not to any later rename.
+            "parsed_name": item["name"],
             "original_text": item["original_text"],
             "quantity": item["quantity"],
             "unit": item["unit"],
@@ -291,15 +297,24 @@ def correct_item(
     }
     updated = repo.update_receipt_item(item_id, row)
 
-    # Keyed on the already-cleaned `name`, not `original_text` -- the Tier-0
-    # read path (resolver._learned) only ever looks up by `name` (see its
-    # comment), so keying the write side on the untouched receipt line
-    # instead meant a correction could carry OCR/price/tax-letter cruft
-    # (e.g. "Bio Paprika Mix 400g 2,29 B") that normalize_match_key doesn't
-    # strip the same way it strips an already-cleaned name, silently
-    # writing a key the read path would never look up again.
+    # Keyed on parsed_name (the parser's cleaned name, snapshotted once at
+    # insert time in _persist_parsed) rather than `name` or `original_text`.
+    # `original_text` carries OCR/price/tax-letter cruft (e.g. "Bio Paprika
+    # Mix 400g 2,29 B") that normalize_match_key doesn't strip the same way
+    # it strips a cleaned name. `name` seems like the obvious choice since
+    # the Tier-0 read path (resolver._learned) looks up by that same field
+    # -- but `name` is also the user-editable display name (PATCH
+    # .../items/{id}), and editing it while correcting a match (e.g.
+    # cleaning "KESSELCHIPS" up into "Kesselchips salt & vinegar") moves the
+    # key away from whatever the parser will reproduce on a future upload
+    # of the same receipt line, so the learned match could never be found
+    # again -- confirmed live: renamed items' corrections silently stopped
+    # matching on re-upload while un-renamed ones kept matching every time.
+    # `parsed_name` is immune to that because nothing ever writes to it
+    # after insert. Falls back to `name` for rows from before this column
+    # existed.
     verified_matches.record_verified_match(
-        raw_text=item["name"],
+        raw_text=item.get("parsed_name") or item["name"],
         store=receipt.get("store"),
         off_id=payload.off_id,
         bls_code=payload.bls_code,

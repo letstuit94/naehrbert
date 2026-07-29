@@ -50,20 +50,46 @@ _COL_SUGAR = 219   # SUGAR Zucker (Mono- und Disaccharide) [g/100g]
 
 # Micronutrient columns (E4-S1). Keys mirror IdealProfile.micronutrients
 # (services/ideal_profile.py) so borrowed values compare 1:1 with E2 targets
-# in E7. Units follow the BLS header (mg or µg).
+# in E7. Units follow the BLS header (mg or µg) EXCEPT the 4 columns in
+# _MICRO_COLS_UG_TO_MG below, which BLS reports in µg but DGE's own
+# reference values (services/dge_matcher.py) give in mg -- those are
+# converted at extraction time so everything downstream compares like-for-
+# like, rather than silently being off by 1000x.
 _MICRO_COLS: Dict[str, int] = {
-    "vitamin_d_ug": 48,    # VITD  [µg/100g]
-    "folate_ug": 105,      # FOL   [µg/100g]
-    "vitamin_b12_ug": 114, # VITB12[µg/100g]
-    "vitamin_c_mg": 117,   # VITC  [mg/100g]
-    "sodium_mg": 123,      # NA    [mg/100g]
-    "potassium_mg": 129,   # K     [mg/100g]
-    "calcium_mg": 132,     # CA    [mg/100g]
-    "magnesium_mg": 135,   # MG    [mg/100g]
-    "iron_mg": 144,        # FE    [mg/100g]
-    "zinc_mg": 147,        # ZN    [mg/100g]
-    "iodine_ug": 150,      # ID    [µg/100g]
+    "vitamin_d_ug": 48,          # VITD    [µg/100g]
+    "folate_ug": 105,            # FOL     [µg/100g]
+    "vitamin_b12_ug": 114,       # VITB12  [µg/100g]
+    "vitamin_c_mg": 117,         # VITC    [mg/100g]
+    "sodium_mg": 123,            # NA      [mg/100g]
+    "potassium_mg": 129,         # K       [mg/100g]
+    "calcium_mg": 132,           # CA      [mg/100g]
+    "magnesium_mg": 135,         # MG      [mg/100g]
+    "iron_mg": 144,              # FE      [mg/100g]
+    "zinc_mg": 147,              # ZN      [mg/100g]
+    "iodine_ug": 150,            # ID      [µg/100g]
+    "vitamin_a_ug": 36,          # VITAA (Retinol-Aktivitäts-Äquivalent) [µg/100g]
+    "vitamin_e_mg": 57,          # VITE (Alpha-Tocopherol) [mg/100g]
+    "vitamin_k_ug": 75,          # VITK    [µg/100g]
+    "vitamin_b1_mg": 84,         # THIA (Thiamin) [mg/100g]
+    "vitamin_b2_mg": 87,         # RIBF (Riboflavin) [mg/100g]
+    "niacin_mg": 90,             # NIAEQ (Niacin-Äquivalent) [mg/100g]
+    "pantothenic_acid_mg": 96,   # PANTAC  [mg/100g]
+    "vitamin_b6_mg": 99,         # VITB6   [µg/100g] -- converted to mg
+    "biotin_ug": 102,            # BIOT    [µg/100g]
+    "chloride_mg": 126,          # CLD (Chlorid) [mg/100g]
+    "phosphorus_mg": 138,        # P (Phosphor) [mg/100g]
+    "sulfur_mg": 141,            # S (Schwefel) [mg/100g] -- no DGE target exists for this one
+    "copper_mg": 153,            # CU (Kupfer) [µg/100g] -- converted to mg
+    "manganese_mg": 156,         # MN (Mangan) [µg/100g] -- converted to mg
+    "fluoride_mg": 159,          # FD (Fluorid) [µg/100g] -- converted to mg
+    "chromium_ug": 162,          # CR (Chrom) [µg/100g]
+    "molybdenum_ug": 165,        # MO (Molybdän) [µg/100g]
 }
+
+# BLS reports these in µg, but DGE's reference values (and this app's own
+# key suffix) are in mg -- convert once here rather than at every later
+# read site.
+_MICRO_COLS_UG_TO_MG = {"vitamin_b6_mg", "copper_mg", "manganese_mg", "fluoride_mg"}
 
 
 class BlsRecord(TypedDict):
@@ -112,6 +138,8 @@ def _build_cache() -> List[BlsRecord]:
         for key, col in _MICRO_COLS.items():
             val = _num(row[col])
             if val is not None:
+                if key in _MICRO_COLS_UG_TO_MG:
+                    val = val / 1000.0
                 micros[key] = val
         records.append({
             "code": str(code),

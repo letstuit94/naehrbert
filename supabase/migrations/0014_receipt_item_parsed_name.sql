@@ -1,0 +1,17 @@
+-- naehrbert verified-match learning (services/verified_matches.py) keys on
+-- receipt_items.name -- but that column is also the user-editable display
+-- name (PATCH /receipts/{id}/items/{id}). Editing it (e.g. cleaning up
+-- "KESSELCHIPS" into "Kesselchips salt & vinegar" while correcting a match)
+-- silently moves the verified-match key away from whatever the OCR/parser
+-- will reproduce on a future upload of the same receipt line, so the
+-- learned match can never be found again.
+--
+-- parsed_name snapshots the parser's original cleaned name once, at insert
+-- time (see _persist_parsed in api/receipts.py), and is never touched by
+-- later edits -- POST .../correct now keys record_verified_match on this
+-- instead of the live (possibly user-edited) name. Nullable: existing rows
+-- predate this column and fall back to `name` (see correct_item's `or`).
+--
+-- Run this manually via the Supabase SQL editor (this project's migrations
+-- aren't applied by a CLI/runner -- see the existing 0004+ files' notes).
+alter table receipt_items add column parsed_name text;

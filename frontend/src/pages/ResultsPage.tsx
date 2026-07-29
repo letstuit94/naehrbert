@@ -689,17 +689,34 @@ function PlantDiversitySection({ diversity }: { diversity: PlantDiversityResult 
 // Display label + unit per key -- matches bls_matcher._MICRO_COLS' units
 // (µg for vitamin D/folate/B12/iodine, mg for everything else).
 const MICRONUTRIENT_LABELS: { key: keyof MicronutrientsResult['totals']; label: string; unit: string }[] = [
+  { key: 'vitamin_a_ug', label: 'Vitamin A', unit: 'µg' },
   { key: 'vitamin_c_mg', label: 'Vitamin C', unit: 'mg' },
   { key: 'vitamin_d_ug', label: 'Vitamin D', unit: 'µg' },
+  { key: 'vitamin_e_mg', label: 'Vitamin E', unit: 'mg' },
+  { key: 'vitamin_k_ug', label: 'Vitamin K', unit: 'µg' },
+  { key: 'vitamin_b1_mg', label: 'Vitamin B1', unit: 'mg' },
+  { key: 'vitamin_b2_mg', label: 'Vitamin B2', unit: 'mg' },
+  { key: 'niacin_mg', label: 'Niacin (B3)', unit: 'mg' },
+  { key: 'pantothenic_acid_mg', label: 'Pantothenic Acid (B5)', unit: 'mg' },
+  { key: 'vitamin_b6_mg', label: 'Vitamin B6', unit: 'mg' },
+  { key: 'biotin_ug', label: 'Biotin (B7)', unit: 'µg' },
   { key: 'vitamin_b12_ug', label: 'Vitamin B12', unit: 'µg' },
   { key: 'folate_ug', label: 'Folate', unit: 'µg' },
-  { key: 'iron_mg', label: 'Iron', unit: 'mg' },
   { key: 'calcium_mg', label: 'Calcium', unit: 'mg' },
+  { key: 'phosphorus_mg', label: 'Phosphorus', unit: 'mg' },
   { key: 'magnesium_mg', label: 'Magnesium', unit: 'mg' },
-  { key: 'potassium_mg', label: 'Potassium', unit: 'mg' },
-  { key: 'zinc_mg', label: 'Zinc', unit: 'mg' },
   { key: 'sodium_mg', label: 'Sodium', unit: 'mg' },
+  { key: 'chloride_mg', label: 'Chloride', unit: 'mg' },
+  { key: 'potassium_mg', label: 'Potassium', unit: 'mg' },
+  { key: 'sulfur_mg', label: 'Sulfur', unit: 'mg' },
+  { key: 'iron_mg', label: 'Iron', unit: 'mg' },
+  { key: 'zinc_mg', label: 'Zinc', unit: 'mg' },
+  { key: 'copper_mg', label: 'Copper', unit: 'mg' },
+  { key: 'manganese_mg', label: 'Manganese', unit: 'mg' },
   { key: 'iodine_ug', label: 'Iodine', unit: 'µg' },
+  { key: 'fluoride_mg', label: 'Fluoride', unit: 'mg' },
+  { key: 'chromium_ug', label: 'Chromium', unit: 'µg' },
+  { key: 'molybdenum_ug', label: 'Molybdenum', unit: 'µg' },
 ]
 
 function MicronutrientsSection({ micronutrients }: { micronutrients: MicronutrientsResult }) {
@@ -712,6 +729,7 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
     items_with_micros_count,
     items_considered,
     top_drivers,
+    nutrient_info,
   } = micronutrients
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const partialWindow = days_of_data < window_days
@@ -735,7 +753,16 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
     const coveragePct = target !== null && target > 0
       ? Math.round((purchasedPerDay / target) * 100)
       : null
-    return { key, label, unit, purchasedPerDay, target, coveragePct, drivers: top_drivers[key] }
+    return {
+      key,
+      label,
+      unit,
+      purchasedPerDay,
+      target,
+      coveragePct,
+      drivers: top_drivers[key],
+      info: nutrient_info[key],
+    }
   }).sort((a, b) => {
     if (a.coveragePct === null) return 1
     if (b.coveragePct === null) return -1
@@ -771,24 +798,20 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ key, label, unit, purchasedPerDay, target, coveragePct, drivers }) => {
+              {rows.map(({ key, label, unit, purchasedPerDay, target, coveragePct, drivers, info }) => {
                 const isOpen = expanded.has(key)
                 return (
                   <Fragment key={key}>
                     <tr>
                       <td>
-                        {drivers.length > 0 ? (
-                          <button
-                            type="button"
-                            className="micronutrient-row-toggle"
-                            aria-expanded={isOpen}
-                            onClick={() => toggleExpanded(key)}
-                          >
-                            {label}
-                          </button>
-                        ) : (
-                          label
-                        )}
+                        <button
+                          type="button"
+                          className="micronutrient-row-toggle"
+                          aria-expanded={isOpen}
+                          onClick={() => toggleExpanded(key)}
+                        >
+                          {label}
+                        </button>
                       </td>
                       <td>
                         {purchasedPerDay.toFixed(1)} {unit}
@@ -796,16 +819,35 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
                       <td>{target !== null ? `${target.toFixed(1)} ${unit}` : '—'}</td>
                       <td>{coveragePct !== null ? `${coveragePct}%` : '—'}</td>
                     </tr>
-                    {isOpen && drivers.length > 0 && (
+                    {isOpen && (
                       <tr className="micronutrient-drivers-row">
                         <td colSpan={4}>
-                          <ol className="driver-list">
-                            {drivers.map((driver) => (
-                              <li key={driver.name}>
-                                {driver.name} — {driver.value_per_100g} {unit}/100g
-                              </li>
-                            ))}
-                          </ol>
+                          {info.map((section) => (
+                            <div key={section.title} className="micronutrient-info-section">
+                              <p className="micronutrient-info-section__title">
+                                {section.title}
+                              </p>
+                              <p className="muted">{section.body}</p>
+                            </div>
+                          ))}
+                          <div className="micronutrient-info-section">
+                            <p className="micronutrient-info-section__title">
+                              Drivers from your purchases
+                            </p>
+                            {drivers.length > 0 ? (
+                              <ol className="driver-list">
+                                {drivers.map((driver) => (
+                                  <li key={driver.name}>
+                                    {driver.name} — {driver.value_per_100g} {unit}/100g
+                                  </li>
+                                ))}
+                              </ol>
+                            ) : (
+                              <p className="muted">
+                                None of your purchases contain {label.toLowerCase()} yet.
+                              </p>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )}

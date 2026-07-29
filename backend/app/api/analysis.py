@@ -13,6 +13,7 @@ from backend.app.services.basket_composition import compute_basket_composition, 
 from backend.app.services.bucketing import compute_buckets
 from backend.app.services.dge_matcher import get_micronutrient_targets
 from backend.app.services.diversity import compute_diversity
+from backend.app.services.micronutrient_info import NUTRIENT_INFO
 from backend.app.services.ideal_profile import (
     FIBER_G_PER_1000KCAL,
     _age_from_dob,
@@ -268,6 +269,7 @@ def get_micronutrients(profile_id: int = Depends(require_profile_id)):
     items = repo.get_all_confirmed_receipt_items(profile_id)
     result = compute_micronutrient_totals(items, reference_date=_today(), window_days=_RESULTS_WINDOW_DAYS)
     result["days_of_data"] = days_of_data(items, reference_date=_today(), window_days=_RESULTS_WINDOW_DAYS)
+    result["nutrient_info"] = NUTRIENT_INFO
 
     stored = repo.get_profile(profile_id)
     targets = None

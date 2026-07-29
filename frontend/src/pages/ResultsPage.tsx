@@ -711,7 +711,7 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
 
   return (
     <div className="section-divider">
-      <h2>Micronutrients</h2>
+      <h2>Your micronutrients</h2>
       <p className="muted">
         Averaged daily intake from the last {window_days} days of purchases, sourced
         from the German BLS food database, against your personal daily target.

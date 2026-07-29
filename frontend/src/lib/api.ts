@@ -275,6 +275,9 @@ export interface CompositionResult {
    * DOES have a full macro breakdown and only shows up here if it's one of
    * the rare categories still missing a value. */
   unaccounted_pct: number | null
+  /** Plain item count behind unaccounted_pct (not calorie-weighted) --
+   * pair with items_considered for an "X/Y purchased items" display. */
+  unaccounted_items_count: number
   /** Share of the counted calories that came from a category-estimate
    * match (MatchType.FALLBACK) rather than an identified product -- already
    * included in the macro split above; this is a confidence label, not an
@@ -391,6 +394,11 @@ export interface PlantDiversityResult {
  * shown inline on the Results page's Daily calories card. */
 export interface MealCoverageResult {
   window_days: number
+  /** Actual divisor for "per day" figures -- less than window_days for a
+   * user whose earliest purchase is more recent than the window itself,
+   * so a new user's daily average isn't diluted by days before they had
+   * any receipts at all. */
+  days_of_data: number
   kcal_purchased: number
   /** From Profile.consumption_share_pct, or 100 (assume all groceries are
    * yours) when the profile hasn't set it. */
@@ -417,16 +425,34 @@ export interface MicronutrientTotals {
   iodine_ug: number
 }
 
+/** A purchased item's per-100g density for this micronutrient -- same
+ * ranking convention as DiversityDriver for macros. */
+export interface MicronutrientDriver {
+  name: string
+  value_per_100g: number
+}
+
 export interface MicronutrientsResult {
   window_days: number
+  /** Actual divisor for the "Purchased" daily average -- less than
+   * window_days for a user whose earliest purchase is more recent than
+   * the window itself. */
+  days_of_data: number
   totals: MicronutrientTotals
   /** Share of the counted calories that came from an item carrying real
    * micronutrient data (BLS-tier or bridged-OFF) -- the trust signal for
    * how much to read into the totals above. */
   micro_coverage_pct: number | null
+  /** Plain item counts behind micro_coverage_pct (not calorie-weighted)
+   * -- pair for an "X/Y purchased items" display. */
+  items_with_micros_count: number
+  items_considered: number
   /** DGE daily targets for this profile's age/sex/life_stage, or null if
    * the profile's age can't be resolved (e.g. incomplete profile). */
   targets: MicronutrientTotals | null
+  /** Up to 5 purchased items ranked by per-100g density, per micronutrient
+   * -- backs each row's "Show drivers" expansion. */
+  top_drivers: Record<keyof MicronutrientTotals, MicronutrientDriver[]>
 }
 
 // ── Recipe recommendations feature ────────────────────────────────────────

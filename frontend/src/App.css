@@ -656,6 +656,45 @@
   color: var(--text);
 }
 
+/* Per-row "Show drivers" toggle -- unlike the macro rings' shared overlay
+   (.macro-drivers-overlay), each micronutrient expands independently and
+   inline, pushing the rows below it down rather than floating over them. */
+.micronutrient-row-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.micronutrient-row-toggle::before {
+  content: '▸';
+  font-size: 10px;
+  color: var(--text);
+  transition: transform 0.15s ease;
+}
+
+.micronutrient-row-toggle[aria-expanded='true']::before {
+  transform: rotate(90deg);
+}
+
+.micronutrient-table .micronutrient-drivers-row td {
+  padding-top: 2px;
+  padding-bottom: 12px;
+  white-space: normal;
+  border-bottom: 1px solid var(--border);
+}
+
+.micronutrient-drivers-row .driver-list {
+  margin: 0;
+}
+
 .micronutrient-table tbody tr:last-child td {
   border-bottom: none;
 }

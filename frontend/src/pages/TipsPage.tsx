@@ -298,7 +298,7 @@ const FUN_GENERATING_PHRASES = [
   'Double-checking it fits your targets and your taste…',
   'Adding a little Nährbert magic…',
 ] as const
-const PHRASE_ROTATE_MS = 2500
+const PHRASE_ROTATE_MS = 5000
 
 function RecipeGenerationForm({
   onGenerated,

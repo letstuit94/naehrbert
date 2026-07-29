@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { PageSkeleton } from '../components/Skeleton'
 import { Link } from 'react-router-dom'
 import {
@@ -103,7 +103,7 @@ export function ResultsPage() {
   if (loading) {
     return (
       <section aria-busy="true">
-        <h1>Your results</h1>
+        <h1>Your insights</h1>
         <PageSkeleton cards={2} lines={3} />
       </section>
     )
@@ -114,7 +114,7 @@ export function ResultsPage() {
   return (
     <section>
       <h1>
-        Your results{' '}
+        Your insights{' '}
         <span className="title-note">(calculated over the last 28 days)</span>
       </h1>
       <p className="page-lead">
@@ -177,14 +177,13 @@ export function ResultsPage() {
           </p>
         )}
 
-      {composition.data &&
-        composition.data.unaccounted_pct !== null &&
-        composition.data.unaccounted_pct > 5 && (
-          <p className="callout callout--muted">
-            {composition.data.unaccounted_pct}% of your calories come from items with
-            incomplete product data, so they don't count toward any one macro above.
-          </p>
-        )}
+      {composition.data && composition.data.unaccounted_items_count > 0 && (
+        <p className="callout callout--muted">
+          {composition.data.unaccounted_items_count}/{composition.data.items_considered}{' '}
+          purchased items have incomplete product data, so they don't count toward any
+          one macro above.
+        </p>
+      )}
 
       {!noReceiptsYet && composition.data && composition.data.low_confidence && (
         <p className="callout callout--warning">
@@ -271,17 +270,21 @@ function TargetsSection({
   const [expandedMacro, setExpandedMacro] = useState<MacroKey | null>(null)
   const expandedDrivers = expandedMacro ? diversity?.[expandedMacro].top_drivers : undefined
 
-  // Average daily calories purchased over the window, as a fraction of the
-  // daily target -- shown inline on the Daily calories card rather than as
-  // its own "X meals covered" tile.
+  // Average daily calories purchased, as a fraction of the daily target --
+  // shown inline on the Daily calories card rather than as its own "X meals
+  // covered" tile. Divides by days_of_data (capped at window_days, but
+  // shorter for a user whose earliest purchase is more recent than the
+  // window itself), not blindly by the window -- otherwise a user 17 days
+  // in would have their average diluted by 11 days with no purchases at all.
   const avgDailyKcal = mealCoverage
-    ? Math.round(mealCoverage.effective_kcal / mealCoverage.window_days)
+    ? Math.round(mealCoverage.effective_kcal / mealCoverage.days_of_data)
     : null
   const pctOfTarget =
     avgDailyKcal !== null && targets.calories_kcal > 0
       ? Math.round((avgDailyKcal / targets.calories_kcal) * 100)
       : null
   const shareWasDefaulted = mealCoverage?.consumption_share_pct === 100
+  const partialWindow = mealCoverage !== null && mealCoverage.days_of_data < mealCoverage.window_days
 
   return (
     <div className="targets-section">
@@ -304,13 +307,23 @@ function TargetsSection({
         </div>
         {avgDailyKcal !== null && pctOfTarget !== null && (
           <span className="muted">
-            ({pctOfTarget}% of target, last {mealCoverage?.window_days} days)
+            ({pctOfTarget}% of target, last {mealCoverage?.days_of_data} day
+            {mealCoverage?.days_of_data === 1 ? '' : 's'})
           </span>
         )}
         {avgDailyKcal !== null && shareWasDefaulted && (
           <span className="muted">
             Assuming all these groceries are yours — set your{' '}
             <Link to="/profile">grocery share</Link> for a more accurate number.
+          </span>
+        )}
+        {partialWindow && (
+          <span className="muted">
+            Your purchase history only goes back {mealCoverage.days_of_data} day
+            {mealCoverage.days_of_data === 1 ? '' : 's'} so far (less than the{' '}
+            {mealCoverage.window_days}-day window) — this average is calculated over
+            that shorter span, and will settle in as you upload more receipts over
+            time.
           </span>
         )}
       </div>
@@ -529,7 +542,7 @@ function MacroRingTile({
           aria-expanded={isExpanded}
           onClick={() => onToggleDrivers(isExpanded ? null : macroKey)}
         >
-          Learn more
+          Show drivers
         </button>
       )}
     </div>
@@ -690,19 +703,39 @@ const MICRONUTRIENT_LABELS: { key: keyof MicronutrientsResult['totals']; label: 
 ]
 
 function MicronutrientsSection({ micronutrients }: { micronutrients: MicronutrientsResult }) {
-  const { totals, targets, micro_coverage_pct, window_days } = micronutrients
+  const {
+    totals,
+    targets,
+    micro_coverage_pct,
+    window_days,
+    days_of_data,
+    items_with_micros_count,
+    items_considered,
+    top_drivers,
+  } = micronutrients
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const partialWindow = days_of_data < window_days
+
+  function toggleExpanded(key: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   // Lowest coverage first -- surfaces the nutrients furthest from target at
   // the top rather than in a fixed, alphabetical-ish order. Nutrients with
   // no resolvable target (coveragePct null) sort last since they can't be
   // ranked at all.
   const rows = MICRONUTRIENT_LABELS.map(({ key, label, unit }) => {
-    const purchasedPerDay = totals[key] / window_days
+    const purchasedPerDay = totals[key] / days_of_data
     const target = targets?.[key] ?? null
     const coveragePct = target !== null && target > 0
       ? Math.round((purchasedPerDay / target) * 100)
       : null
-    return { key, label, unit, purchasedPerDay, target, coveragePct }
+    return { key, label, unit, purchasedPerDay, target, coveragePct, drivers: top_drivers[key] }
   }).sort((a, b) => {
     if (a.coveragePct === null) return 1
     if (b.coveragePct === null) return -1
@@ -713,10 +746,19 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
     <div className="section-divider">
       <h2>Your micronutrients</h2>
       <p className="muted">
-        Averaged daily intake from the last {window_days} days of purchases, sourced
-        from the German BLS food database, against your personal daily target.
+        Averaged daily intake from the last {days_of_data} day{days_of_data === 1 ? '' : 's'}{' '}
+        of purchases, sourced from the German BLS food database, against your personal
+        daily target.
       </p>
       <p className="callout callout--muted">{PURCHASES_ONLY_NOTE}</p>
+      {partialWindow && (
+        <p className="callout callout--muted">
+          Your purchase history only goes back {days_of_data} day{days_of_data === 1 ? '' : 's'}{' '}
+          so far (less than the {window_days}-day window) — the daily averages below are
+          calculated over that shorter span, and will settle in as you upload more
+          receipts over time.
+        </p>
+      )}
       <div className="card micronutrient-card">
         <div className="table-scroll">
           <table className="micronutrient-table">
@@ -729,16 +771,47 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ key, label, unit, purchasedPerDay, target, coveragePct }) => (
-                <tr key={key}>
-                  <td>{label}</td>
-                  <td>
-                    {purchasedPerDay.toFixed(1)} {unit}
-                  </td>
-                  <td>{target !== null ? `${target.toFixed(1)} ${unit}` : '—'}</td>
-                  <td>{coveragePct !== null ? `${coveragePct}%` : '—'}</td>
-                </tr>
-              ))}
+              {rows.map(({ key, label, unit, purchasedPerDay, target, coveragePct, drivers }) => {
+                const isOpen = expanded.has(key)
+                return (
+                  <Fragment key={key}>
+                    <tr>
+                      <td>
+                        {drivers.length > 0 ? (
+                          <button
+                            type="button"
+                            className="micronutrient-row-toggle"
+                            aria-expanded={isOpen}
+                            onClick={() => toggleExpanded(key)}
+                          >
+                            {label}
+                          </button>
+                        ) : (
+                          label
+                        )}
+                      </td>
+                      <td>
+                        {purchasedPerDay.toFixed(1)} {unit}
+                      </td>
+                      <td>{target !== null ? `${target.toFixed(1)} ${unit}` : '—'}</td>
+                      <td>{coveragePct !== null ? `${coveragePct}%` : '—'}</td>
+                    </tr>
+                    {isOpen && drivers.length > 0 && (
+                      <tr className="micronutrient-drivers-row">
+                        <td colSpan={4}>
+                          <ol className="driver-list">
+                            {drivers.map((driver) => (
+                              <li key={driver.name}>
+                                {driver.name} — {driver.value_per_100g} {unit}/100g
+                              </li>
+                            ))}
+                          </ol>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -753,10 +826,10 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
       </p>
       {micro_coverage_pct !== null && (
         <p className="callout callout--muted">
-          {micro_coverage_pct}% of your purchases (by calories) have real micronutrient
-          data behind them, sourced from the German BLS food database — the rest come
-          from packaged-product or category-estimate data that doesn't include
-          micronutrients.
+          {items_with_micros_count}/{items_considered} purchased items have real
+          micronutrient data behind them, sourced from the German BLS food database —
+          the rest come from packaged-product or category-estimate data that doesn't
+          include micronutrients.
         </p>
       )}
     </div>

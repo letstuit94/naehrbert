@@ -386,7 +386,7 @@ export function UploadPage() {
         })}
         <div className="upload-confirmed-actions">
           <Link to="/results" className="btn btn-primary">
-            See your results →
+            See your insights →
           </Link>
           <button className="btn btn-secondary" onClick={reset}>
             Upload another receipt
@@ -525,7 +525,7 @@ export function UploadPage() {
           <p className="callout callout--warning">
             This receipt is more than {RESULTS_WINDOW_DAYS} days old. Once confirmed,
             it'll still stock your pantry, but it won't count toward your health score
-            or gap analysis on the Results page — those only look at the last{' '}
+            or gap analysis on the Insights page — those only look at the last{' '}
             {RESULTS_WINDOW_DAYS} days.
           </p>
         )}

@@ -150,6 +150,7 @@ def compute_basket_composition(
     protein_total = fat_total = carb_total = fiber_total = kcal_total = 0.0
     kcal_macro_covered = kcal_confident = kcal_fallback = kcal_measured_qty = 0.0
     considered = 0
+    incomplete_macro_items = 0
     receipt_ids = set()
 
     for item in receipt_items:
@@ -193,6 +194,8 @@ def compute_basket_composition(
         kcal_total += kcal_contrib
         if protein_g is not None and fat_g is not None and carbs_g is not None:
             kcal_macro_covered += kcal_contrib
+        else:
+            incomplete_macro_items += 1
         match_type = (item.get("match_type") or "").lower()
         if match_type in _CONFIDENT_MATCH_TYPES:
             kcal_confident += kcal_contrib
@@ -239,6 +242,17 @@ def compute_basket_composition(
         **split,
         "fiber_per_1000kcal": fiber_per_1000kcal,
         "items_considered": considered,
+        # Items literally missing a protein/fat/carb value (a plain count,
+        # not calorie-weighted) -- the UI shows this as "X/Y purchased
+        # items" rather than unaccounted_pct's %. NOT exactly the same
+        # population as unaccounted_pct>0: that % can also be a small
+        # residual from real-world kcal-vs-macro rounding across items that
+        # *do* have all three fields, so this count can legitimately read 0
+        # while unaccounted_pct is still slightly positive -- the UI only
+        # shows its count-based message when this is itself > 0, precisely
+        # to avoid asserting "items with incomplete data" when there aren't
+        # any.
+        "unaccounted_items_count": incomplete_macro_items,
         "receipts_considered": receipts_considered,
         "macro_coverage_pct": macro_coverage_pct,
         "match_coverage_pct": match_coverage_pct,
@@ -246,3 +260,33 @@ def compute_basket_composition(
         "quantity_coverage_pct": quantity_coverage_pct,
         "low_confidence": low_confidence,
     }
+
+
+def days_of_data(
+    receipt_items: List[dict],
+    reference_date: Optional[date],
+    window_days: int,
+) -> int:
+    """How many days of purchase history actually exist within the window,
+    capped at window_days -- a user 17 days into using the app has 17, not
+    28, even though the window itself is 28 days wide. Used as the divisor
+    for "per day" figures (meal coverage, micronutrient averages) so a new
+    user's daily average isn't diluted by days before their first receipt.
+    Falls back to window_days if nothing here is dated (nothing to compute
+    a span from)."""
+
+    if reference_date is None:
+        return window_days
+    earliest: Optional[date] = None
+    for item in receipt_items:
+        item_date = _item_purchase_date(item)
+        if item_date is None:
+            continue
+        if (reference_date - item_date).days > window_days:
+            continue  # outside the window entirely
+        if earliest is None or item_date < earliest:
+            earliest = item_date
+    if earliest is None:
+        return window_days
+    span = (reference_date - earliest).days + 1
+    return max(1, min(window_days, span))

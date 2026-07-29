@@ -10,7 +10,7 @@ import { Logo } from './Logo'
 // "Profile" lives as its own icon on the far right, not in this list.
 const NAV_LINKS = [
   { to: '/upload', label: 'Upload', icon: 'upload' as const },
-  { to: '/results', label: 'Results', icon: 'results' as const },
+  { to: '/results', label: 'Insights', icon: 'results' as const },
   { to: '/pantry', label: 'Pantry', icon: 'pantry' as const },
   { to: '/tips', label: 'Recipes', icon: 'recipes' as const },
 ]

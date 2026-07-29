@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.app.core.auth import require_profile_id
 from backend.app.db import repo
 from backend.app.models.profile import Profile
-from backend.app.services.basket_composition import compute_basket_composition
+from backend.app.services.basket_composition import compute_basket_composition, days_of_data
 from backend.app.services.bucketing import compute_buckets
 from backend.app.services.dge_matcher import get_micronutrient_targets
 from backend.app.services.diversity import compute_diversity
@@ -42,6 +42,7 @@ _EMPTY_COMPOSITION = {
     "kcal_total": None,
     "fiber_per_1000kcal": None,
     "items_considered": 0,
+    "unaccounted_items_count": 0,
     "receipts_considered": 0,
     "macro_coverage_pct": None,
     "match_coverage_pct": None,
@@ -240,9 +241,15 @@ def get_meal_coverage(profile_id: int = Depends(require_profile_id)):
     kcal_purchased = (raw or {}).get("kcal_total") or 0.0
     share_pct = stored.get("consumption_share_pct") or 100.0
     effective_kcal = kcal_purchased * share_pct / 100.0
+    days = days_of_data(items, reference_date=_today(), window_days=_RESULTS_WINDOW_DAYS)
 
     return {
         "window_days": _RESULTS_WINDOW_DAYS,
+        # Actual divisor for "per day" figures -- less than window_days
+        # whenever the earliest purchase is more recent than the window
+        # itself (a new user), so the daily average isn't diluted by days
+        # before they had any receipts at all.
+        "days_of_data": days,
         "kcal_purchased": round(kcal_purchased, 1),
         "consumption_share_pct": share_pct,
         "effective_kcal": round(effective_kcal, 1),
@@ -260,6 +267,7 @@ def get_micronutrients(profile_id: int = Depends(require_profile_id)):
 
     items = repo.get_all_confirmed_receipt_items(profile_id)
     result = compute_micronutrient_totals(items, reference_date=_today(), window_days=_RESULTS_WINDOW_DAYS)
+    result["days_of_data"] = days_of_data(items, reference_date=_today(), window_days=_RESULTS_WINDOW_DAYS)
 
     stored = repo.get_profile(profile_id)
     targets = None

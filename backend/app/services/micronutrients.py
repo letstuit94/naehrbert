@@ -45,7 +45,12 @@ def compute_micronutrient_totals(
     window_days: Optional[int] = None,
 ) -> dict:
     totals = {k: 0.0 for k in _MICRO_KEYS}
+    # Per-100g density by name, for top_drivers -- first value wins (same
+    # product should report the same density on every purchase), same
+    # convention as diversity.py's density-ranked macro drivers.
+    density = {k: {} for k in _MICRO_KEYS}
     kcal_total = kcal_with_micros = 0.0
+    items_considered = items_with_micros = 0
 
     for item in receipt_items:
         cal = item.get("calories_kcal")
@@ -64,20 +69,36 @@ def compute_micronutrient_totals(
         grams = grams_for(item.get("quantity"), item.get("unit"), item.get("category"), item.get("name"))
         factor = grams / 100.0
         kcal_contrib = cal * factor
+        name = item.get("matched_name") or item.get("name") or "unknown item"
 
         micros = item.get("micros") or {}
         for key, value in micros.items():
             if key in totals and value is not None:
                 totals[key] += value * factor
+                density[key].setdefault(name, value)
 
         kcal_total += kcal_contrib
+        items_considered += 1
         if micros:
             kcal_with_micros += kcal_contrib
+            items_with_micros += 1
 
     coverage = round(kcal_with_micros / kcal_total * 100, 1) if kcal_total > 0 else None
+    top_drivers = {
+        key: [
+            {"name": name, "value_per_100g": round(value, 2)}
+            for name, value in sorted(density[key].items(), key=lambda kv: kv[1], reverse=True)[:5]
+        ]
+        for key in _MICRO_KEYS
+    }
 
     return {
         "window_days": window_days,
         "totals": {k: round(v, 2) for k, v in totals.items()},
         "micro_coverage_pct": coverage,
+        # Plain item counts behind micro_coverage_pct (not calorie-weighted)
+        # -- the UI shows "X/Y purchased items" rather than a %.
+        "items_with_micros_count": items_with_micros,
+        "items_considered": items_considered,
+        "top_drivers": top_drivers,
     }

@@ -256,6 +256,26 @@ def upsert_verified_match(match_key: str, store: str, matched_name: Optional[str
     get_client().table("verified_matches").upsert(row, on_conflict="match_key,store").execute()
 
 
+# ── rejected_matches (services/rejected_matches.py) ───────────────────────
+
+def get_rejected_matches(match_key: str) -> List[dict]:
+    res = (
+        get_client()
+        .table("rejected_matches")
+        .select("*")
+        .eq("match_key", match_key)
+        .execute()
+    )
+    return res.data or []
+
+
+def insert_rejected_match(match_key: str, source: str, external_id: str) -> None:
+    row = {"match_key": match_key, "source": source, "external_id": external_id}
+    get_client().table("rejected_matches").upsert(
+        row, on_conflict="match_key,source,external_id"
+    ).execute()
+
+
 # ── user_feedback (NPS, recipe-recommendations feature) ──────────────────
 
 def insert_feedback(profile_id: int, nps_score: int) -> dict:

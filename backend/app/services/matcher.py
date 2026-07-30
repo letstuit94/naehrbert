@@ -61,7 +61,10 @@ def match_product(
 
     scored = []
     for product in candidates:
-        score = token_similarity(name, off_api.product_display_name(product))
+        score = max(
+            (token_similarity(name, text) for text in off_api.product_match_text(product)),
+            default=0.0,
+        )
         if score < FUZZY_THRESHOLD:
             continue
         nutrition = off_api.extract_nutrition(product)

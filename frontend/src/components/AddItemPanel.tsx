@@ -2,10 +2,13 @@ import { useState } from 'react'
 import {
   ApiError,
   createPantryItem,
+  rejectMatchCandidate,
   searchMatchCandidates,
+  type CandidatesResponse,
   type ManualItemMatch,
   type MatchCandidate,
 } from '../lib/api'
+import { CandidateSection } from './MatchSearchPanel'
 
 // Units offered for a manual add: the mass/volume amounts (g/kg/ml/l) plus a
 // discrete piece count -- same list the Purchases edit form uses.
@@ -35,8 +38,9 @@ export function AddItemPanel({
   const [picked, setPicked] = useState<ManualItemMatch | null>(null)
 
   const [searching, setSearching] = useState(false)
-  const [candidates, setCandidates] = useState<MatchCandidate[] | null>(null)
+  const [candidates, setCandidates] = useState<CandidatesResponse | null>(null)
   const [busy, setBusy] = useState(false)
+  const [rejecting, setRejecting] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   async function runSearch() {
@@ -45,11 +49,25 @@ export function AddItemPanel({
     setError(null)
     try {
       const result = await searchMatchCandidates(name.trim())
-      setCandidates(result.candidates)
+      setCandidates(result)
     } catch {
       setError('Search failed. Please try again.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function reject(candidate: MatchCandidate) {
+    const key = candidate.off_id ?? candidate.bls_code ?? ''
+    setRejecting(key)
+    setError(null)
+    try {
+      await rejectMatchCandidate(name.trim(), candidate)
+      await runSearch()
+    } catch {
+      setError('Could not dismiss that candidate. Please try again.')
+    } finally {
+      setRejecting(null)
     }
   }
 
@@ -183,34 +201,24 @@ export function AddItemPanel({
       {searching && !picked && (
         <>
           {busy && <p className="muted">Searching…</p>}
-          {candidates && candidates.length === 0 && (
-            <p className="muted">No candidates with complete macro data found.</p>
-          )}
-          {candidates && candidates.length > 0 && (
-            <ul className="candidate-list">
-              {candidates.map((c, i) => (
-                <li
-                  key={`${c.source}-${c.off_id ?? c.bls_code ?? i}`}
-                  className="candidate-row"
-                >
-                  <div className="candidate-row__main">
-                    <span className="candidate-row__source">
-                      {c.source === 'off' ? 'OFF' : 'BLS'}
-                    </span>
-                    <span className="candidate-row__name">{c.matched_name}</span>
-                  </div>
-                  <span className="candidate-row__macros">
-                    {formatMacro(c.nutrition.calories_kcal)} kcal · P{' '}
-                    {formatMacro(c.nutrition.protein_g)}g · F{' '}
-                    {formatMacro(c.nutrition.fat_g)}g · C{' '}
-                    {formatMacro(c.nutrition.carbs_g)}g
-                  </span>
-                  <button type="button" className="btn-link" onClick={() => pick(c)}>
-                    Select
-                  </button>
-                </li>
-              ))}
-            </ul>
+          {candidates && (
+            <>
+              <CandidateSection
+                source="off"
+                candidates={candidates.off}
+                onPick={pick}
+                onReject={reject}
+                rejecting={rejecting}
+                offRateLimited={candidates.off_rate_limited}
+              />
+              <CandidateSection
+                source="bls"
+                candidates={candidates.bls}
+                onPick={pick}
+                onReject={reject}
+                rejecting={rejecting}
+              />
+            </>
           )}
         </>
       )}

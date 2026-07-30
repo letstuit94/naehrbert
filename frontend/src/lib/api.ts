@@ -215,8 +215,16 @@ export interface MatchCandidate {
   nutrition: CandidateNutrition
 }
 
+/** GET .../candidates now returns the two sources separately (rather than
+ * one concatenated list) so an honestly-empty source ("OFF found nothing
+ * usable for this text") renders as its own empty state instead of just
+ * silently having no rows in a shared list. `off_rate_limited` further
+ * distinguishes "OFF's rate limit (or a temporary outage) was hit, so this
+ * may be incomplete" from a confirmed empty OFF result. */
 export interface CandidatesResponse {
-  candidates: MatchCandidate[]
+  off: MatchCandidate[]
+  bls: MatchCandidate[]
+  off_rate_limited: boolean
 }
 
 export interface ItemCorrection {
@@ -673,6 +681,39 @@ export function searchCandidates(
  * doesn't exist yet (GET /match/candidates). */
 export function searchMatchCandidates(query: string): Promise<CandidatesResponse> {
   return request<CandidatesResponse>(`/match/candidates?q=${encodeURIComponent(query)}`)
+}
+
+/** The search panel's "X" button: remember that this candidate is not a
+ * match for `query`, so it's excluded from every future search for the
+ * same text (services/rejected_matches.py) and backfilled by the next-
+ * ranked candidate on the very next search. */
+export function rejectCandidate(
+  receiptId: string,
+  itemId: string,
+  query: string,
+  candidate: MatchCandidate,
+): Promise<void> {
+  return request<void>(`/receipts/${receiptId}/items/${itemId}/candidates/reject`, {
+    method: 'POST',
+    body: JSON.stringify({
+      query,
+      source: candidate.source,
+      external_id: candidate.source === 'off' ? candidate.off_id : candidate.bls_code,
+    }),
+  })
+}
+
+/** Same reject as rejectCandidate, but not tied to an existing receipt item
+ * (POST /match/candidates/reject) -- the manual "add to pantry" twin. */
+export function rejectMatchCandidate(query: string, candidate: MatchCandidate): Promise<void> {
+  return request<void>('/match/candidates/reject', {
+    method: 'POST',
+    body: JSON.stringify({
+      query,
+      source: candidate.source,
+      external_id: candidate.source === 'off' ? candidate.off_id : candidate.bls_code,
+    }),
+  })
 }
 
 /** Persists a manually-picked candidate and remembers it as a verified match. */

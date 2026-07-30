@@ -260,10 +260,35 @@ def search_candidates(
     """Epic 4.2 — search OFF + BLS for a manual pick, for items flagged
     below the confidence threshold in review. The receipt-scoped twin of
     GET /match/candidates: same search, plus an ownership check on the item
-    being corrected."""
+    being corrected, and passes this receipt's already-known store through
+    as a soft OFF-search boost (the receipt-independent twin has no store
+    to pass)."""
+
+    receipt = _owned_receipt_or_404(receipt_id, profile_id)
+    return match.search_candidates(q, store=receipt.get("store"))
+
+
+class CandidateRejectPayload(BaseModel):
+    query: str
+    source: str
+    external_id: str
+
+
+@router.post("/{receipt_id}/items/{item_id}/candidates/reject")
+def reject_candidate(
+    receipt_id: str,
+    item_id: str,
+    payload: CandidateRejectPayload,
+    profile_id: int = Depends(require_profile_id),
+):
+    """Epic 4.2 follow-up — the search panel's X button: remember that this
+    candidate is not a match for `payload.query`, so it's excluded from
+    every future search for the same normalized text (services/
+    rejected_matches.py), not just this one item."""
 
     _owned_receipt_or_404(receipt_id, profile_id)
-    return {"candidates": match.search_candidates(q)}
+    match.reject_candidate(payload.query, payload.source, payload.external_id)
+    return {"status": "ok"}
 
 
 @router.post("/{receipt_id}/items/{item_id}/correct")

@@ -1075,6 +1075,49 @@
   white-space: nowrap;
 }
 
+.candidate-row__reject {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.candidate-row__reject:hover {
+  background: var(--code-bg);
+  color: var(--danger, #c0392b);
+}
+
+.candidate-row__reject:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.candidate-section {
+  margin-top: 12px;
+}
+
+.candidate-section:first-of-type {
+  margin-top: 8px;
+}
+
+.candidate-section__title {
+  margin: 0 0 6px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
 .review-row__name,
 .review-row__qty,
 .review-row__unit {

@@ -491,23 +491,30 @@ export interface GapRecommendationItem {
   suggestion: string
 }
 
-/** One row per profile (backend/app/models/recommendation.py) -- replaced
- * on each regenerate, not an accumulating history like Recipe. `null`
- * from GET /analysis/recommendations means nothing's been generated yet. */
+/** Up to DAILY_RECOMMENDATION_LIMIT accumulate per profile per (UTC) day
+ * (backend/app/api/recommendations.py) -- each one only ever created by an
+ * explicit "Get Quick Wins" click, never auto-generated. */
 export interface GapRecommendationsResult {
+  id: string
   summary: string
   items: GapRecommendationItem[]
   created_at: string
 }
 
-export function getGapRecommendations(): Promise<GapRecommendationsResult | null> {
-  return request<{ recommendation: GapRecommendationsResult | null }>('/analysis/recommendations').then(
-    (r) => r.recommendation,
+/** Mirrors backend/app/api/recommendations.py's DAILY_GENERATION_LIMIT. */
+export const DAILY_RECOMMENDATION_LIMIT = 2
+
+/** Today's recommendations for this profile (0 to DAILY_RECOMMENDATION_LIMIT),
+ * oldest first. */
+export function getGapRecommendations(): Promise<GapRecommendationsResult[]> {
+  return request<{ recommendations: GapRecommendationsResult[] }>('/analysis/recommendations').then(
+    (r) => r.recommendations,
   )
 }
 
 /** The one action that actually calls Groq -- getGapRecommendations()
- * above is just a cheap DB read, safe to fetch on every page load. */
+ * above is just a cheap DB read, safe to fetch on every page load. Throws
+ * an ApiError (429) once DAILY_RECOMMENDATION_LIMIT is reached for today. */
 export function generateGapRecommendations(): Promise<GapRecommendationsResult> {
   return request<{ recommendation: GapRecommendationsResult }>('/analysis/recommendations/generate', {
     method: 'POST',

@@ -41,11 +41,12 @@ class GapRecommendations(BaseModel):
 
 
 class GapRecommendationsResponse(GapRecommendations):
-    """Stored/returned recommendation, as persisted to the
-    `gap_recommendations` table -- one row per profile (replaced on each
-    regenerate, not an accumulating history like recipes), so `profile_id`
-    doubles as the primary key (see the migration)."""
+    """One persisted recommendation, as stored in the `gap_recommendations`
+    table -- up to DAILY_GENERATION_LIMIT (api/recommendations.py) of these
+    accumulate per profile per (UTC) day, each only ever created by an
+    explicit user action, never auto-generated."""
 
     model_config = ConfigDict(extra="ignore")
 
+    id: Optional[str] = None
     created_at: Optional[datetime] = None

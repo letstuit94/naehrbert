@@ -7,6 +7,11 @@ style/allergies/dislikes.
 Kept in its own file (like recipes.py) rather than folded into
 analysis.py, which stays pure-analysis -- this is generation, the same
 separation of concerns recipes.py already established.
+
+Capped at DAILY_GENERATION_LIMIT per profile per (UTC) day; both of a
+day's recommendations are kept and returned so the frontend can page
+between them. Each one is only ever created by an explicit POST
+.../generate -- there is no automatic/background generation.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -20,19 +25,28 @@ from backend.app.services.recommendation_engine import generate_recommendations
 
 router = APIRouter(prefix="/analysis/recommendations", tags=["recommendations"])
 
+DAILY_GENERATION_LIMIT = 2
+
 
 @router.get("")
-def read_recommendation(profile_id: int = Depends(require_profile_id)):
-    """The last generated recommendation for this profile, or None if
-    nothing's been generated yet -- a cheap DB read, always safe to fetch
-    on page load (unlike POST .../generate, which is the one action that
-    actually calls Groq)."""
+def read_recommendations(profile_id: int = Depends(require_profile_id)):
+    """Today's recommendations for this profile (0 to DAILY_GENERATION_LIMIT),
+    oldest first -- a cheap DB read, always safe to fetch on page load
+    (unlike POST .../generate, which is the one action that actually calls
+    Groq)."""
 
-    return {"recommendation": repo.get_gap_recommendation(profile_id)}
+    return {"recommendations": repo.list_gap_recommendations_today(profile_id)}
 
 
 @router.post("/generate")
 def generate_recommendation(profile_id: int = Depends(require_profile_id)):
+    today = repo.list_gap_recommendations_today(profile_id)
+    if len(today) >= DAILY_GENERATION_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail=f"You've reached today's limit of {DAILY_GENERATION_LIMIT} Quick Wins. Come back tomorrow.",
+        )
+
     stored = repo.get_profile(profile_id)
     if not stored:
         raise HTTPException(status_code=404, detail="No profile yet")
@@ -57,7 +71,7 @@ def generate_recommendation(profile_id: int = Depends(require_profile_id)):
     except ValueError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    row = repo.upsert_gap_recommendation(
+    row = repo.insert_gap_recommendation(
         profile_id, result.summary, [item.model_dump(mode="json") for item in result.items]
     )
     return {"recommendation": row}

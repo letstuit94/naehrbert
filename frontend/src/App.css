@@ -2980,6 +2980,19 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   border-top: none;
 }
 
+.gap-recommendation-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.gap-recommendation-pager .btn {
+  padding: 4px 12px;
+  line-height: 1;
+}
+
 /* Eyebrow / section label (§4) */
 .eyebrow {
   display: block;

@@ -3,6 +3,7 @@ import { PageSkeleton } from '../components/Skeleton'
 import { Link } from 'react-router-dom'
 import {
   ApiError,
+  DAILY_RECOMMENDATION_LIMIT,
   generateGapRecommendations,
   getComposition,
   getDiversity,
@@ -71,7 +72,7 @@ export function ResultsPage() {
     data: null,
     unavailable: false,
   })
-  const [recommendation, setRecommendation] = useState<Slice<GapRecommendationsResult | null>>({
+  const [recommendations, setRecommendations] = useState<Slice<GapRecommendationsResult[]>>({
     data: null,
     unavailable: false,
   })
@@ -101,7 +102,7 @@ export function ResultsPage() {
       setDiversity(settledSlice(d))
       setMealCoverage(settledSlice(mc))
       setMicronutrients(settledSlice(mn))
-      setRecommendation(settledSlice(rec))
+      setRecommendations(settledSlice(rec))
       setLoading(false)
     })
   }, [])
@@ -263,8 +264,10 @@ export function ResultsPage() {
 
       {!noReceiptsYet && (
         <GapRecommendationsSection
-          recommendation={recommendation.data}
-          onGenerated={(r) => setRecommendation({ data: r, unavailable: false })}
+          recommendations={recommendations.data ?? []}
+          onGenerated={(r) =>
+            setRecommendations((prev) => ({ data: [...(prev.data ?? []), r], unavailable: false }))
+          }
         />
       )}
     </section>
@@ -1030,15 +1033,19 @@ const FUN_ANALYZING_PHRASES = [
 const PHRASE_ROTATE_MS = 5000
 
 function GapRecommendationsSection({
-  recommendation,
+  recommendations,
   onGenerated,
 }: {
-  recommendation: GapRecommendationsResult | null
+  recommendations: GapRecommendationsResult[]
   onGenerated: (recommendation: GapRecommendationsResult) => void
 }) {
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [phraseIndex, setPhraseIndex] = useState(0)
+  // Defaults to the most recently generated one -- recommendations is
+  // already the full fetched list by the time this mounts (ResultsPage
+  // only renders this section once its own `loading` gate has cleared).
+  const [activeIndex, setActiveIndex] = useState(Math.max(0, recommendations.length - 1))
   const phraseTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -1057,6 +1064,9 @@ function GapRecommendationsSection({
     try {
       const result = await generateGapRecommendations()
       onGenerated(result)
+      // recommendations.length is still the pre-generate count in this
+      // closure, which is exactly the new item's index once it lands.
+      setActiveIndex(recommendations.length)
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : 'Could not generate recommendations right now.',
@@ -1070,19 +1080,48 @@ function GapRecommendationsSection({
     }
   }
 
+  const current = recommendations[activeIndex] ?? null
+  const atDailyLimit = recommendations.length >= DAILY_RECOMMENDATION_LIMIT
+
   return (
     <div className="section-divider">
       <h2>Quick Wins</h2>
       <p className="muted">
-        Groq-generated, concrete actions for closing the macro and micronutrient gaps
-        above, respecting your saved dietary style, allergies, and dislikes.
+        Groq-generated, concrete actions for closing the macro and micronutrient gaps above,
+        respecting your saved dietary style, allergies, and dislikes. Up to{' '}
+        {DAILY_RECOMMENDATION_LIMIT} per day, each one generated only when you ask for it.
       </p>
 
-      {recommendation && (
+      {current && (
         <div className="card">
-          <p>{recommendation.summary}</p>
+          {recommendations.length > 1 && (
+            <div className="gap-recommendation-pager">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
+                disabled={activeIndex === 0}
+                aria-label="Previous Quick Win"
+              >
+                ‹
+              </button>
+              <span className="muted">
+                {activeIndex + 1} of {recommendations.length}
+              </span>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setActiveIndex((i) => Math.min(recommendations.length - 1, i + 1))}
+                disabled={activeIndex === recommendations.length - 1}
+                aria-label="Next Quick Win"
+              >
+                ›
+              </button>
+            </div>
+          )}
+          <p>{current.summary}</p>
           <ul className="gap-recommendation-list">
-            {recommendation.items.map((item, i) => (
+            {current.items.map((item, i) => (
               <li key={i}>
                 <strong>{item.focus}: </strong>
                 {item.suggestion}
@@ -1098,14 +1137,22 @@ function GapRecommendationsSection({
         </p>
       )}
 
-      <button
-        type="button"
-        className="btn btn-primary"
-        onClick={handleGenerate}
-        disabled={generating}
-      >
-        {generating ? 'Analyzing…' : recommendation ? 'Refresh Quick Wins' : 'Get Quick Wins'}
-      </button>
+      {atDailyLimit ? (
+        <p className="muted">You've used both Quick Wins for today — check back tomorrow for more.</p>
+      ) : (
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleGenerate}
+          disabled={generating}
+        >
+          {generating
+            ? 'Analyzing…'
+            : recommendations.length === 0
+              ? 'Get Quick Wins'
+              : 'Get another Quick Win'}
+        </button>
+      )}
 
       {generating && <p className="muted recipe-generating-note">{FUN_ANALYZING_PHRASES[phraseIndex]}</p>}
     </div>

@@ -10,6 +10,7 @@
  */
 
 import type { FoodGroup, PantryItem, Urgency } from './api'
+import type { TranslateFn } from './i18n'
 
 /** Traffic-light colour per bucket. 'expired' and 'soon' both read red (both
  * are "use very soon"); the finer expired/soon split exists only for the
@@ -24,36 +25,40 @@ const URGENCY_LIGHT: Record<Urgency, Light> = {
   unknown: 'grey',
 }
 
-// Soft, non-numeric labels ("use soon" / "this week" / "lasting").
-// 'unknown' has no label -- no estimate, nothing to say.
-const URGENCY_LABEL: Record<Urgency, string | null> = {
-  expired: 'use soon',
-  soon: 'use soon',
-  week: 'this week',
-  long: 'lasting',
-  unknown: null,
-}
-
-// Full-sentence description for the badge's tooltip / aria-label, so the
-// colour is never the only carrier of meaning (accessibility).
-const URGENCY_DESCRIPTION: Record<Urgency, string> = {
-  expired: 'Use very soon (estimated)',
-  soon: 'Use very soon (estimated)',
-  week: 'Best used this week (estimated)',
-  long: 'Keeps for a while (estimated)',
-  unknown: 'No shelf-life estimate',
-}
-
 export function urgencyLight(urgency: Urgency): Light {
   return URGENCY_LIGHT[urgency]
 }
 
-export function urgencyLabel(urgency: Urgency): string | null {
-  return URGENCY_LABEL[urgency]
+// Soft, non-numeric labels ("use soon" / "this week" / "lasting").
+// 'unknown' has no label -- no estimate, nothing to say.
+export function urgencyLabel(t: TranslateFn, urgency: Urgency): string | null {
+  switch (urgency) {
+    case 'expired':
+    case 'soon':
+      return t('use soon', 'bald verbrauchen')
+    case 'week':
+      return t('this week', 'diese Woche')
+    case 'long':
+      return t('lasting', 'haltbar')
+    case 'unknown':
+      return null
+  }
 }
 
-export function urgencyDescription(urgency: Urgency): string {
-  return URGENCY_DESCRIPTION[urgency]
+// Full-sentence description for the badge's tooltip / aria-label, so the
+// colour is never the only carrier of meaning (accessibility).
+export function urgencyDescription(t: TranslateFn, urgency: Urgency): string {
+  switch (urgency) {
+    case 'expired':
+    case 'soon':
+      return t('Use very soon (estimated)', 'Sehr bald verbrauchen (geschätzt)')
+    case 'week':
+      return t('Best used this week (estimated)', 'Am besten diese Woche verbrauchen (geschätzt)')
+    case 'long':
+      return t('Keeps for a while (estimated)', 'Hält noch eine Weile (geschätzt)')
+    case 'unknown':
+      return t('No shelf-life estimate', 'Keine Haltbarkeitsschätzung')
+  }
 }
 
 /** The "only the next 3 days" filter set: expired + soon (see shelf_life.py,

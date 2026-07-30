@@ -15,6 +15,7 @@
  */
 
 import type { Matchable } from './matchInfo'
+import type { TranslateFn } from './i18n'
 
 /** A lot carries a canonical `category` for every item; `fallback_category`
  * is only populated for category-estimate lots. Both use the same leaf keys. */
@@ -142,22 +143,41 @@ export const CATEGORY_EMOJI: Record<string, string> = {
 }
 
 // Human-readable food group per emoji, for the badge's title / aria-label.
-export const EMOJI_GROUP_LABEL: Record<string, string> = {
-  '🥒': 'Vegetables',
-  '🍏': 'Fruits',
-  '🥛': 'Dairy & Plant-Based Alternatives',
-  '🥚': 'Eggs',
-  '🥩': 'Meat & Plant-Based Protein',
-  '🐟': 'Fish & Seafood',
-  '🍞': 'Bread & Bakery',
-  '🌾': 'Grains, Pasta, Rice & Starches',
-  '🥫': 'Dried Legumes',
-  '🫒': 'Oils, Fats, Herbs, Spices & Sauces',
-  '🍫': 'Sweets, Desserts & Snacks',
-  '🥤': 'Beverages',
-  '🧊': 'Frozen Foods',
-  '🥜': 'Nuts & Seeds',
-  '🍽️': 'Uncategorized',
+export function emojiGroupLabel(t: TranslateFn, emoji: string): string {
+  switch (emoji) {
+    case '🥒':
+      return t('Vegetables', 'Gemüse')
+    case '🍏':
+      return t('Fruits', 'Obst')
+    case '🥛':
+      return t('Dairy & Plant-Based Alternatives', 'Milchprodukte & pflanzliche Alternativen')
+    case '🥚':
+      return t('Eggs', 'Eier')
+    case '🥩':
+      return t('Meat & Plant-Based Protein', 'Fleisch & pflanzliches Protein')
+    case '🐟':
+      return t('Fish & Seafood', 'Fisch & Meeresfrüchte')
+    case '🍞':
+      return t('Bread & Bakery', 'Brot & Backwaren')
+    case '🌾':
+      return t('Grains, Pasta, Rice & Starches', 'Getreide, Nudeln, Reis & Stärke')
+    case '🥫':
+      return t('Dried Legumes', 'Getrocknete Hülsenfrüchte')
+    case '🫒':
+      return t('Oils, Fats, Herbs, Spices & Sauces', 'Öle, Fette, Kräuter, Gewürze & Saucen')
+    case '🍫':
+      return t('Sweets, Desserts & Snacks', 'Süßigkeiten, Desserts & Snacks')
+    case '🥤':
+      return t('Beverages', 'Getränke')
+    case '🧊':
+      return t('Frozen Foods', 'Tiefkühlkost')
+    case '🥜':
+      return t('Nuts & Seeds', 'Nüsse & Samen')
+    case '🍽️':
+      return t('Uncategorized', 'Nicht kategorisiert')
+    default:
+      return t('Uncategorized', 'Nicht kategorisiert')
+  }
 }
 
 const FALLBACK_EMOJI = '🍽️'

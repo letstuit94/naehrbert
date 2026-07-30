@@ -17,23 +17,24 @@ import {
   type Sex,
 } from '../lib/api'
 import {
-  EXERCISE_OPTIONS,
-  GOAL_OPTIONS,
-  MOVEMENT_OPTIONS,
-  SEX_OPTIONS,
+  exerciseOptions,
+  goalOptions,
+  movementOptions,
+  sexOptions,
 } from '../lib/chatSteps'
-import { ALLERGEN_OPTIONS, DIETARY_STYLE_OPTIONS } from '../lib/recipePrefsSteps'
+import { allergenOptions, dietaryStyleOptions } from '../lib/recipePrefsSteps'
 import { ChipListInput, type ChipListInputHandle } from '../components/ChipListInput'
 import { getStoredTheme, setTheme, type ThemePreference } from '../lib/theme'
+import { useI18n, type Lang, type TranslateFn } from '../lib/i18n'
 
 /** Profile-page-only (not part of onboarding or the recipe-prefs chat) --
  * the DGE reference table's pregnancy/nursing life stages. */
-const LIFE_STAGE_OPTIONS: { value: LifeStage; label: string }[] = [
-  { value: 'none', label: 'None' },
-  { value: 'pregnant_t1', label: 'Pregnant — 1st trimester' },
-  { value: 'pregnant_t2', label: 'Pregnant — 2nd trimester' },
-  { value: 'pregnant_t3', label: 'Pregnant — 3rd trimester' },
-  { value: 'nursing', label: 'Nursing' },
+const lifeStageOptions = (t: TranslateFn): { value: LifeStage; label: string }[] => [
+  { value: 'none', label: t('None', 'Keine') },
+  { value: 'pregnant_t1', label: t('Pregnant — 1st trimester', 'Schwanger – 1. Trimester') },
+  { value: 'pregnant_t2', label: t('Pregnant — 2nd trimester', 'Schwanger – 2. Trimester') },
+  { value: 'pregnant_t3', label: t('Pregnant — 3rd trimester', 'Schwanger – 3. Trimester') },
+  { value: 'nursing', label: t('Nursing', 'Stillend') },
 ]
 
 type LoadState =
@@ -75,10 +76,17 @@ const EMPTY_FORM: FormState = {
 const PREFS_FIELDS = new Set(['dietary_style', 'allergies', 'dislikes'])
 
 /** Color-theme choices for the Appearance card. */
-const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
-  { value: 'system', label: '🖥️ System' },
-  { value: 'light', label: '☀️ Light' },
-  { value: 'dark', label: '🌙 Dark' },
+const themeOptions = (t: TranslateFn): { value: ThemePreference; label: string }[] => [
+  { value: 'system', label: t('🖥️ System', '🖥️ System') },
+  { value: 'light', label: t('☀️ Light', '☀️ Hell') },
+  { value: 'dark', label: t('🌙 Dark', '🌙 Dunkel') },
+]
+
+/** UI-language choices for the Language card. Labels are shown in their own
+ * language (endonyms), so they read the same regardless of the active one. */
+const LANGUAGE_OPTIONS: { value: Lang; label: string }[] = [
+  { value: 'de', label: '🇩🇪 Deutsch' },
+  { value: 'en', label: '🇬🇧 English' },
 ]
 
 type LabeledOption = { value: string; label: string }
@@ -96,16 +104,16 @@ function readableLabel(options: LabeledOption[], value: string): string {
 
 /** Display name for a stored allergen value: known EU-14 value → its label,
  * free-text "other" → itself. */
-function allergenLabel(value: string): string {
-  return ALLERGEN_OPTIONS.find((o) => o.value === value)?.label ?? value
+function allergenLabel(options: LabeledOption[], value: string): string {
+  return options.find((o) => o.value === value)?.label ?? value
 }
 
 /** ISO date → "12 Jul 1994" (product locale). Falls back to the raw string.
  * A date-only ISO string parses as UTC midnight, so we format in Europe/Berlin
  * (the product timezone) to avoid it rolling back a day for viewers west of
  * UTC. */
-function formatDob(iso: string): string {
-  if (!iso) return 'Not set'
+function formatDob(t: TranslateFn, iso: string): string {
+  if (!iso) return t('Not set', 'Nicht angegeben')
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleDateString('en-GB', {
@@ -135,6 +143,19 @@ function toForm(profile: Profile): FormState {
 
 export function ProfilePage() {
   const navigate = useNavigate()
+  const { t, lang, setLang } = useI18n()
+
+  // Localized option lists (labels depend on the active language; the stored
+  // `value`s do not).
+  const sexOpts = sexOptions(t)
+  const goalOpts = goalOptions(t)
+  const exerciseOpts = exerciseOptions(t)
+  const movementOpts = movementOptions(t)
+  const dietaryOpts = dietaryStyleOptions(t)
+  const allergenOpts = allergenOptions(t)
+  const lifeStageOpts = lifeStageOptions(t)
+  const themeOpts = themeOptions(t)
+
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [profile, setProfile] = useState<Profile | null>(null)
 
@@ -188,11 +209,14 @@ export function ProfilePage() {
         } else {
           setState({
             status: 'error',
-            message: "Couldn't load your profile. Check your connection and try again.",
+            message: t(
+              "Couldn't load your profile. Check your connection and try again.",
+              'Dein Profil konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.',
+            ),
           })
         }
       })
-  }, [resetForm])
+  }, [resetForm, t])
 
   useEffect(() => {
     fetchProfile()
@@ -253,30 +277,41 @@ export function ProfilePage() {
     const num = (v: string) => (v.trim() === '' ? null : Number(v))
     switch (key) {
       case 'date_of_birth':
-        return form.date_of_birth ? null : 'Please enter your date of birth.'
+        return form.date_of_birth
+          ? null
+          : t('Please enter your date of birth.', 'Bitte gib dein Geburtsdatum an.')
       case 'height_cm': {
         const n = num(form.height_cm)
         return n !== null && n >= 100 && n <= 250
           ? null
-          : 'Enter a height between 100 and 250 cm.'
+          : t(
+              'Enter a height between 100 and 250 cm.',
+              'Gib eine Größe zwischen 100 und 250 cm ein.',
+            )
       }
       case 'weight_kg': {
         const n = num(form.weight_kg)
         return n !== null && n >= 30 && n <= 300
           ? null
-          : 'Enter a weight between 30 and 300 kg.'
+          : t(
+              'Enter a weight between 30 and 300 kg.',
+              'Gib ein Gewicht zwischen 30 und 300 kg ein.',
+            )
       }
       case 'household_size': {
         const n = num(form.household_size)
         return n === null || (n >= 1 && n <= 20)
           ? null
-          : 'Enter a number between 1 and 20.'
+          : t('Enter a number between 1 and 20.', 'Gib eine Zahl zwischen 1 und 20 ein.')
       }
       case 'consumption_share_pct': {
         const n = num(form.consumption_share_pct)
         return n === null || (n >= 1 && n <= 100)
           ? null
-          : 'Enter a percentage between 1 and 100.'
+          : t(
+              'Enter a percentage between 1 and 100.',
+              'Gib einen Prozentwert zwischen 1 und 100 ein.',
+            )
       }
       default:
         return null
@@ -336,7 +371,9 @@ export function ProfilePage() {
       setAllergyDraft('')
     } catch (err) {
       setFieldError(
-        err instanceof ApiError ? err.message : 'Could not save. Please try again.',
+        err instanceof ApiError
+          ? err.message
+          : t('Could not save. Please try again.', 'Speichern fehlgeschlagen. Bitte versuche es erneut.'),
       )
     } finally {
       setSavingField(false)
@@ -359,7 +396,9 @@ export function ProfilePage() {
       navigate('/')
     } catch (err) {
       setDeleteError(
-        err instanceof ApiError ? err.message : 'Could not delete your account.',
+        err instanceof ApiError
+          ? err.message
+          : t('Could not delete your account.', 'Dein Konto konnte nicht gelöscht werden.'),
       )
       setDeleting(false)
     }
@@ -386,7 +425,7 @@ export function ProfilePage() {
                 onClick={() => saveField(key)}
                 disabled={savingField}
               >
-                {savingField ? 'Saving…' : 'Save'}
+                {savingField ? t('Saving…', 'Speichern…') : t('Save', 'Speichern')}
               </button>
               <button
                 type="button"
@@ -394,7 +433,7 @@ export function ProfilePage() {
                 onClick={cancelField}
                 disabled={savingField}
               >
-                Cancel
+                {t('Cancel', 'Abbrechen')}
               </button>
             </div>
           </div>
@@ -411,7 +450,7 @@ export function ProfilePage() {
         className={locked ? 'profile-field profile-field--locked' : 'profile-field'}
         onClick={() => beginEditField(key)}
         disabled={locked}
-        aria-label={`Edit ${label.toLowerCase()}`}
+        aria-label={t(`Edit ${label.toLowerCase()}`, `${label} bearbeiten`)}
       >
         <span className="profile-field__label">{label}</span>
         <span className="profile-field__value">{value || '—'}</span>
@@ -446,7 +485,7 @@ export function ProfilePage() {
   if (state.status === 'loading') {
     return (
       <section className="profile-page" aria-busy="true">
-        <h1>Profile</h1>
+        <h1>{t('Profile', 'Profil')}</h1>
         <div className="card">
           <div className="skeleton" style={{ height: 12, width: '30%' }} />
           <div
@@ -465,7 +504,7 @@ export function ProfilePage() {
             style={{ height: 40, width: '100%', marginTop: 12 }}
           />
         </div>
-        <p className="muted">Loading your profile…</p>
+        <p className="muted">{t('Loading your profile…', 'Dein Profil wird geladen…')}</p>
       </section>
     )
   }
@@ -473,15 +512,17 @@ export function ProfilePage() {
   if (state.status === 'no-profile') {
     return (
       <section className="profile-page">
-        <h1>Profile</h1>
+        <h1>{t('Profile', 'Profil')}</h1>
         <div className="card">
           <p>
-            🌱 You haven't set up your profile yet. Let's find out what your body needs —
-            it takes under a minute.
+            {t(
+              "🌱 You haven't set up your profile yet. Let's find out what your body needs — it takes under a minute.",
+              '🌱 Du hast dein Profil noch nicht eingerichtet. Lass uns herausfinden, was dein Körper braucht – es dauert weniger als eine Minute.',
+            )}
           </p>
           <div className="profile-actions">
             <Link to="/onboarding" className="btn btn-primary">
-              Start onboarding
+              {t('Start onboarding', 'Einrichtung starten')}
             </Link>
           </div>
         </div>
@@ -492,14 +533,14 @@ export function ProfilePage() {
   if (state.status === 'error') {
     return (
       <section className="profile-page">
-        <h1>Profile</h1>
+        <h1>{t('Profile', 'Profil')}</h1>
         <div className="card">
           <p className="form-error" role="alert">
             {state.message}
           </p>
           <div className="profile-actions">
             <button type="button" className="btn btn-primary" onClick={retryLoad}>
-              Try again
+              {t('Try again', 'Erneut versuchen')}
             </button>
           </div>
         </div>
@@ -509,46 +550,46 @@ export function ProfilePage() {
 
   return (
     <section className="profile-page">
-      <h1>Profile</h1>
+      <h1>{t('Profile', 'Profil')}</h1>
 
       {profile && (
         <>
           <div className="card">
-            <h2>Your details</h2>
+            <h2>{t('Your details', 'Deine Angaben')}</h2>
             <div className="profile-fields">
               {renderRow(
                 'name',
-                'Name',
-                profile.name?.trim() || 'Not set',
+                t('Name', 'Name'),
+                profile.name?.trim() || t('Not set', 'Nicht angegeben'),
                 <input
                   type="text"
                   value={form.name}
                   onChange={(e) => update('name', e.target.value)}
-                  aria-label="Name"
+                  aria-label={t('Name', 'Name')}
                   autoFocus
                 />,
               )}
               {renderRow(
                 'sex',
-                'Sex',
-                readableLabel(SEX_OPTIONS, profile.sex),
-                selectEditor('sex', SEX_OPTIONS),
+                t('Sex', 'Geschlecht'),
+                readableLabel(sexOpts, profile.sex),
+                selectEditor('sex', sexOpts),
               )}
               {renderRow(
                 'date_of_birth',
-                'Date of birth',
-                formatDob(profile.date_of_birth),
+                t('Date of birth', 'Geburtsdatum'),
+                formatDob(t, profile.date_of_birth),
                 <input
                   type="date"
                   value={form.date_of_birth}
                   onChange={(e) => update('date_of_birth', e.target.value)}
-                  aria-label="Date of birth"
+                  aria-label={t('Date of birth', 'Geburtsdatum')}
                   autoFocus
                 />,
               )}
               {renderRow(
                 'height_cm',
-                'Height',
+                t('Height', 'Größe'),
                 `${profile.height_cm} cm`,
                 <input
                   type="number"
@@ -556,13 +597,13 @@ export function ProfilePage() {
                   max={250}
                   value={form.height_cm}
                   onChange={(e) => update('height_cm', e.target.value)}
-                  aria-label="Height in cm"
+                  aria-label={t('Height in cm', 'Größe in cm')}
                   autoFocus
                 />,
               )}
               {renderRow(
                 'weight_kg',
-                'Weight',
+                t('Weight', 'Gewicht'),
                 `${profile.weight_kg} kg`,
                 <input
                   type="number"
@@ -570,81 +611,84 @@ export function ProfilePage() {
                   max={300}
                   value={form.weight_kg}
                   onChange={(e) => update('weight_kg', e.target.value)}
-                  aria-label="Weight in kg"
+                  aria-label={t('Weight in kg', 'Gewicht in kg')}
                   autoFocus
                 />,
               )}
               {profile.sex !== 'male' &&
                 renderRow(
                   'life_stage',
-                  'Pregnancy / nursing',
-                  readableLabel(LIFE_STAGE_OPTIONS, profile.life_stage ?? 'none'),
-                  selectEditor('life_stage', LIFE_STAGE_OPTIONS),
+                  t('Pregnancy / nursing', 'Schwangerschaft / Stillzeit'),
+                  readableLabel(lifeStageOpts, profile.life_stage ?? 'none'),
+                  selectEditor('life_stage', lifeStageOpts),
                 )}
             </div>
           </div>
 
           <div className="card">
-            <h2>Activity &amp; goal</h2>
+            <h2>{t('Activity & goal', 'Aktivität & Ziel')}</h2>
             <div className="profile-fields">
               {renderRow(
                 'goal',
-                'Goal',
-                readableLabel(GOAL_OPTIONS, profile.goal),
-                selectEditor('goal', GOAL_OPTIONS),
+                t('Goal', 'Ziel'),
+                readableLabel(goalOpts, profile.goal),
+                selectEditor('goal', goalOpts),
               )}
               {renderRow(
                 'exercise_frequency',
-                'Exercise',
-                readableLabel(EXERCISE_OPTIONS, profile.exercise_frequency),
-                selectEditor('exercise_frequency', EXERCISE_OPTIONS),
+                t('Exercise', 'Sport'),
+                readableLabel(exerciseOpts, profile.exercise_frequency),
+                selectEditor('exercise_frequency', exerciseOpts),
               )}
               {renderRow(
                 'daily_movement',
-                'Daily movement',
-                readableLabel(MOVEMENT_OPTIONS, profile.daily_movement),
-                selectEditor('daily_movement', MOVEMENT_OPTIONS),
+                t('Daily movement', 'Alltagsbewegung'),
+                readableLabel(movementOpts, profile.daily_movement),
+                selectEditor('daily_movement', movementOpts),
               )}
             </div>
           </div>
 
           <div className="card">
-            <h2>Household</h2>
+            <h2>{t('Household', 'Haushalt')}</h2>
             <p className="profile-lead muted">
-              How much of what's bought is actually for you — used to scale your results.
+              {t(
+                "How much of what's bought is actually for you — used to scale your results.",
+                'Wie viel von den Einkäufen tatsächlich für dich ist – dient dazu, deine Ergebnisse anzupassen.',
+              )}
             </p>
             <div className="profile-fields">
               {renderRow(
                 'household_size',
-                'People you shop for',
+                t('People you shop for', 'Personen, für die du einkaufst'),
                 profile.household_size != null
                   ? String(profile.household_size)
-                  : 'Not set',
+                  : t('Not set', 'Nicht angegeben'),
                 <input
                   type="number"
                   min={1}
                   max={20}
-                  placeholder="e.g. 2"
+                  placeholder={t('e.g. 2', 'z. B. 2')}
                   value={form.household_size}
                   onChange={(e) => update('household_size', e.target.value)}
-                  aria-label="People you shop for"
+                  aria-label={t('People you shop for', 'Personen, für die du einkaufst')}
                   autoFocus
                 />,
               )}
               {renderRow(
                 'consumption_share_pct',
-                'Your grocery share',
+                t('Your grocery share', 'Dein Anteil am Einkauf'),
                 profile.consumption_share_pct != null
                   ? `${profile.consumption_share_pct}%`
-                  : 'Not set',
+                  : t('Not set', 'Nicht angegeben'),
                 <input
                   type="number"
                   min={1}
                   max={100}
-                  placeholder="e.g. 50"
+                  placeholder={t('e.g. 50', 'z. B. 50')}
                   value={form.consumption_share_pct}
                   onChange={(e) => update('consumption_share_pct', e.target.value)}
-                  aria-label="Your grocery share in percent"
+                  aria-label={t('Your grocery share in percent', 'Dein Anteil am Einkauf in Prozent')}
                   autoFocus
                 />,
               )}
@@ -652,22 +696,27 @@ export function ProfilePage() {
           </div>
 
           <div className="card" id="diet-preferences">
-            <h2>Diet &amp; preferences</h2>
+            <h2>{t('Diet & preferences', 'Ernährung & Vorlieben')}</h2>
             <p className="profile-lead muted">
-              Used to tailor your{' '}
-              <Link to="/results#recipes">recipe recommendations</Link> — never your
-              calorie/macro targets.
+              {t('Used to tailor your', 'Dient dazu, deine')}{' '}
+              <Link to="/results#recipes">
+                {t('recipe recommendations', 'Rezeptempfehlungen')}
+              </Link>{' '}
+              {t(
+                '— never your calorie/macro targets.',
+                'anzupassen – nie deine Kalorien-/Makro-Ziele.',
+              )}
             </p>
             <div className="profile-fields">
               {renderRow(
                 'dietary_style',
-                'Diet',
-                readableLabel(DIETARY_STYLE_OPTIONS, profile.dietary_style ?? 'omnivore'),
+                t('Diet', 'Ernährungsweise'),
+                readableLabel(dietaryOpts, profile.dietary_style ?? 'omnivore'),
                 <select
                   value={dietaryStyle}
                   onChange={(e) => setDietaryStyle(e.target.value as DietaryStyle)}
                 >
-                  {DIETARY_STYLE_OPTIONS.map((o) => (
+                  {dietaryOpts.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
@@ -676,13 +725,13 @@ export function ProfilePage() {
               )}
               {renderRow(
                 'allergies',
-                'Exclusions',
+                t('Exclusions', 'Ausschlüsse'),
                 profile.allergies && profile.allergies.length > 0
-                  ? profile.allergies.map(allergenLabel).join(', ')
-                  : 'None',
+                  ? profile.allergies.map((v) => allergenLabel(allergenOpts, v)).join(', ')
+                  : t('None', 'Keine'),
                 <div className="profile-allergens">
                   <div className="chat-choices">
-                    {ALLERGEN_OPTIONS.map((opt) => (
+                    {allergenOpts.map((opt) => (
                       <button
                         key={opt.value}
                         type="button"
@@ -700,7 +749,7 @@ export function ProfilePage() {
                   <div className="chip-input-row">
                     <input
                       type="text"
-                      placeholder="Other (type and add)"
+                      placeholder={t('Other (type and add)', 'Andere (eingeben und hinzufügen)')}
                       value={allergyDraft}
                       onChange={(e) => setAllergyDraft(e.target.value)}
                       onKeyDown={(e) => {
@@ -713,7 +762,7 @@ export function ProfilePage() {
                     <button
                       type="button"
                       className="chip-add-btn"
-                      aria-label="Add allergy"
+                      aria-label={t('Add allergy', 'Allergie hinzufügen')}
                       onClick={addCustomAllergy}
                     >
                       +
@@ -723,32 +772,34 @@ export function ProfilePage() {
               )}
               {renderRow(
                 'dislikes',
-                'Dislikes',
+                t('Dislikes', 'Abneigungen'),
                 profile.dislikes && profile.dislikes.length > 0
                   ? profile.dislikes.join(', ')
-                  : 'None',
+                  : t('None', 'Keine'),
                 <ChipListInput
                   ref={dislikesRef}
                   value={dislikes}
                   onChange={setDislikes}
-                  placeholder="e.g. mushrooms"
+                  placeholder={t('e.g. mushrooms', 'z. B. Pilze')}
                 />,
               )}
             </div>
           </div>
 
           <div className="card">
-            <h2>Appearance</h2>
+            <h2>{t('Appearance', 'Darstellung')}</h2>
             <p className="profile-lead muted">
-              Choose how NutriWise looks. “System” follows your device’s light or
-              dark setting.
+              {t(
+                'Choose how NutriWise looks. “System” follows your device’s light or dark setting.',
+                'Wähle, wie NutriWise aussieht. „System“ folgt der Hell-/Dunkel-Einstellung deines Geräts.',
+              )}
             </p>
             <div
               className="chat-choices"
               role="radiogroup"
-              aria-label="Color theme"
+              aria-label={t('Color theme', 'Farbschema')}
             >
-              {THEME_OPTIONS.map((opt) => (
+              {themeOpts.map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
@@ -766,12 +817,44 @@ export function ProfilePage() {
               ))}
             </div>
           </div>
+
+          <div className="card">
+            <h2>{t('Language', 'Sprache')}</h2>
+            <p className="profile-lead muted">
+              {t(
+                'Choose the language NutriWise is shown in.',
+                'Wähle die Sprache, in der NutriWise angezeigt wird.',
+              )}
+            </p>
+            <div
+              className="chat-choices"
+              role="radiogroup"
+              aria-label={t('Language', 'Sprache')}
+            >
+              {LANGUAGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={lang === opt.value}
+                  className={
+                    lang === opt.value
+                      ? 'chat-choice chat-choice--selected'
+                      : 'chat-choice'
+                  }
+                  onClick={() => setLang(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </>
       )}
 
       <div className="card profile-action-card">
         <Link to="/purchases" className="btn btn-secondary">
-          Receipt history
+          {t('Receipt history', 'Bon-Verlauf')}
         </Link>
       </div>
 
@@ -786,15 +869,17 @@ export function ProfilePage() {
             <path d="M16 17l5-5-5-5" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M21 12H9" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          Log out
+          {t('Log out', 'Abmelden')}
         </button>
       </div>
 
       <div className="card">
-        <h2>Delete account</h2>
+        <h2>{t('Delete account', 'Konto löschen')}</h2>
         <p className="profile-lead muted">
-          Permanently deletes your profile and everything tied to it — receipts, recipes
-          and pantry data. This can't be undone.
+          {t(
+            "Permanently deletes your profile and everything tied to it — receipts, recipes and pantry data. This can't be undone.",
+            'Löscht dein Profil und alles Dazugehörige dauerhaft – Belege, Rezepte und Vorratsdaten. Das lässt sich nicht rückgängig machen.',
+          )}
         </p>
 
         {deleteError && (
@@ -811,7 +896,9 @@ export function ProfilePage() {
               onClick={handleDeleteAccount}
               disabled={deleting}
             >
-              {deleting ? 'Deleting…' : 'Yes, delete my account'}
+              {deleting
+                ? t('Deleting…', 'Wird gelöscht…')
+                : t('Yes, delete my account', 'Ja, mein Konto löschen')}
             </button>
             <button
               type="button"
@@ -819,7 +906,7 @@ export function ProfilePage() {
               onClick={() => setConfirmingDelete(false)}
               disabled={deleting}
             >
-              Cancel
+              {t('Cancel', 'Abbrechen')}
             </button>
           </div>
         ) : (
@@ -831,7 +918,7 @@ export function ProfilePage() {
               setConfirmingDelete(true)
             }}
           >
-            Delete my account
+            {t('Delete my account', 'Mein Konto löschen')}
           </button>
         )}
       </div>

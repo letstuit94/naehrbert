@@ -11,13 +11,13 @@ import {
   type Sex,
 } from '../lib/api'
 import {
-  ONBOARDING_STEPS,
+  onboardingSteps,
   INITIAL_ANSWERS,
-  EDIT_LATER_NOTE,
-  CONTINUE_LABEL,
+  editLaterNote,
+  continueLabel,
   answerLabel,
   nameProfilesIntro,
-  NAME_PROFILE_BULLETS,
+  nameProfileBullets,
   nameBmrIntro,
   sexFormulaIntro,
   sexFormulaLine,
@@ -30,6 +30,7 @@ import {
   type Answers,
   type StepDef,
 } from '../lib/chatSteps'
+import { useI18n, type TranslateFn } from '../lib/i18n'
 import { ChatBubble, SequenceView, TypewriterText } from '../lib/chatEngine'
 import {
   bulletList,
@@ -53,41 +54,49 @@ import { setCurrentProfileId } from '../lib/session'
 // (RecipeChatPage.tsx) -- everything below is onboarding-specific content
 // built on top of that shared engine.
 
-function bmrPreviewNode(bmr: number): ReactNode {
+function bmrPreviewNode(t: TranslateFn, bmr: number): ReactNode {
   return (
     <>
-      Your BMR is: <strong>{bmr} kcal</strong>.
+      {t('Your BMR is:', 'Dein Grundumsatz beträgt:')} <strong>{bmr} kcal</strong>.
     </>
   )
 }
 
-function eatImpactNode(kcal: number): ReactNode {
+function eatImpactNode(t: TranslateFn, kcal: number): ReactNode {
   if (kcal === 0) {
-    return "No regular workouts right now, so we won't add anything extra for activity."
+    return t(
+      "No regular workouts right now, so we won't add anything extra for activity.",
+      'Aktuell kein regelmäßiger Sport, also rechnen wir nichts Zusätzliches für Aktivität dazu.',
+    )
   }
   return (
     <>
-      Great, that will add <strong>{kcal} kcal</strong> to your daily target.
+      {t('Great, that will add', 'Super, das ergänzt')}{' '}
+      <strong>{kcal} kcal</strong> {t('to your daily target.', 'zu deinem Tagesziel.')}
     </>
   )
 }
 
-function neatImpactNode(kcal: number): ReactNode {
+function neatImpactNode(t: TranslateFn, kcal: number): ReactNode {
   if (kcal === 0) {
-    return "A mostly-sitting day doesn't add anything on top of your BMR."
+    return t(
+      "A mostly-sitting day doesn't add anything on top of your BMR.",
+      'Ein überwiegend sitzender Tag rechnet nichts zu deinem Grundumsatz dazu.',
+    )
   }
   return (
     <>
-      Got it, that adds another <strong>{kcal} kcal</strong> to your daily target.
+      {t('Got it, that adds another', 'Alles klar, das ergänzt weitere')}{' '}
+      <strong>{kcal} kcal</strong> {t('to your daily target.', 'zu deinem Tagesziel.')}
     </>
   )
 }
 
-function goalImpactNode(deltaKcal: number): ReactNode {
+function goalImpactNode(t: TranslateFn, deltaKcal: number): ReactNode {
   if (deltaKcal < 0) {
     return (
       <>
-        Alright, then we'll reduce your calorie target by{' '}
+        {t("Alright, then we'll reduce your calorie target by", 'Alles klar, dann senken wir dein Kalorienziel um')}{' '}
         <strong>{Math.abs(deltaKcal)} kcal</strong>.
       </>
     )
@@ -95,35 +104,41 @@ function goalImpactNode(deltaKcal: number): ReactNode {
   if (deltaKcal > 0) {
     return (
       <>
-        Great, then we'll increase your calorie target by{' '}
+        {t("Great, then we'll increase your calorie target by", 'Super, dann erhöhen wir dein Kalorienziel um')}{' '}
         <strong>{deltaKcal} kcal</strong>.
       </>
     )
   }
-  return "Got it, we'll keep your calorie target right where it is."
+  return t(
+    "Got it, we'll keep your calorie target right where it is.",
+    'Alles klar, dann lassen wir dein Kalorienziel genau so, wie es ist.',
+  )
 }
 
-function calorieResultNode(ideal: IdealProfile): ReactNode {
+function calorieResultNode(t: TranslateFn, ideal: IdealProfile): ReactNode {
   return (
     <>
-      Your daily calorie target is about <strong>{ideal.calories_kcal} kcal</strong>.
+      {t('Your daily calorie target is about', 'Dein tägliches Kalorienziel liegt bei etwa')}{' '}
+      <strong>{ideal.calories_kcal} kcal</strong>.
     </>
   )
 }
 
-function macroListNode(ideal: IdealProfile): ReactNode {
+function macroListNode(t: TranslateFn, ideal: IdealProfile): ReactNode {
   return (
     <>
-      <p className="chat-bullets-intro">Your macros should ideally be split like this:</p>
+      <p className="chat-bullets-intro">
+        {t('Your macros should ideally be split like this:', 'Deine Makros sollten idealerweise so aufgeteilt sein:')}
+      </p>
       <ul className="chat-bullets">
         <li>
-          <strong>{ideal.carbs_g}g</strong> carbs
+          <strong>{ideal.carbs_g}g</strong> {t('carbs', 'Kohlenhydrate')}
         </li>
         <li>
-          <strong>{ideal.protein_g}g</strong> protein
+          <strong>{ideal.protein_g}g</strong> {t('protein', 'Protein')}
         </li>
         <li>
-          <strong>{ideal.fat_g}g</strong> fat
+          <strong>{ideal.fat_g}g</strong> {t('fat', 'Fett')}
         </li>
       </ul>
     </>
@@ -140,20 +155,20 @@ function askSequenceFor(step: StepDef): SeqItem[] {
   return items
 }
 
-function replySequenceFor(step: StepDef, ans: Answers): SeqItem[] {
+function replySequenceFor(t: TranslateFn, step: StepDef, ans: Answers): SeqItem[] {
   if (step.key === 'name') {
     return [
       typedItem(step.feedback!),
-      typedItem(nameProfilesIntro()),
-      nodeItem(bulletList(NAME_PROFILE_BULLETS)),
-      typedItem(nameBmrIntro()),
+      typedItem(nameProfilesIntro(t)),
+      nodeItem(bulletList(nameProfileBullets(t))),
+      typedItem(nameBmrIntro(t)),
     ]
   }
   if (step.key === 'sex') {
     return [
-      typedItem(sexFormulaIntro()),
-      typedItem(sexFormulaLine(ans.sex)),
-      typedItem(sexFormulaNext()),
+      typedItem(sexFormulaIntro(t)),
+      typedItem(sexFormulaLine(t, ans.sex)),
+      typedItem(sexFormulaNext(t)),
     ]
   }
   if (
@@ -169,41 +184,41 @@ function replySequenceFor(step: StepDef, ans: Answers): SeqItem[] {
       Number(ans.weight_kg),
       ans.date_of_birth,
     )
-    if (bmr !== null) return [nodeItem(bmrPreviewNode(bmr))]
+    if (bmr !== null) return [nodeItem(bmrPreviewNode(t, bmr))]
   }
   if (step.key === 'exercise_frequency' && ans.exercise_frequency) {
     const kcal = EAT_KCAL[ans.exercise_frequency as ExerciseFrequency]
-    return [nodeItem(eatImpactNode(kcal))]
+    return [nodeItem(eatImpactNode(t, kcal))]
   }
   if (step.key === 'daily_movement' && ans.daily_movement) {
     const breakdown = previewTdeeBreakdown(ans)
-    if (breakdown) return [nodeItem(neatImpactNode(breakdown.neat))]
+    if (breakdown) return [nodeItem(neatImpactNode(t, breakdown.neat))]
   }
   if (step.key === 'goal' && ans.goal) {
     const breakdown = previewTdeeBreakdown(ans)
     if (breakdown) {
       const delta = previewGoalAdjustmentKcal(ans.goal as Goal, breakdown.tdee)
-      return [nodeItem(goalImpactNode(delta))]
+      return [nodeItem(goalImpactNode(t, delta))]
     }
   }
   return step.feedback ? [typedItem(step.feedback)] : []
 }
 
-function revealSequence(ideal: IdealProfile | null): SeqItem[] {
+function revealSequence(t: TranslateFn, ideal: IdealProfile | null): SeqItem[] {
   if (!ideal) return []
   return [
-    nodeItem(calorieResultNode(ideal)),
-    nodeItem(macroListNode(ideal)),
-    typedItem(EDIT_LATER_NOTE),
+    nodeItem(calorieResultNode(t, ideal)),
+    nodeItem(macroListNode(t, ideal)),
+    typedItem(editLaterNote(t)),
   ]
 }
 
-function dobValidationError(value: string): string | null {
+function dobValidationError(t: TranslateFn, value: string): string | null {
   const dob = new Date(value)
   const now = new Date()
   const age = (now.getTime() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
   if (Number.isNaN(dob.getTime()) || dob > now || age > 120) {
-    return 'Please enter a valid date of birth.'
+    return t('Please enter a valid date of birth.', 'Bitte gib ein gültiges Geburtsdatum ein.')
   }
   return null
 }
@@ -212,6 +227,8 @@ function dobValidationError(value: string): string | null {
 
 export function OnboardingPage() {
   const navigate = useNavigate()
+  const { t } = useI18n()
+  const steps = onboardingSteps(t)
   const [answers, setAnswers] = useState<Answers>(INITIAL_ANSWERS)
   const [draftText, setDraftText] = useState('')
   const [phase, setPhase] = useState<'chat' | 'saving' | 'reveal'>('chat')
@@ -220,7 +237,7 @@ export function OnboardingPage() {
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [stepIndex, setStepIndex] = useState(0)
   const [turnQueue, setTurnQueue] = useState<SeqItem[]>(() =>
-    askSequenceFor(ONBOARDING_STEPS[0]),
+    askSequenceFor(onboardingSteps(t)[0]),
   )
   const [turnReplyCount, setTurnReplyCount] = useState(0)
   const [turnRevealed, setTurnRevealed] = useState(0)
@@ -228,10 +245,9 @@ export function OnboardingPage() {
 
   const busy = phase !== 'chat'
   const done = phase !== 'chat'
-  const current = ONBOARDING_STEPS[Math.min(stepIndex, ONBOARDING_STEPS.length - 1)]
+  const current = steps[Math.min(stepIndex, steps.length - 1)]
   const askDone = turnRevealed >= turnQueue.length
-  const answeredSteps =
-    phase === 'chat' ? ONBOARDING_STEPS.slice(0, stepIndex) : ONBOARDING_STEPS
+  const answeredSteps = phase === 'chat' ? steps.slice(0, stepIndex) : steps
 
   function advanceTurn() {
     setTurnRevealed((r) => r + 1)
@@ -282,7 +298,10 @@ export function OnboardingPage() {
       setError(
         err instanceof ApiError
           ? err.message
-          : 'Could not skip onboarding. Please try again.',
+          : t(
+              'Could not skip onboarding. Please try again.',
+              'Onboarding konnte nicht übersprungen werden. Bitte versuche es erneut.',
+            ),
       )
       setPhase('chat')
     }
@@ -310,7 +329,7 @@ export function OnboardingPage() {
       }
       const result = await createProfile(payload)
       setCurrentProfileId(result.profile.id)
-      setTurnQueue(revealSequence(result.targets))
+      setTurnQueue(revealSequence(t, result.targets))
       setTurnReplyCount(0)
       setTurnRevealed(0)
       setPhase('reveal')
@@ -318,7 +337,10 @@ export function OnboardingPage() {
       setError(
         err instanceof ApiError
           ? err.message
-          : 'Could not save your profile. Please try again.',
+          : t(
+              'Could not save your profile. Please try again.',
+              'Dein Profil konnte nicht gespeichert werden. Bitte versuche es erneut.',
+            ),
       )
       setPhase('chat')
     }
@@ -328,8 +350,8 @@ export function OnboardingPage() {
     setDraftText('')
     setInputError(null)
     setEditingKey(null)
-    const nextStep = ONBOARDING_STEPS[stepIndex + 1]
-    const reply = replySequenceFor(current, next)
+    const nextStep = steps[stepIndex + 1]
+    const reply = replySequenceFor(t, current, next)
     const ask = askSequenceFor(nextStep)
     setTurnQueue([...reply, ...ask])
     setTurnReplyCount(reply.length)
@@ -338,7 +360,7 @@ export function OnboardingPage() {
   }
 
   function goNext(next: Answers) {
-    if (stepIndex >= ONBOARDING_STEPS.length - 1) {
+    if (stepIndex >= steps.length - 1) {
       submit(next)
     } else {
       advance(next)
@@ -356,8 +378,8 @@ export function OnboardingPage() {
     if (!trimmed) return
     const err =
       current.key === 'date_of_birth'
-        ? dobValidationError(trimmed)
-        : rangeError(current.key, trimmed)
+        ? dobValidationError(t, trimmed)
+        : rangeError(t, current.key, trimmed)
     if (err) {
       setInputError(err)
       return
@@ -370,10 +392,10 @@ export function OnboardingPage() {
   return (
     <section>
       <div className="summary-line">
-        <h1>Onboarding</h1>
+        <h1>{t('Onboarding', 'Onboarding')}</h1>
         {!busy && (
           <button type="button" className="btn-link" onClick={skipOnboarding}>
-            Skip onboarding
+            {t('Skip onboarding', 'Onboarding überspringen')}
           </button>
         )}
       </div>
@@ -384,7 +406,7 @@ export function OnboardingPage() {
             const liveReply = phase === 'chat' && isLastAnswered
             const replyItems = liveReply
               ? turnQueue.slice(0, turnReplyCount)
-              : replySequenceFor(step, answers)
+              : replySequenceFor(t, step, answers)
             return (
               <div key={step.key} className="chat-turn">
                 {renderStaticSequence(askSequenceFor(step))}
@@ -439,7 +461,10 @@ export function OnboardingPage() {
               />
             ) : phase === 'saving' ? (
               <ChatBubble from="bot">
-                <TypewriterText text="All set — saving your profile…" />
+                <TypewriterText
+                  text={t('All set — saving your profile…', 'Alles bereit – dein Profil wird gespeichert…')}
+                />
+
               </ChatBubble>
             ) : (
               <SequenceView
@@ -459,7 +484,7 @@ export function OnboardingPage() {
               className="btn btn-primary"
               onClick={() => navigate('/upload')}
             >
-              {CONTINUE_LABEL}
+              {continueLabel(t)}
             </button>
           </div>
         )}

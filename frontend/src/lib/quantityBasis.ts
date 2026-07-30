@@ -6,12 +6,22 @@
  * as a real weight vs. a counted "piece").
  */
 
+import type { TranslateFn } from './i18n'
+
 export type QuantityBasis = 'weighed' | 'piece' | 'unknown'
 
-export const QUANTITY_BASIS_LABEL: Record<QuantityBasis, string> = {
-  weighed: 'Weight/volume given',
-  piece: 'Piece count only (estimated weight)',
-  unknown: 'No quantity basis',
+export function quantityBasisLabel(t: TranslateFn, basis: QuantityBasis): string {
+  switch (basis) {
+    case 'weighed':
+      return t('Weight/volume given', 'Gewicht/Volumen angegeben')
+    case 'piece':
+      return t(
+        'Piece count only (estimated weight)',
+        'Nur Stückzahl (geschätztes Gewicht)',
+      )
+    case 'unknown':
+      return t('No quantity basis', 'Keine Mengenangabe')
+  }
 }
 
 const _MASS_VOLUME_UNIT_ALIASES = new Set([

@@ -1583,6 +1583,32 @@
   color: var(--text-h);
 }
 
+.login-divider {
+  margin: 4px 0;
+  color: var(--text);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.login-email-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.login-input {
+  font: inherit;
+  font-size: 17px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text-h);
+  width: 100%;
+  box-sizing: border-box;
+}
+
 a.btn {
   display: inline-block;
   text-decoration: none;
@@ -2933,6 +2959,25 @@ details[open] > .recipe-card__summary .recipe-card__title-row::before {
   background: var(--surface);
   border-radius: 20px;
   box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.gap-recommendation-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gap-recommendation-list li {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.gap-recommendation-list li:first-child {
+  padding-top: 0;
+  border-top: none;
 }
 
 /* Eyebrow / section label (§4) */

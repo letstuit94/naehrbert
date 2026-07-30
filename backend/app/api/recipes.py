@@ -1,24 +1,24 @@
 """
 Recipe recommendations -- unlock progress, dietary-style inference, and
-Gemini-backed recipe generation.
+Groq-backed recipe generation.
 
-Reuses analysis.py's get_target_comparison/get_diversity directly (they're
-plain functions FastAPI happens to also expose as routes) rather than
-re-deriving the same macro-gap computation here -- one source of truth for
-"what's the current gap", same as every other consumer of that data.
+Reuses analysis.py's get_target_comparison directly (a plain function
+FastAPI happens to also expose as a route) rather than re-deriving the
+same macro-gap computation here -- one source of truth for "what's the
+current gap", same as every other consumer of that data.
 """
 
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.app.api.analysis import get_diversity, get_target_comparison
+from backend.app.api.analysis import get_target_comparison
 from backend.app.core.auth import require_profile_id
 from backend.app.db import repo
 from backend.app.models.profile import Profile
 from backend.app.models.recipe import Recipe, RecipeFeedbackUpdate, RecipeGenerateRequest
 from backend.app.services.dietary_inference import infer_dietary_style
-from backend.app.services.gemini_client import GeminiNotConfigured
+from backend.app.services.groq_client import GroqNotConfigured
 from backend.app.services.recipe_engine import generate_and_assemble_recipe
 from backend.app.services.recipe_unlock import UNLOCK_THRESHOLD, count_matched_items
 
@@ -80,18 +80,16 @@ def generate_recipe(
     # get_target_comparison() raises its own 404/422 if there's no profile
     # or the targets are incomplete -- propagates unchanged.
     gap = get_target_comparison(profile_id)
-    diversity = get_diversity(profile_id)
 
     try:
         suggestion = generate_and_assemble_recipe(
             profile,
             gap,
-            diversity.get("recommendations", []),
             cuisine=payload.cuisine,
             max_time_minutes=payload.max_time_minutes,
             servings=payload.servings,
         )
-    except GeminiNotConfigured as exc:
+    except GroqNotConfigured as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

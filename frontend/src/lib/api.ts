@@ -1,15 +1,16 @@
 /**
  * Thin fetch wrapper around the FastAPI backend.
  *
- * The frontend never talks to Supabase directly -- only the backend does
- * (see instructions/clean_rebuild_migration_guide.md). Base URL comes from
- * VITE_API_BASE_URL (see .env.example).
+ * The frontend's only direct Supabase contact is auth (lib/supabaseClient.ts)
+ * -- all app data still goes through this backend, which itself verifies the
+ * session token attached below (backend/app/core/auth.py). Base URL comes
+ * from VITE_API_BASE_URL (see .env.example).
  *
  * Shapes below mirror the actual backend responses exactly (backend/app/api/*.py
  * and backend/app/db/repo.py), not the earlier Epic-0 placeholder guesses.
  */
 
-import { getCurrentProfileId } from './session'
+import { supabase } from './supabaseClient'
 
 const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? ''
 
@@ -57,9 +58,9 @@ export interface ProfileInput {
 }
 
 export interface Profile extends ProfileInput {
-  /** The multi-user feature's login identity -- stored client-side
-   * (lib/session.ts) after signup/login and sent back as X-Profile-Id on
-   * every request. */
+  /** This app's own internal identity, resolved server-side from the
+   * caller's Supabase session (lib/supabaseClient.ts, lib/authContext.tsx)
+   * -- never sent by the client. */
   id: number
   created_at?: string
   updated_at?: string
@@ -111,12 +112,6 @@ export interface TargetsResponse {
 
 export interface ProfileWithTargets extends TargetsResponse {
   profile: Profile
-}
-
-/** GET /profiles -- the login screen's "pick a user" directory. */
-export interface ProfileSummary {
-  id: number
-  name: string | null
 }
 
 // ── Receipts (Epic 3, Epic 4) ─────────────────────────────────────────────
@@ -486,6 +481,39 @@ export interface MicronutrientsResult {
   nutrient_info: Record<keyof MicronutrientTotals, { title: string; body: string }[]>
 }
 
+// ── Insights page gap-closing recommendations ─────────────────────────────
+
+export interface GapRecommendationItem {
+  /** Short label naming which gap this addresses, e.g. "protein" or
+   * "vitamin d" -- free-form, not one of a fixed set (the gap could be
+   * any macro or any of the tracked micronutrients). */
+  focus: string
+  suggestion: string
+}
+
+/** One row per profile (backend/app/models/recommendation.py) -- replaced
+ * on each regenerate, not an accumulating history like Recipe. `null`
+ * from GET /analysis/recommendations means nothing's been generated yet. */
+export interface GapRecommendationsResult {
+  summary: string
+  items: GapRecommendationItem[]
+  created_at: string
+}
+
+export function getGapRecommendations(): Promise<GapRecommendationsResult | null> {
+  return request<{ recommendation: GapRecommendationsResult | null }>('/analysis/recommendations').then(
+    (r) => r.recommendation,
+  )
+}
+
+/** The one action that actually calls Groq -- getGapRecommendations()
+ * above is just a cheap DB read, safe to fetch on every page load. */
+export function generateGapRecommendations(): Promise<GapRecommendationsResult> {
+  return request<{ recommendation: GapRecommendationsResult }>('/analysis/recommendations/generate', {
+    method: 'POST',
+  }).then((r) => r.recommendation)
+}
+
 // ── Recipe recommendations feature ────────────────────────────────────────
 
 /** GET /recipes/unlock-status -- Results page's "Unlock recipes" section. */
@@ -506,7 +534,7 @@ export interface RecipeIngredient {
 }
 
 /** A generated recipe (backend/app/models/recipe.py's Recipe). The
- * calorie/macro fields are Gemini's own estimate for the whole recipe,
+ * calorie/macro fields are the model's own estimate for the whole recipe,
  * not backend-recomputed -- the user gets exact numbers once they
  * actually shop the ingredients and upload that receipt like any other
  * purchase. */
@@ -546,13 +574,16 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const profileId = getCurrentProfileId()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  const token = session?.access_token ?? null
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       ...(init?.body && !(init.body instanceof FormData)
         ? { 'Content-Type': 'application/json' }
         : {}),
-      ...(profileId !== null ? { 'X-Profile-Id': String(profileId) } : {}),
+      ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
     ...init,
@@ -573,10 +604,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
-// ── Profiles directory (multi-user login screen) ──────────────────────────
+// ── Account linking (Supabase Auth -> profiles, api/auth.py) ──────────────
 
-export function listProfiles(): Promise<ProfileSummary[]> {
-  return request<ProfileSummary[]>('/profiles')
+/** GET /auth/me -- the frontend's one source of truth for routing: null
+ * routes to the claim/create screen, an int routes straight into the app. */
+export interface MeResponse {
+  profile_id: number | null
+}
+
+export function getMe(): Promise<MeResponse> {
+  return request<MeResponse>('/auth/me')
 }
 
 // ── Profile (Epic 1) ──────────────────────────────────────────────────────

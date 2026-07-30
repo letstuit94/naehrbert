@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { getCurrentProfileId } from '../lib/session'
 import { useI18n } from '../lib/i18n'
+import { useAuth } from '../lib/authContext'
 import { Logo } from './Logo'
 
 // Persistent nav across all logged-in routes, incl. "Results" (Epic 7.3) so
@@ -82,13 +82,15 @@ export function NavBar() {
 
   // useLocation() ties this read to the router's own location context, so
   // it's re-evaluated on every navigation (login/logout always navigate
-  // right after changing the stored profile id) rather than depending on
-  // NavBar happening to re-render for some other incidental reason.
+  // right after the auth context updates) rather than depending on NavBar
+  // happening to re-render for some other incidental reason.
   useLocation()
+  const { status } = useAuth()
 
-  // No nav chrome on the login/sign-up screens -- nothing there to link to
-  // yet (RequireProfile would just bounce every link straight back here).
-  if (getCurrentProfileId() === null) return null
+  // No nav chrome on the login/claim/onboarding screens -- nothing there
+  // to link to yet (RequireProfile would just bounce every link straight
+  // back here).
+  if (status !== 'ready') return null
 
   const NAV_LINKS = navLinks(t)
 

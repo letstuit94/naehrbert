@@ -1,32 +1,24 @@
 """
 Recipe generation orchestration (recipe-recommendations feature).
 
-Builds the Gemini prompt from the user's dietary profile and current
-macro gap (the same actual/target/delta shape backend/app/api/analysis.py's
-get_target_comparison already computes, plus diversity recommendations),
-calls services/gemini_client.py, and enforces the hard rules Gemini's own
-instructions can't be trusted alone to honor: never suggest an ingredient
-the user is allergic to or dislikes, and never return a recipe less
-restrictive than the requested dietary style (checked via Gemini's own
-self-classified `dietary_label` -- see _DIET_RANK below). Nutrition
-numbers are Gemini's own estimate, not backend-recomputed -- see
-models/recipe.py's docstring for why.
+Builds the prompt from the user's dietary profile and current macro gap
+(the same actual/target/delta shape backend/app/api/analysis.py's
+get_target_comparison already computes), calls services/groq_client.py,
+and enforces the hard rules the model's own instructions can't be trusted
+alone to honor: never suggest an ingredient the user is allergic to or
+dislikes, and never return a recipe less restrictive than the requested
+dietary style (checked via the model's own self-classified `dietary_label`
+-- see _DIET_RANK below). Nutrition numbers are the model's own estimate,
+not backend-recomputed -- see models/recipe.py's docstring for why.
 """
 
 from typing import List, Optional
 
 from backend.app.models.profile import DietaryStyle, Profile
-from backend.app.models.recipe import GeminiRecipeSuggestion
-from backend.app.services.gemini_client import generate_recipe_suggestion
-
-_MACRO_LABEL = {"protein": "protein", "fat": "fat", "carb": "carbs"}
-
-_DIET_INSTRUCTIONS = {
-    DietaryStyle.OMNIVORE: "No dietary restriction beyond the allergies/dislikes below.",
-    DietaryStyle.PESCATARIAN: "Pescatarian: no meat or poultry. Fish and seafood are fine, as are dairy/eggs.",
-    DietaryStyle.VEGETARIAN: "Vegetarian: no meat, poultry, fish, or seafood. Dairy and eggs are fine.",
-    DietaryStyle.VEGAN: "Vegan: no meat, poultry, fish, seafood, dairy, eggs, or any other animal-derived ingredient.",
-}
+from backend.app.models.recipe import RecipeSuggestion
+from backend.app.services.dietary_constraints import restriction_lines as diet_restriction_lines
+from backend.app.services.gap_lines import macro_gap_lines
+from backend.app.services.groq_client import generate_recipe_suggestion
 
 # Restrictiveness order (most animal products excluded -> least): a recipe
 # is compatible with the requested diet_style iff its own self-classified
@@ -49,59 +41,15 @@ _DIET_RANK = {
 _TEMPERATURE = 0.6
 
 
-def _gap_lines(gap: dict) -> List[str]:
-    """Plain-language macro-gap lines from get_target_comparison's shape
-    ({actual_pct, target_pct, delta_pct}). delta = actual - target, so a
-    negative delta means the macro is currently UNDER target."""
-
-    lines = []
-    actual_pct = gap.get("actual_pct") or {}
-    target_pct = gap.get("target_pct") or {}
-    delta_pct = gap.get("delta_pct") or {}
-    for macro, label in _MACRO_LABEL.items():
-        delta = delta_pct.get(macro)
-        actual = actual_pct.get(macro)
-        target = target_pct.get(f"{macro}_pct")
-        if delta is None or actual is None or target is None:
-            continue
-        if delta < -2:
-            lines.append(
-                f"- {label}: {actual}% of calories vs a {target}% target -- UNDER target, "
-                f"so favor ingredients that raise {label}."
-            )
-        elif delta > 2:
-            lines.append(
-                f"- {label}: {actual}% of calories vs a {target}% target -- OVER target, "
-                f"so don't lean further into {label}-heavy ingredients."
-            )
-        else:
-            lines.append(f"- {label}: {actual}% of calories vs a {target}% target -- already close.")
-    return lines
-
-
 def build_prompt(
     profile: Profile,
     gap: dict,
-    diversity_recs: List[str],
     cuisine: Optional[str] = None,
     max_time_minutes: Optional[int] = None,
     servings: Optional[int] = None,
 ) -> str:
-    diet_style = profile.dietary_style or DietaryStyle.OMNIVORE
-    restriction_lines = [_DIET_INSTRUCTIONS[diet_style]]
-
-    if profile.allergies:
-        restriction_lines.append(
-            "Allergies/intolerances -- NEVER include any of these ingredients or anything "
-            f"derived from them, under any circumstances: {', '.join(profile.allergies)}."
-        )
-    if profile.dislikes:
-        restriction_lines.append(
-            f"Disliked foods -- avoid these too: {', '.join(profile.dislikes)}."
-        )
-
-    gap_lines = _gap_lines(gap) or ["No macro-gap data available yet -- suggest a balanced recipe."]
-    diversity_lines = [f"- {rec}" for rec in diversity_recs]
+    restriction_lines = diet_restriction_lines(profile)
+    gap_lines = macro_gap_lines(gap) or ["No macro-gap data available yet -- suggest a balanced recipe."]
 
     request_lines = []
     if cuisine:
@@ -121,12 +69,15 @@ def build_prompt(
 recipe for a home cook, using ordinary, commonly available ingredients --
 do not invent unusual ingredients or implausible nutrition figures.
 
+Use metric measurements only (grams, kilograms, milliliters, liters, degrees
+Celsius) -- never American/imperial units (cups, ounces, pounds, degrees
+Fahrenheit).
+
 Dietary constraints (must all be respected):
 {chr(10).join(restriction_lines)}
 
 The user's current macro balance, from their actual grocery purchases so far:
 {chr(10).join(gap_lines)}
-{(chr(10).join(diversity_lines)) if diversity_lines else ""}
 
 Important framing: this recipe is ONE meal, not the user's entire
 remaining day of eating. It does not need to single-handedly close the
@@ -160,14 +111,14 @@ that's still true for these exact ingredients):
 
 
 def _find_violation(
-    suggestion: GeminiRecipeSuggestion,
+    suggestion: RecipeSuggestion,
     restricted_terms: List[str],
     max_time_minutes: Optional[int],
     diet_style: DietaryStyle,
 ) -> Optional[str]:
     """Case-insensitive substring check of every restricted term against
     every ingredient name, the requested time budget if one was given, and
-    now that Gemini self-classifies dietary_label, whether that label is
+    now that the model self-classifies dietary_label, whether that label is
     actually at least as restrictive as the diet_style that was requested.
     Returns a description of the first violation found, if any."""
 
@@ -196,14 +147,13 @@ def _find_violation(
 def generate_and_assemble_recipe(
     profile: Profile,
     gap: dict,
-    diversity_recs: List[str],
     cuisine: Optional[str] = None,
     max_time_minutes: Optional[int] = None,
     servings: Optional[int] = None,
-) -> GeminiRecipeSuggestion:
+) -> RecipeSuggestion:
     restricted_terms = [*profile.allergies, *profile.dislikes]
     diet_style = profile.dietary_style or DietaryStyle.OMNIVORE
-    prompt = build_prompt(profile, gap, diversity_recs, cuisine, max_time_minutes, servings)
+    prompt = build_prompt(profile, gap, cuisine, max_time_minutes, servings)
 
     suggestion = generate_recipe_suggestion(prompt, temperature=_TEMPERATURE)
     violation = _find_violation(suggestion, restricted_terms, max_time_minutes, diet_style)
@@ -220,7 +170,7 @@ def generate_and_assemble_recipe(
         violation = _find_violation(suggestion, restricted_terms, max_time_minutes, diet_style)
         if violation is not None:
             raise ValueError(
-                f"Gemini kept violating a hard constraint ({violation}) despite explicit "
+                f"Groq kept violating a hard constraint ({violation}) despite explicit "
                 "instructions -- refusing to save this recipe."
             )
 

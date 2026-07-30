@@ -24,8 +24,8 @@ import { MatchSearchPanel } from '../components/MatchSearchPanel'
 import { UrgencyBadge } from '../components/UrgencyBadge'
 import { categoryEmoji, emojiGroupLabel } from '../lib/categoryEmoji'
 import { formatFallbackCategory, matchInfo } from '../lib/matchInfo'
-import { getCurrentProfileId } from '../lib/session'
 import { useI18n, type TranslateFn } from '../lib/i18n'
+import { useAuth } from '../lib/authContext'
 import {
   quantityBasis,
   quantityBasisLabel,
@@ -42,13 +42,13 @@ import {
 // Persist the "by category" expand/collapse state across reloads, scoped per
 // profile so different users don't clobber each other. The stored value is
 // just the list of expanded food-group keys (a small, stable enum).
-function expandedGroupsKey(): string {
-  return `nutriwise.pantry.expandedGroups.${getCurrentProfileId() ?? 'anon'}`
+function expandedGroupsKey(profileId: number | null): string {
+  return `nutriwise.pantry.expandedGroups.${profileId ?? 'anon'}`
 }
 
-function loadExpandedGroups(): Set<PantryItem['food_group']> {
+function loadExpandedGroups(profileId: number | null): Set<PantryItem['food_group']> {
   try {
-    const raw = localStorage.getItem(expandedGroupsKey())
+    const raw = localStorage.getItem(expandedGroupsKey(profileId))
     const parsed = raw ? JSON.parse(raw) : null
     return Array.isArray(parsed)
       ? new Set(parsed as PantryItem['food_group'][])
@@ -165,6 +165,7 @@ function displayName(item: PantryItem): string {
 export function PantryPage() {
   const { t } = useI18n()
   const verbs = reasonVerb(t)
+  const { profileId } = useAuth()
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [actionError, setActionError] = useState<string | null>(null)
   const [lastAction, setLastAction] = useState<LastAction | null>(null)
@@ -177,12 +178,13 @@ export function PantryPage() {
   // (category + count) you scan and drill into, rather than one long scroll.
   // Persisted per profile (see loadExpandedGroups) so the view stays the way
   // the user last left it across reloads.
-  const [expandedGroups, setExpandedGroups] =
-    useState<Set<PantryItem['food_group']>>(loadExpandedGroups)
+  const [expandedGroups, setExpandedGroups] = useState<Set<PantryItem['food_group']>>(() =>
+    loadExpandedGroups(profileId),
+  )
 
   useEffect(() => {
     try {
-      localStorage.setItem(expandedGroupsKey(), JSON.stringify([...expandedGroups]))
+      localStorage.setItem(expandedGroupsKey(profileId), JSON.stringify([...expandedGroups]))
     } catch {
       // Storage unavailable/full -- fall back to in-memory only (no persist).
     }

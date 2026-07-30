@@ -15,8 +15,8 @@ type NavIconName = 'upload' | 'results' | 'pantry' | 'recipes'
 // from the active t(). Structure (to/icon) is otherwise static.
 function navLinks(t: (en: string, de: string) => string) {
   return [
-    { to: '/upload', label: t('Upload', 'Hochladen'), icon: 'upload' as const },
-    { to: '/results', label: t('Insights', 'Einblicke'), icon: 'results' as const },
+    { to: '/upload', label: t('Update', 'Update'), icon: 'upload' as const },
+    { to: '/results', label: t('Insights', 'Insights'), icon: 'results' as const },
     { to: '/pantry', label: t('Pantry', 'Vorrat'), icon: 'pantry' as const },
     { to: '/tips', label: t('Recipes', 'Rezepte'), icon: 'recipes' as const },
   ]

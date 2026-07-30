@@ -83,10 +83,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  /* Gap/padding shrink on tighter widths so the tab labels keep their room. */
+  gap: clamp(8px, 2vw, 16px);
   max-width: 720px;
   margin: 0 auto;
-  padding: 20px 24px;
+  padding: clamp(14px, 2.4vw, 20px) clamp(12px, 3vw, 24px);
 }
 
 /* Brand lockup (CI §1): leaf badge + wordmark, side by side. */
@@ -150,11 +151,14 @@
 .nav-link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 9px 16px;
+  /* Type + padding scale down fluidly so a longer set of labels
+     (Update · Insights · Vorrat · Rezepte) stays fully visible on narrower
+     screens rather than getting clipped or forcing a horizontal scroll. */
+  gap: clamp(4px, 1vw, 6px);
+  padding: clamp(7px, 1.4vw, 9px) clamp(9px, 2.4vw, 16px);
   border-radius: 999px;
   color: var(--text);
-  font-size: 17px;
+  font-size: clamp(12.5px, 3vw, 17px);
   font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
@@ -172,7 +176,7 @@
 .nav-tabs {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: clamp(8px, 2vw, var(--space-3));
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;

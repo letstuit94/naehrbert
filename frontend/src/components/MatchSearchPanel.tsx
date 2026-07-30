@@ -6,6 +6,7 @@ import {
   type ItemCorrection,
   type MatchCandidate,
 } from '../lib/api'
+import { useI18n } from '../lib/i18n'
 
 // Search OFF/BLS for a manual pick and record it as a correction (Epic 4.2).
 // Shared between the Upload review screen (ReviewRow, pre-confirm) and the
@@ -107,6 +108,7 @@ export function MatchSearchPanel({
   onCorrect: (correction: ItemCorrection) => void
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const [query, setQuery] = useState(item.name)
   const [candidates, setCandidates] = useState<CandidatesResponse | null>(null)
   const [busy, setBusy] = useState(false)
@@ -121,7 +123,7 @@ export function MatchSearchPanel({
       const result = await searchCandidates(receiptId, item.id, query.trim())
       setCandidates(result)
     } catch {
-      setError('Search failed. Please try again.')
+      setError(t('Search failed. Please try again.', 'Suche fehlgeschlagen. Bitte versuche es erneut.'))
     } finally {
       setBusy(false)
     }
@@ -166,7 +168,7 @@ export function MatchSearchPanel({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && runSearch()}
-          aria-label="Search OFF/BLS"
+          aria-label={t('Search OFF/BLS', 'OFF/BLS durchsuchen')}
           autoFocus
         />
         <button
@@ -175,10 +177,10 @@ export function MatchSearchPanel({
           onClick={runSearch}
           disabled={busy || !query.trim()}
         >
-          {busy ? 'Searching…' : 'Search'}
+          {busy ? t('Searching…', 'Suche läuft…') : t('Search', 'Suchen')}
         </button>
         <button type="button" className="btn-link" onClick={onClose}>
-          Cancel
+          {t('Cancel', 'Abbrechen')}
         </button>
       </div>
       {error && (

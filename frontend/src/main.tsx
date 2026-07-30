@@ -6,6 +6,8 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 // (GDPR / performance / offline). Variable font, weight range 400..700.
 import '@fontsource-variable/instrument-sans'
 import './index.css'
+import { initTheme } from './lib/theme.ts'
+import { initLang, I18nProvider } from './lib/i18n.tsx'
 import App from './App.tsx'
 import { AuthProvider } from './lib/authContext.tsx'
 import { RequireProfile } from './components/RequireProfile.tsx'
@@ -55,5 +57,7 @@ createRoot(document.getElementById('root')!).render(
         </Routes>
       </AuthProvider>
     </BrowserRouter>
+      </BrowserRouter>
+    </I18nProvider>
   </StrictMode>,
 )

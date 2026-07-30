@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Skeleton } from './Skeleton'
+import { useI18n } from '../lib/i18n'
 import {
   ApiError,
   getShelfLife,
@@ -25,6 +26,7 @@ export function ShelfLifePanel({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { t } = useI18n()
   const [groups, setGroups] = useState<ShelfLifeGroup[] | null>(null)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
@@ -42,7 +44,12 @@ export function ShelfLifePanel({
       })
       .catch((err) =>
         setError(
-          err instanceof ApiError ? err.message : 'Could not load shelf-life settings.',
+          err instanceof ApiError
+            ? err.message
+            : t(
+                'Could not load shelf-life settings.',
+                'Haltbarkeitseinstellungen konnten nicht geladen werden.',
+              ),
         ),
       )
   }, [])
@@ -57,7 +64,10 @@ export function ShelfLifePanel({
       const raw = (drafts[g.food_group] ?? '').trim()
       const next = raw === '' ? null : Number(raw)
       if (next !== null && (!Number.isInteger(next) || next <= 0)) {
-        return `"${g.label}" needs a whole number of days, or leave it blank for no estimate.`
+        return t(
+          `"${g.label}" needs a whole number of days, or leave it blank for no estimate.`,
+          `„${g.label}“ braucht eine ganze Anzahl von Tagen – oder lass das Feld leer für keine Schätzung.`,
+        )
       }
       if (next !== g.shelf_life_days) out[g.food_group] = next
     }
@@ -83,7 +93,12 @@ export function ShelfLifePanel({
       onClose()
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : 'Could not save shelf-life settings.',
+        err instanceof ApiError
+          ? err.message
+          : t(
+              'Could not save shelf-life settings.',
+              'Haltbarkeitseinstellungen konnten nicht gespeichert werden.',
+            ),
       )
     } finally {
       setSaving(false)
@@ -93,10 +108,12 @@ export function ShelfLifePanel({
   return (
     <div className="shelf-life-panel">
       <div className="shelf-life-panel__head">
-        <strong>Shelf-life estimates</strong>
+        <strong>{t('Shelf-life estimates', 'Haltbarkeitsschätzungen')}</strong>
         <p className="muted">
-          Roughly how many days each category stays good after purchase. Drives the
-          traffic-light order only — never shown as a date. Leave blank for “no estimate”.
+          {t(
+            'Roughly how many days each category stays good after purchase. Drives the traffic-light order only — never shown as a date. Leave blank for “no estimate”.',
+            'Ungefähr wie viele Tage jede Kategorie nach dem Kauf haltbar bleibt. Steuert nur die Ampel-Reihenfolge – wird nie als Datum angezeigt. Leer lassen für „keine Schätzung“.',
+          )}
         </p>
       </div>
 
@@ -128,10 +145,15 @@ export function ShelfLifePanel({
                   onChange={(e) =>
                     setDrafts((d) => ({ ...d, [g.food_group]: e.target.value }))
                   }
-                  aria-label={`Shelf life for ${g.label} in days`}
+                  aria-label={t(
+                    `Shelf life for ${g.label} in days`,
+                    `Haltbarkeit für ${g.label} in Tagen`,
+                  )}
                 />
-                <span className="muted">days</span>
-                {g.is_override && <span className="shelf-life-row__tag">custom</span>}
+                <span className="muted">{t('days', 'Tage')}</span>
+                {g.is_override && (
+                  <span className="shelf-life-row__tag">{t('custom', 'angepasst')}</span>
+                )}
               </span>
             </li>
           ))}
@@ -145,10 +167,10 @@ export function ShelfLifePanel({
           onClick={() => void save()}
           disabled={saving}
         >
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? t('Saving…', 'Speichern…') : t('Save', 'Speichern')}
         </button>
         <button type="button" className="btn-link" onClick={onClose}>
-          Cancel
+          {t('Cancel', 'Abbrechen')}
         </button>
       </div>
     </div>

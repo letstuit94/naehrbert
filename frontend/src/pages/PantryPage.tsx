@@ -22,12 +22,12 @@ import { MatchSearchPanel } from '../components/MatchSearchPanel'
 // still editable server-side (GET/PUT /pantry/shelf-life) so a later
 // best-before-date (MHD) feature can turn the panel back on.
 import { UrgencyBadge } from '../components/UrgencyBadge'
-import { categoryEmoji, EMOJI_GROUP_LABEL } from '../lib/categoryEmoji'
+import { categoryEmoji, emojiGroupLabel } from '../lib/categoryEmoji'
 import { formatFallbackCategory, matchInfo } from '../lib/matchInfo'
 import { useAuth } from '../lib/authContext'
 import {
   quantityBasis,
-  QUANTITY_BASIS_LABEL,
+  quantityBasisLabel,
   type QuantityBasis,
 } from '../lib/quantityBasis'
 import {
@@ -75,14 +75,18 @@ type LastAction = {
   clamped: boolean
 }
 
-const REASON_VERB: Record<PantryRemovalReason, string> = {
-  eaten: 'eaten',
-  removed: 'removed',
+function reasonVerb(t: TranslateFn): Record<PantryRemovalReason, string> {
+  return {
+    eaten: t('eaten', 'gegessen'),
+    removed: t('removed', 'entfernt'),
+  }
 }
 
-const REASON_CONFIRM: Record<PantryRemovalReason, string> = {
-  eaten: 'Eaten',
-  removed: 'Remove',
+function reasonConfirm(t: TranslateFn): Record<PantryRemovalReason, string> {
+  return {
+    eaten: t('Eaten', 'Gegessen'),
+    removed: t('Remove', 'Entfernen'),
+  }
 }
 
 // Units where a withdrawal is a continuous amount (0.5 l, 250 g) -> number
@@ -136,13 +140,16 @@ const QUANTITY_BASIS_ICON: Record<QuantityBasis, string> = {
 // How long a lot has sat in the pantry (today − purchase date), the thing
 // that matters here -- old stock is what you want to use up or clear. The
 // exact purchase date lives on the Purchases page instead.
-function daysInPantry(iso: string | null): string {
-  if (!iso) return 'unknown age'
+function daysInPantry(t: TranslateFn, iso: string | null): string {
+  if (!iso) return t('unknown age', 'Alter unbekannt')
   const then = new Date(iso)
-  if (Number.isNaN(then.getTime())) return 'unknown age'
+  if (Number.isNaN(then.getTime())) return t('unknown age', 'Alter unbekannt')
   const days = Math.floor((Date.now() - then.getTime()) / 86_400_000)
-  if (days <= 0) return 'today'
-  return `${days} day${days === 1 ? '' : 's'} in`
+  if (days <= 0) return t('today', 'heute')
+  return t(
+    `${days} day${days === 1 ? '' : 's'} in`,
+    `seit ${days} Tag${days === 1 ? '' : 'en'}`,
+  )
 }
 
 // The verified identity to show, never the raw parsed receipt text: the
@@ -201,7 +208,13 @@ export function PantryPage() {
       .catch((err) => {
         setState({
           status: 'error',
-          message: err instanceof ApiError ? err.message : 'Could not load your pantry.',
+          message:
+            err instanceof ApiError
+              ? err.message
+              : t(
+                  'Could not load your pantry.',
+                  'Deine Vorratskammer konnte nicht geladen werden.',
+                ),
         })
       })
   }
@@ -234,7 +247,10 @@ export function PantryPage() {
       setActionError(
         err instanceof ApiError
           ? err.message
-          : `Could not mark "${displayName(item)}" as ${reason}.`,
+          : t(
+              `Could not mark "${displayName(item)}" as ${verbs[reason]}.`,
+              `„${displayName(item)}“ konnte nicht als ${verbs[reason]} markiert werden.`,
+            ),
       )
     }
   }
@@ -249,7 +265,9 @@ export function PantryPage() {
       await load()
     } catch (err) {
       setActionError(
-        err instanceof ApiError ? err.message : 'Could not save that change.',
+        err instanceof ApiError
+          ? err.message
+          : t('Could not save that change.', 'Diese Änderung konnte nicht gespeichert werden.'),
       )
     }
   }
@@ -263,7 +281,11 @@ export function PantryPage() {
       await correctReceiptItem(item.receipt_id, item.id, correction)
       await load()
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : 'Could not save that match.')
+      setActionError(
+        err instanceof ApiError
+          ? err.message
+          : t('Could not save that match.', 'Diese Zuordnung konnte nicht gespeichert werden.'),
+      )
     }
   }
 
@@ -291,7 +313,7 @@ export function PantryPage() {
   if (state.status === 'loading') {
     return (
       <section aria-busy="true">
-        <h1>Pantry</h1>
+        <h1>{t('Pantry', 'Vorrat')}</h1>
         <PageSkeleton cards={3} lines={2} />
       </section>
     )
@@ -300,7 +322,7 @@ export function PantryPage() {
   if (state.status === 'error') {
     return (
       <section>
-        <h1>Pantry</h1>
+        <h1>{t('Pantry', 'Vorrat')}</h1>
         <p className="form-error" role="alert">
           {state.message}
         </p>
@@ -310,11 +332,15 @@ export function PantryPage() {
 
   const undoBanner = lastAction && (
     <p className="callout callout--muted" role="status">
-      Marked {formatAmount(lastAction.appliedQuantity, lastAction.unit)} of “
-      {lastAction.itemName}” as {REASON_VERB[lastAction.reason]}
-      {lastAction.clamped ? ' (capped at what was left)' : ''}.{' '}
+      {t('Marked', 'Markiert')}{' '}
+      {formatAmount(lastAction.appliedQuantity, lastAction.unit)} {t('of', 'von')} „
+      {lastAction.itemName}“ {t('as', 'als')} {verbs[lastAction.reason]}
+      {lastAction.clamped
+        ? t(' (capped at what was left)', ' (auf den Rest begrenzt)')
+        : ''}
+      .{' '}
       <button type="button" className="btn-link" onClick={() => void handleUndo()}>
-        Undo
+        {t('Undo', 'Rückgängig')}
       </button>
     </p>
   )
@@ -343,7 +369,7 @@ export function PantryPage() {
   if (state.status === 'empty') {
     return (
       <section>
-        <h1>Pantry</h1>
+        <h1>{t('Pantry', 'Vorrat')}</h1>
         {undoBanner}
         <p>
           Your pantry is empty. It fills up as you{' '}
@@ -393,7 +419,7 @@ export function PantryPage() {
 
   return (
     <section>
-      <h1>Pantry</h1>
+      <h1>{t('Pantry', 'Vorrat')}</h1>
       <p className="page-lead">
         All the products in your home pantry. Update what you have eaten or thrown away.
       </p>
@@ -513,7 +539,10 @@ function PantryRow({
   onEdit: (fields: ItemUpdate) => void
   onCorrect: (correction: ItemCorrection) => void
 }) {
-  const match = matchInfo(item)
+  const { t } = useI18n()
+  const verbs = reasonVerb(t)
+  const confirms = reasonConfirm(t)
+  const match = matchInfo(t, item)
   const basis = quantityBasis(item)
   const measured = MEASURED_UNITS.has((item.unit ?? '').toLowerCase())
   const remaining = item.quantity ?? 1
@@ -577,8 +606,8 @@ function PantryRow({
         <span className="pantry-row__name-line">
           <span
             className="pantry-row__cat-emoji"
-            title={EMOJI_GROUP_LABEL[categoryEmoji(item)]}
-            aria-label={EMOJI_GROUP_LABEL[categoryEmoji(item)]}
+            title={emojiGroupLabel(t, categoryEmoji(item))}
+            aria-label={emojiGroupLabel(t, categoryEmoji(item))}
             role="img"
           >
             {categoryEmoji(item)}
@@ -607,9 +636,9 @@ function PantryRow({
               setPanel(null)
               setSearchingMatch((s) => !s)
             }}
-            aria-label="Fix match"
+            aria-label={t('Fix match', 'Zuordnung korrigieren')}
             aria-pressed={searchingMatch}
-            title="Fix match (search product)"
+            title={t('Fix match (search product)', 'Zuordnung korrigieren (Produkt suchen)')}
           >
             ✎
           </button>
@@ -629,14 +658,14 @@ function PantryRow({
                 if (e.key === 'Enter') saveQty()
                 if (e.key === 'Escape') setEditingQty(false)
               }}
-              aria-label="Quantity"
+              aria-label={t('Quantity', 'Menge')}
               autoFocus
             />
             <select
               className="pantry-row__unit-select"
               value={unitDraft}
               onChange={(e) => setUnitDraft(e.target.value)}
-              aria-label="Unit"
+              aria-label={t('Unit', 'Einheit')}
             >
               {(UNIT_OPTIONS.includes(unitDraft as (typeof UNIT_OPTIONS)[number])
                 ? UNIT_OPTIONS
@@ -651,7 +680,7 @@ function PantryRow({
               type="button"
               className="pantry-row__icon-btn"
               onClick={saveQty}
-              aria-label="Save quantity"
+              aria-label={t('Save quantity', 'Menge speichern')}
             >
               ✓
             </button>
@@ -659,7 +688,7 @@ function PantryRow({
               type="button"
               className="pantry-row__icon-btn"
               onClick={() => setEditingQty(false)}
-              aria-label="Cancel"
+              aria-label={t('Cancel', 'Abbrechen')}
             >
               ✕
             </button>
@@ -669,8 +698,8 @@ function PantryRow({
             {formatAmount(remaining, item.unit)}
             <span
               className={`qty-basis qty-basis--${basis}`}
-              title={QUANTITY_BASIS_LABEL[basis]}
-              aria-label={QUANTITY_BASIS_LABEL[basis]}
+              title={quantityBasisLabel(t, basis)}
+              aria-label={quantityBasisLabel(t, basis)}
             >
               {QUANTITY_BASIS_ICON[basis]}
             </span>
@@ -682,8 +711,8 @@ function PantryRow({
                 setUnitDraft(item.unit ?? 'piece')
                 setEditingQty(true)
               }}
-              aria-label="Edit amount"
-              title="Edit amount"
+              aria-label={t('Edit amount', 'Menge bearbeiten')}
+              title={t('Edit amount', 'Menge bearbeiten')}
             >
               ✎
             </button>
@@ -692,7 +721,7 @@ function PantryRow({
       </span>
       <span className="pantry-row__freshness">
         <UrgencyBadge urgency={item.urgency} />
-        <span className="pantry-row__age muted">{daysInPantry(item.purchased_at)}</span>
+        <span className="pantry-row__age muted">{daysInPantry(t, item.purchased_at)}</span>
       </span>
       <div className="pantry-row__actions">
         <button
@@ -703,9 +732,9 @@ function PantryRow({
               : 'pantry-row__action'
           }
           onClick={() => openPanel('eaten')}
-          aria-label="Eaten"
+          aria-label={t('Eaten', 'Gegessen')}
           aria-pressed={panel === 'eaten'}
-          title="Eaten"
+          title={t('Eaten', 'Gegessen')}
         >
           🍴
         </button>
@@ -717,9 +746,12 @@ function PantryRow({
               : 'pantry-row__action'
           }
           onClick={() => openPanel('removed')}
-          aria-label="Remove"
+          aria-label={t('Remove', 'Entfernen')}
           aria-pressed={panel === 'removed'}
-          title="Remove (not eaten — spoiled, given away, scan error)"
+          title={t(
+            'Remove (not eaten — spoiled, given away, scan error)',
+            'Entfernen (nicht gegessen – verdorben, verschenkt, Scan-Fehler)',
+          )}
         >
           🗑️
         </button>
@@ -727,7 +759,9 @@ function PantryRow({
 
       {panel && (
         <div className="pantry-row__panel">
-          <span className="pantry-row__panel-label">How much {REASON_VERB[panel]}?</span>
+          <span className="pantry-row__panel-label">
+            {t('How much', 'Wie viel')} {verbs[panel]}?
+          </span>
           {measured ? (
             <div className="pantry-row__slider">
               <input
@@ -737,7 +771,7 @@ function PantryRow({
                 step={measuredStep(remaining, item.unit)}
                 value={amount}
                 onChange={(e) => setAmount(clampAmount(Number(e.target.value)))}
-                aria-label={`Amount ${REASON_VERB[panel]} (${item.unit ?? ''})`}
+                aria-label={`${t('Amount', 'Menge')} ${verbs[panel]} (${item.unit ?? ''})`}
               />
               <span className="pantry-row__slider-value">{amountLabel}</span>
             </div>
@@ -750,7 +784,7 @@ function PantryRow({
                 step={PIECE_STEP}
                 value={amount}
                 onChange={(e) => setAmount(clampAmount(Number(e.target.value)))}
-                aria-label={`Amount ${REASON_VERB[panel]}`}
+                aria-label={`${t('Amount', 'Menge')} ${verbs[panel]}`}
               />
               <span className="pantry-row__slider-value">{amountLabel}</span>
             </div>
@@ -762,8 +796,8 @@ function PantryRow({
               onClick={confirm}
               disabled={amount <= 0}
             >
-              {REASON_CONFIRM[panel]}
-              {partial ? ` ${amountLabel}` : ' all'}
+              {confirms[panel]}
+              {partial ? ` ${amountLabel}` : t(' all', ' alles')}
             </button>
             <button type="button" className="btn-link" onClick={() => setPanel(null)}>
               Cancel

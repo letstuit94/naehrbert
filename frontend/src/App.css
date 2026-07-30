@@ -83,10 +83,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  /* Gap/padding shrink on tighter widths so the tab labels keep their room. */
+  gap: clamp(8px, 2vw, 16px);
   max-width: 720px;
   margin: 0 auto;
-  padding: 20px 24px;
+  padding: clamp(14px, 2.4vw, 20px) clamp(12px, 3vw, 24px);
 }
 
 /* Brand lockup (CI §1): leaf badge + wordmark, side by side. */
@@ -150,11 +151,14 @@
 .nav-link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 9px 16px;
+  /* Type + padding scale down fluidly so a longer set of labels
+     (Update · Insights · Vorrat · Rezepte) stays fully visible on narrower
+     screens rather than getting clipped or forcing a horizontal scroll. */
+  gap: clamp(4px, 1vw, 6px);
+  padding: clamp(7px, 1.4vw, 9px) clamp(9px, 2.4vw, 16px);
   border-radius: 999px;
   color: var(--text);
-  font-size: 17px;
+  font-size: clamp(12.5px, 3vw, 17px);
   font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
@@ -172,7 +176,7 @@
 .nav-tabs {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: clamp(8px, 2vw, var(--space-3));
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
@@ -540,10 +544,6 @@
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
   margin: var(--space-4) 0;
-  /* Anchors .macro-drivers-overlay's absolute positioning to this grid
-     (not the page) -- an absolutely positioned child is taken out of grid
-     flow entirely, so it doesn't consume a 5th track. */
-  position: relative;
 }
 
 /* Inline disclosure (§10) — a quiet, embedded "details" block, deliberately
@@ -656,9 +656,38 @@
   color: var(--text);
 }
 
-/* Per-row "Show drivers" toggle -- unlike the macro rings' shared overlay
-   (.macro-drivers-overlay), each micronutrient expands independently and
-   inline, pushing the rows below it down rather than floating over them. */
+/* Coverage as a signal-tinted badge with the % inside — a soft coloured pill
+   (the app's chip aesthetic) that carries the state by colour (see
+   coverageTier): amber→red as a shortfall deepens, green on target, amber/red
+   again for over-target where food excess harms (sodium). Soft fill + AA-tuned
+   signal text tone (§2.2), tabular so the figures line up down the column. */
+.cov-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  padding: 3px 11px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.cov-badge--ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.cov-badge--caution {
+  background: var(--caution-soft);
+  color: var(--caution);
+}
+.cov-badge--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* Per-row "Show drivers" toggle -- like the macro rings' shared panel
+   (.macro-drivers-panel), each micronutrient expands independently and inline,
+   pushing the rows below it down. */
 .micronutrient-row-toggle {
   display: inline-flex;
   align-items: center;
@@ -675,7 +704,7 @@
 
 .micronutrient-row-toggle::before {
   content: '▸';
-  font-size: 10px;
+  font-size: 16px;
   color: var(--text);
   transition: transform 0.15s ease;
 }
@@ -691,23 +720,72 @@
   border-bottom: 1px solid var(--border);
 }
 
-.micronutrient-drivers-row .driver-list {
-  margin: 0;
+/* Expanded row detail. The short "why / sources" blocks flow into a responsive
+   grid so the panel reads as a compact reference instead of one tall wall of
+   stacked paragraphs. */
+.micronutrient-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-3) var(--space-6);
+  margin-bottom: var(--space-4);
+}
+
+/* Under-/Overconsumption always share one row as a two-up pair (they read as a
+   comparison), collapsing to stacked only on a narrow screen. */
+.micronutrient-signs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 520px) {
+  .micronutrient-signs {
+    grid-template-columns: 1fr;
+  }
 }
 
 .micronutrient-info-section {
   max-width: 60ch;
-  margin-bottom: 10px;
-}
-
-.micronutrient-info-section:last-child {
-  margin-bottom: 0;
 }
 
 .micronutrient-info-section__title {
+  margin-bottom: 2px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-h);
-  margin-bottom: 2px;
+}
+
+/* "Drivers from your purchases" — the richest sources among the purchases for
+   this nutrient (per-100g density), as a plain name — value list below the info
+   grid, set off by a hairline. Reuses the shared .driver-list styling. */
+.micronutrient-drivers {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.micronutrient-drivers .driver-list {
+  margin-top: var(--space-2);
+}
+
+/* Name left, value right — a clean two-column read down the list. */
+.micronutrient-drivers .driver-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.driver-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-h);
+}
+
+.driver-value {
+  flex: 0 0 auto;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .micronutrient-table tbody tr:last-child td {
@@ -1180,12 +1258,18 @@
 
 /* ── Callouts ──────────────────────────────────────────────────────────── */
 
+/* Boxed notice/footnote. Sits at the secondary/meta type size (17px) with the
+   spacing scale — NOT the 20px body size, which made a boxed note tower over the
+   plain .muted notes sitting right beside it on Insights. One consistent set:
+   every callout (muted footnote or amber warning) reads as the same quiet aside. */
 .callout {
-  padding: 14px 18px;
+  padding: var(--space-3) var(--space-4);
   border-radius: 16px;
   background: var(--accent-bg);
   border: 1px solid var(--accent-border);
-  margin: 12px 0;
+  margin: var(--space-3) 0;
+  font-size: var(--fs-meta);
+  line-height: 1.5;
 }
 
 .callout--success {
@@ -1217,6 +1301,21 @@
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+/* Fill-in-the-blanks form inside a callout (Review screen: a receipt missing its
+   date/store). The callout isn't a flex container, so the note and its fields
+   would otherwise collapse together — give the group the same vertical rhythm as
+   the shared .form, and let the date/store controls fill the width. */
+.receipt-meta-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.receipt-meta-form .form-field input,
+.receipt-meta-form .form-field select {
+  width: 100%;
 }
 
 .muted {
@@ -1266,7 +1365,7 @@
 
 .driver-toggle::before {
   content: '▸';
-  font-size: 10px;
+  font-size: 16px;
   color: var(--text);
   transition: transform 0.15s ease;
 }
@@ -1275,24 +1374,20 @@
   transform: rotate(90deg);
 }
 
-/* Shared "Learn more" panel (one at a time, see ResultsPage.tsx's
-   expandedMacro state) -- absolutely positioned so it spans the full grid
-   width and floats above whatever's below it, instead of being squeezed
-   into a single 140px-wide card. */
-.macro-drivers-overlay {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  margin-top: 8px;
+/* Shared "Top sources" panel (one at a time, see ResultsPage.tsx's
+   expandedMacro state). Sits inline below the macro grid as a full-width block
+   and pushes the rest of the page down when opened -- the same in-flow disclosure
+   behaviour as the micronutrient rows, rather than floating over the content
+   beneath it. */
+.macro-drivers-panel {
+  margin: var(--space-4) 0 0;
   background: var(--surface);
   border-radius: 16px;
-  padding: 16px;
+  padding: var(--space-4);
   box-shadow: inset 0 0 0 1px var(--border);
 }
 
-.macro-drivers-overlay__header {
+.macro-drivers-panel__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1905,6 +2000,8 @@ a.btn {
 .purchase-row__macros,
 .purchase-row__nonfood {
   color: var(--text);
+  /* Subtitle under the product name — one step below the row's 17px name. */
+  font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
   text-align: right;
   white-space: nowrap;

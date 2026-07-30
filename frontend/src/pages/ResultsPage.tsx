@@ -27,7 +27,8 @@ import {
   type TargetComparisonResult,
   type TargetsResponse,
 } from '../lib/api'
-import { GOAL_LABEL } from '../lib/chatSteps'
+import { goalLabel as goalLabelFor } from '../lib/chatSteps'
+import { useI18n, type TranslateFn } from '../lib/i18n'
 
 type Slice<T> = { data: T | null; unavailable: boolean }
 
@@ -76,6 +77,7 @@ export function ResultsPage() {
   })
   const [profileGoal, setProfileGoal] = useState<Goal | null>(null)
   const [loading, setLoading] = useState(true)
+  const { t } = useI18n()
 
   useEffect(() => {
     Promise.allSettled([
@@ -113,7 +115,7 @@ export function ResultsPage() {
   if (loading) {
     return (
       <section aria-busy="true">
-        <h1>Your insights</h1>
+        <h1>{t('Your insights', 'Deine Insights')}</h1>
         <PageSkeleton cards={2} lines={3} />
       </section>
     )
@@ -124,21 +126,28 @@ export function ResultsPage() {
   return (
     <section>
       <h1>
-        Your insights{' '}
-        <span className="title-note">(calculated over the last 28 days)</span>
+        {t('Your insights', 'Deine Insights')}{' '}
+        <span className="title-note">
+          {t('(calculated over the last 28 days)', '(berechnet über die letzten 28 Tage)')}
+        </span>
       </h1>
       <p className="page-lead">
-        How your recent shopping stacks up against your targets — think trends, not exact
-        numbers. Based on your purchases, weighted toward what's recent — this reflects
-        your diet, not a food log.
+        {t(
+          "How your recent shopping stacks up against your targets — think trends, not exact numbers. Based on your purchases, weighted toward what's recent — this reflects your diet, not a food log.",
+          'Wie sich dein jüngster Einkauf im Vergleich zu deinen Zielen schlägt – denk in Trends, nicht in exakten Zahlen. Basiert auf deinen Einkäufen, stärker gewichtet nach dem, was aktuell ist – das spiegelt deine Ernährung wider, kein Ernährungstagebuch.',
+        )}
       </p>
 
       {!noReceiptsYet && composition.data && <p className="muted"></p>}
 
       {noReceiptsYet && (
         <p className="callout">
-          No confirmed receipts yet. <Link to="/upload">Upload one</Link> to see your
-          purchase macro split.
+          {t('No confirmed receipts yet.', 'Noch keine bestätigten Belege.')}{' '}
+          <Link to="/upload">{t('Upload one', 'Lade einen hoch')}</Link>{' '}
+          {t(
+            'to see your purchase macro split.',
+            'um die Makro-Aufteilung deiner Einkäufe zu sehen.',
+          )}
         </p>
       )}
 
@@ -149,13 +158,20 @@ export function ResultsPage() {
       {summary.data && summary.data.receipts_count > 0 && (
         <div className="summary-line">
           <p className="muted">
-            Based on {summary.data.receipts_count} confirmed receipt
-            {summary.data.receipts_count === 1 ? '' : 's'} ({summary.data.items_count}{' '}
-            item
-            {summary.data.items_count === 1 ? '' : 's'}).
+            {t('Based on', 'Basiert auf')} {summary.data.receipts_count}{' '}
+            {t(
+              summary.data.receipts_count === 1 ? 'confirmed receipt' : 'confirmed receipts',
+              summary.data.receipts_count === 1 ? 'bestätigtem Beleg' : 'bestätigten Belegen',
+            )}{' '}
+            ({summary.data.items_count}{' '}
+            {t(
+              summary.data.items_count === 1 ? 'item' : 'items',
+              summary.data.items_count === 1 ? 'Artikel' : 'Artikeln',
+            )}
+            ).
           </p>
           <Link to="/upload" className="btn btn-secondary btn-accent">
-            Upload more
+            {t('Upload more', 'Mehr hochladen')}
           </Link>
         </div>
       )}
@@ -173,7 +189,9 @@ export function ResultsPage() {
 
       {composition.data && !noReceiptsYet && !targets.data?.targets && (
         <p className="callout">
-          Set up your <Link to="/">profile</Link> to compare this against a target.
+          {t('Set up your', 'Richte dein')}{' '}
+          <Link to="/">{t('profile', 'Profil')}</Link>{' '}
+          {t('to compare this against a target.', 'ein, um das mit einem Ziel zu vergleichen.')}
         </p>
       )}
 
@@ -181,31 +199,44 @@ export function ResultsPage() {
         composition.data.fallback_share_pct !== null &&
         composition.data.fallback_share_pct > 5 && (
           <p className="callout callout--muted">
-            {composition.data.fallback_share_pct}% of your calories rely on a category
-            estimate rather than an exact product match — they're already included in
-            the macro split above, just with lower confidence.
+            {t(
+              `${composition.data.fallback_share_pct}% of your calories rely on a category estimate rather than an exact product match — they're already included in the macro split above, just with lower confidence.`,
+              `${composition.data.fallback_share_pct}% deiner Kalorien beruhen auf einer Kategorie-Schätzung statt auf einem exakten Produkt-Match – sie sind oben in der Makro-Aufteilung bereits enthalten, nur mit geringerer Sicherheit.`,
+            )}
           </p>
         )}
 
       {composition.data && composition.data.unaccounted_items_count > 0 && (
         <p className="callout callout--muted">
-          {composition.data.unaccounted_items_count}/{composition.data.items_considered}{' '}
-          purchased items have incomplete product data, so they don't count toward any
-          one macro above.
+          {t(
+            `${composition.data.unaccounted_items_count}/${composition.data.items_considered} purchased items have incomplete product data, so they don't count toward any one macro above.`,
+            `${composition.data.unaccounted_items_count}/${composition.data.items_considered} gekaufte Artikel haben unvollständige Produktdaten und zählen daher zu keinem der obigen Makros.`,
+          )}
         </p>
       )}
 
       {!noReceiptsYet && composition.data && composition.data.low_confidence && (
         <p className="callout callout--warning">
-          <strong>These numbers are still shaky.</strong>{' '}
+          <strong>{t('These numbers are still shaky.', 'Diese Zahlen sind noch wackelig.')}</strong>{' '}
           {composition.data.receipts_considered < 3 &&
-            `Only ${composition.data.receipts_considered} confirmed receipt${
-              composition.data.receipts_considered === 1 ? '' : 's'
-            } so far. `}
+            t(
+              `Only ${composition.data.receipts_considered} confirmed receipt${
+                composition.data.receipts_considered === 1 ? '' : 's'
+              } so far. `,
+              `Bisher erst ${composition.data.receipts_considered} bestätigte${
+                composition.data.receipts_considered === 1 ? 'r Beleg' : ' Belege'
+              }. `,
+            )}
           {composition.data.match_coverage_pct !== null &&
             composition.data.match_coverage_pct < 60 &&
-            `${composition.data.match_coverage_pct}% of the calories are category estimates rather than identified products. `}
-          They'll sharpen as you upload more receipts.
+            t(
+              `${composition.data.match_coverage_pct}% of the calories are category estimates rather than identified products. `,
+              `${composition.data.match_coverage_pct}% der Kalorien sind Kategorie-Schätzungen statt identifizierter Produkte. `,
+            )}
+          {t(
+            "They'll sharpen as you upload more receipts.",
+            'Sie werden schärfer, je mehr Belege du hochlädst.',
+          )}
         </p>
       )}
 
@@ -215,9 +246,10 @@ export function ResultsPage() {
         composition.data.match_coverage_pct !== null &&
         composition.data.match_coverage_pct < 80 && (
           <p className="callout callout--muted">
-            {composition.data.match_coverage_pct}% of these calories come from confidently
-            identified products; the rest are category estimates. Treat the split as a
-            rough guide.
+            {t(
+              `${composition.data.match_coverage_pct}% of these calories come from confidently identified products; the rest are category estimates. Treat the split as a rough guide.`,
+              `${composition.data.match_coverage_pct}% dieser Kalorien stammen aus sicher identifizierten Produkten; der Rest sind Kategorie-Schätzungen. Nimm die Aufteilung als groben Anhaltspunkt.`,
+            )}
           </p>
         )}
 
@@ -241,21 +273,54 @@ export function ResultsPage() {
 
 type MacroKey = 'protein' | 'fat' | 'carb' | 'fiber'
 
-const MACRO_LABELS: Record<MacroKey, string> = {
-  protein: 'Protein',
-  fat: 'Fat',
-  carb: 'Carbs',
-  fiber: 'Fiber',
+function macroLabels(t: TranslateFn): Record<MacroKey, string> {
+  return {
+    protein: t('Protein', 'Protein'),
+    fat: t('Fat', 'Fett'),
+    carb: t('Carbs', 'Kohlenhydrate'),
+    fiber: t('Fiber', 'Ballaststoffe'),
+  }
 }
 
 // Shown above both the macro-grid and the micronutrients table -- these
 // values only ever reflect scanned supermarket purchases, never a meal log,
 // so any gap against target could be genuine or could just be untracked
 // eating (home-cooked meals not run through Upload, eating out, etc.).
-const PURCHASES_ONLY_NOTE =
-  "These are the values counted from your supermarket purchases. Any gaps you " +
-  'should ideally close with all your other consumed meals — or try running more ' +
-  'of your home-cooked meals through the app to track them too.'
+function purchasesOnlyNote(t: TranslateFn): string {
+  return t(
+    'These are the values counted from your supermarket purchases. Any gaps you should ideally close with all your other consumed meals — or try running more of your home-cooked meals through the app to track them too.',
+    'Das sind die Werte aus deinen Supermarkt-Einkäufen. Etwaige Lücken solltest du idealerweise mit all deinen übrigen Mahlzeiten schließen – oder erfasse mehr deiner selbst gekochten Mahlzeiten über die App.',
+  )
+}
+
+// Micronutrients where overconsumption FROM FOOD is a genuine concern (a
+// tolerable upper intake that groceries can realistically push past). For every
+// other tracked nutrient the DGE value is a recommended intake, not a ceiling,
+// and food excess is harmless (see micronutrients.md "Signs of too much", which
+// for most notes the risk is supplement-only) — so those stay green over target.
+const OVERCONSUMPTION_HARM = new Set<string>(['sodium_mg', 'chloride_mg'])
+
+// Coverage (purchased ÷ target) on the app's 3-state signal scale — the same
+// red/amber/green language as the pantry urgency dots. A shortfall reads amber
+// then red as it deepens; on target is green. Over target stays green EXCEPT for
+// the nutrients above, where it flags amber past ~120% and red past ~200%.
+function coverageTier(pct: number, key: string): 'ok' | 'caution' | 'danger' {
+  if (pct < 50) return 'danger'
+  if (pct < 80) return 'caution'
+  if (OVERCONSUMPTION_HARM.has(key) && pct > 120) {
+    return pct > 200 ? 'danger' : 'caution'
+  }
+  return 'ok'
+}
+
+// The two backend "signs" section titles get tighter, localized display labels
+// (used for the side-by-side Under-/Overconsumption pair); every other section
+// title passes through as-is.
+function infoTitle(t: TranslateFn, title: string): string {
+  if (title === 'Signs of not enough') return t('Underconsumption', 'Unterkonsum')
+  if (title === 'Signs of too much') return t('Overconsumption', 'Überkonsum')
+  return title
+}
 
 function TargetsSection({
   targets,
@@ -272,13 +337,14 @@ function TargetsSection({
   diversity: DiversityResult | null
   mealCoverage: MealCoverageResult | null
 }) {
+  const { t } = useI18n()
   // Derived rather than hardcoded from the goal->adjustment mapping, so this
   // stays correct even if the backend's constants change -- see
   // backend/app/services/ideal_profile.py's _GOAL_ADJ (-15% / 0% / +10%).
   const goalAdjustmentPct = Math.round(
     (targets.calories_kcal / targets.tdee_kcal - 1) * 100,
   )
-  const goalLabel = goal ? GOAL_LABEL[goal] : null
+  const goalLabel = goal ? goalLabelFor(t, goal) : null
 
   // At most one macro's driver list is expanded at a time -- one shared
   // panel below, rather than 4 independent inline expanders, so it can span
@@ -305,18 +371,22 @@ function TargetsSection({
 
   return (
     <div className="targets-section">
-      <h2>Your targets</h2>
+      <h2>{t('Your targets', 'Deine Ziele')}</h2>
 
       <div className="stat-tile stat-tile--hero">
         <div className="stat-tile__row">
           <div className="stat-tile__col">
-            <span className="stat-tile__label">Daily average from purchases</span>
+            <span className="stat-tile__label">
+              {t('Daily average from purchases', 'Täglicher Durchschnitt aus Einkäufen')}
+            </span>
             <span className="stat-tile__value">
               {avgDailyKcal !== null ? avgDailyKcal.toLocaleString() : '—'} kcal
             </span>
           </div>
           <div className="stat-tile__col">
-            <span className="stat-tile__label">Daily calorie target</span>
+            <span className="stat-tile__label">
+              {t('Daily calorie target', 'Tägliches Kalorienziel')}
+            </span>
             <span className="stat-tile__value">
               {targets.calories_kcal.toLocaleString()} kcal
             </span>
@@ -324,54 +394,67 @@ function TargetsSection({
         </div>
         {avgDailyKcal !== null && pctOfTarget !== null && (
           <span className="muted">
-            ({pctOfTarget}% of target, last {mealCoverage?.days_of_data} day
-            {mealCoverage?.days_of_data === 1 ? '' : 's'})
+            {t(
+              `(${pctOfTarget}% of target, last ${mealCoverage?.days_of_data} day${
+                mealCoverage?.days_of_data === 1 ? '' : 's'
+              })`,
+              `(${pctOfTarget}% des Ziels, letzte ${mealCoverage?.days_of_data} Tage${
+                mealCoverage?.days_of_data === 1 ? '' : ''
+              })`,
+            )}
           </span>
         )}
         {avgDailyKcal !== null && shareWasDefaulted && (
           <span className="muted">
-            Assuming all these groceries are yours — set your{' '}
-            <Link to="/profile">grocery share</Link> for a more accurate number.
+            {t('Assuming all these groceries are yours — set your', 'Wir nehmen an, dass all diese Lebensmittel deine sind – lege deinen')}{' '}
+            <Link to="/profile">{t('grocery share', 'Einkaufsanteil')}</Link>{' '}
+            {t('for a more accurate number.', 'fest, um eine genauere Zahl zu erhalten.')}
           </span>
         )}
         {partialWindow && (
           <span className="muted">
-            Your purchase history only goes back {mealCoverage.days_of_data} day
-            {mealCoverage.days_of_data === 1 ? '' : 's'} so far (less than the{' '}
-            {mealCoverage.window_days}-day window) — this average is calculated over
-            that shorter span, and will settle in as you upload more receipts over
-            time.
+            {t(
+              `Your purchase history only goes back ${mealCoverage.days_of_data} day${
+                mealCoverage.days_of_data === 1 ? '' : 's'
+              } so far (less than the ${mealCoverage.window_days}-day window) — this average is calculated over that shorter span, and will settle in as you upload more receipts over time.`,
+              `Deine Einkaufshistorie reicht bisher nur ${mealCoverage.days_of_data} Tag${
+                mealCoverage.days_of_data === 1 ? '' : 'e'
+              } zurück (weniger als das ${mealCoverage.window_days}-Tage-Fenster) – dieser Durchschnitt wird über diesen kürzeren Zeitraum berechnet und pendelt sich ein, je mehr Belege du mit der Zeit hochlädst.`,
+            )}
           </span>
         )}
       </div>
 
       <details className="details-panel">
-        <summary>How this was calculated</summary>
+        <summary>{t('How this was calculated', 'So wurde das berechnet')}</summary>
         <dl className="kv-list">
           <div>
-            <dt>BMR</dt>
+            <dt>{t('BMR', 'Grundumsatz')}</dt>
             <dd>{targets.bmr_kcal} kcal</dd>
           </div>
           <div>
-            <dt>+ NEAT (daily movement)</dt>
+            <dt>{t('+ NEAT (daily movement)', '+ NEAT (Alltagsbewegung)')}</dt>
             <dd>{targets.neat_kcal} kcal</dd>
           </div>
           <div>
-            <dt>+ EAT (exercise)</dt>
+            <dt>{t('+ EAT (exercise)', '+ EAT (Sport)')}</dt>
             <dd>{targets.eat_kcal} kcal</dd>
           </div>
           <div>
-            <dt>+ TEF (digestion)</dt>
+            <dt>{t('+ TEF (digestion)', '+ TEF (Verdauung)')}</dt>
             <dd>{targets.tef_kcal} kcal</dd>
           </div>
           <div>
-            <dt>= TDEE</dt>
+            <dt>{t('= TDEE', '= Gesamtumsatz')}</dt>
             <dd>{targets.tdee_kcal} kcal</dd>
           </div>
           <div>
             <dt>
               {goalAdjustmentPct >= 0 ? '+' : ''}
-              {goalAdjustmentPct}% {goalLabel ? `(${goalLabel})` : '(goal adjustment)'}
+              {goalAdjustmentPct}%{' '}
+              {goalLabel
+                ? `(${goalLabel})`
+                : t('(goal adjustment)', '(Ziel-Anpassung)')}
             </dt>
             <dd>{targets.calories_kcal} kcal</dd>
           </div>
@@ -382,11 +465,11 @@ function TargetsSection({
         <p className="callout callout--warning">{targets.notes[0]}</p>
       )}
 
-      <p className="callout callout--muted">{PURCHASES_ONLY_NOTE}</p>
+      <p className="callout callout--muted">{purchasesOnlyNote(t)}</p>
 
       <div className="macro-grid">
         <MacroRingTile
-          label="Protein"
+          label={t('Protein', 'Protein')}
           macroKey="protein"
           grams={targets.protein_g}
           targetValue={targetsPct.protein_pct}
@@ -430,28 +513,31 @@ function TargetsSection({
           onToggleDrivers={setExpandedMacro}
         />
 
-        {expandedMacro && expandedDrivers && expandedDrivers.length > 0 && (
-          <div className="macro-drivers-overlay">
-            <div className="macro-drivers-overlay__header">
-              <strong>Top sources — {MACRO_LABELS[expandedMacro]}</strong>
-              <button
-                type="button"
-                className="btn-link"
-                onClick={() => setExpandedMacro(null)}
-              >
-                Close
-              </button>
-            </div>
-            <ol className="driver-list">
-              {expandedDrivers.map((driver) => (
-                <li key={driver.name}>
-                  {driver.name} — {driver.grams_per_100g} g/100g
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
       </div>
+
+      {expandedMacro && expandedDrivers && expandedDrivers.length > 0 && (
+        <div className="macro-drivers-panel">
+          <div className="macro-drivers-panel__header">
+            <strong>
+              {t('Top sources', 'Top-Quellen')} — {macroLabels(t)[expandedMacro]}
+            </strong>
+            <button
+              type="button"
+              className="btn-link"
+              onClick={() => setExpandedMacro(null)}
+            >
+              Close
+            </button>
+          </div>
+          <ol className="driver-list">
+            {expandedDrivers.map((driver) => (
+              <li key={driver.name}>
+                {driver.name} — {driver.grams_per_100g} g/100g
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
   )
 }
@@ -745,6 +831,7 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
     top_drivers,
     nutrient_info,
   } = micronutrients
+  const { t } = useI18n()
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const partialWindow = days_of_data < window_days
 
@@ -791,7 +878,7 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
         of purchases, sourced from the German BLS food database, against your personal
         daily target.
       </p>
-      <p className="callout callout--muted">{PURCHASES_ONLY_NOTE}</p>
+      <p className="callout callout--muted">{purchasesOnlyNote(t)}</p>
       {partialWindow && (
         <p className="callout callout--muted">
           Your purchase history only goes back {days_of_data} day{days_of_data === 1 ? '' : 's'}{' '}
@@ -814,6 +901,12 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
             <tbody>
               {rows.map(({ key, label, unit, purchasedPerDay, target, coveragePct, drivers, info }) => {
                 const isOpen = expanded.has(key)
+                const generalInfo = info.filter(
+                  (s) => s.title !== 'Signs of not enough' && s.title !== 'Signs of too much',
+                )
+                const signsInfo = ['Signs of not enough', 'Signs of too much']
+                  .map((title) => info.find((s) => s.title === title))
+                  .filter((s): s is { title: string; body: string } => Boolean(s))
                 return (
                   <Fragment key={key}>
                     <tr>
@@ -831,31 +924,64 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
                         {purchasedPerDay.toFixed(1)} {unit}
                       </td>
                       <td>{target !== null ? `${target.toFixed(1)} ${unit}` : '—'}</td>
-                      <td>{coveragePct !== null ? `${coveragePct}%` : '—'}</td>
+                      <td>
+                        {coveragePct !== null ? (
+                          <span
+                            className={`cov-badge cov-badge--${coverageTier(coveragePct, key)}`}
+                          >
+                            {coveragePct}%
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                     </tr>
                     {isOpen && (
                       <tr className="micronutrient-drivers-row">
                         <td colSpan={4}>
-                          {info.map((section) => (
-                            <div key={section.title} className="micronutrient-info-section">
-                              <p className="micronutrient-info-section__title">
-                                {section.title}
-                              </p>
-                              <p className="muted">{section.body}</p>
+                          <div className="micronutrient-info-grid">
+                            {generalInfo.map((section) => (
+                              <div
+                                key={section.title}
+                                className="micronutrient-info-section"
+                              >
+                                <p className="micronutrient-info-section__title">
+                                  {section.title}
+                                </p>
+                                <p className="muted">{section.body}</p>
+                              </div>
+                            ))}
+                          </div>
+                          {signsInfo.length > 0 && (
+                            <div className="micronutrient-info-grid micronutrient-signs">
+                              {signsInfo.map((section) => (
+                                <div
+                                  key={section.title}
+                                  className="micronutrient-info-section"
+                                >
+                                  <p className="micronutrient-info-section__title">
+                                    {infoTitle(t, section.title)}
+                                  </p>
+                                  <p className="muted">{section.body}</p>
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                          <div className="micronutrient-info-section">
+                          )}
+                          <div className="micronutrient-drivers">
                             <p className="micronutrient-info-section__title">
                               Drivers from your purchases
                             </p>
                             {drivers.length > 0 ? (
-                              <ol className="driver-list">
+                              <ul className="driver-list">
                                 {drivers.map((driver) => (
                                   <li key={driver.name}>
-                                    {driver.name} — {driver.value_per_100g} {unit}/100g
+                                    <span className="driver-name">{driver.name}</span>
+                                    <span className="driver-value">
+                                      {driver.value_per_100g} {unit}/100g
+                                    </span>
                                   </li>
                                 ))}
-                              </ol>
+                              </ul>
                             ) : (
                               <p className="muted">
                                 None of your purchases contain {label.toLowerCase()} yet.

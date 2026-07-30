@@ -7,6 +7,8 @@
  * category-level estimate or nothing at all.
  */
 
+import type { TranslateFn } from './i18n'
+
 export interface Matchable {
   is_non_food: boolean
   matched_name: string | null
@@ -21,6 +23,7 @@ export function formatFallbackCategory(category: string): string {
 }
 
 export function matchInfo(
+  t: TranslateFn,
   item: Matchable,
 ): { label: string; lowConfidence: boolean } | null {
   if (item.is_non_food) return null
@@ -30,7 +33,7 @@ export function matchInfo(
   if (item.fallback_category) {
     return { label: formatFallbackCategory(item.fallback_category), lowConfidence: true }
   }
-  return { label: 'No match found', lowConfidence: true }
+  return { label: t('No match found', 'Kein Treffer gefunden'), lowConfidence: true }
 }
 
 /** The Purchases page's data-transparency filter categories. Any
@@ -41,11 +44,17 @@ export function matchInfo(
  * the app doesn't make either. */
 export type MatchCategory = 'verified' | 'fallback' | 'none' | 'non_food'
 
-export const MATCH_CATEGORY_LABEL: Record<MatchCategory, string> = {
-  verified: 'Verified database matches',
-  fallback: 'Fallback category matches',
-  none: 'No matches',
-  non_food: 'Non-food',
+export function matchCategoryLabel(t: TranslateFn, category: MatchCategory): string {
+  switch (category) {
+    case 'verified':
+      return t('Verified database matches', 'Bestätigte Datenbank-Treffer')
+    case 'fallback':
+      return t('Fallback category matches', 'Kategorie-Schätzungen')
+    case 'none':
+      return t('No matches', 'Keine Treffer')
+    case 'non_food':
+      return t('Non-food', 'Kein Lebensmittel')
+  }
 }
 
 export function matchCategory(item: Matchable): MatchCategory {

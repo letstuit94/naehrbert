@@ -1,5 +1,6 @@
 import type { Urgency } from '../lib/api'
 import { urgencyDescription, urgencyLabel, urgencyLight } from '../lib/shelfLife'
+import { useI18n } from '../lib/i18n'
 
 /**
  * The pantry's fuzzy urgency cue: a traffic-light dot plus an optional soft
@@ -18,9 +19,10 @@ export function UrgencyBadge({
   urgency: Urgency
   showLabel?: boolean
 }) {
+  const { t } = useI18n()
   const light = urgencyLight(urgency)
-  const label = urgencyLabel(urgency)
-  const description = urgencyDescription(urgency)
+  const label = urgencyLabel(t, urgency)
+  const description = urgencyDescription(t, urgency)
 
   return (
     <span className="urgency" title={description}>

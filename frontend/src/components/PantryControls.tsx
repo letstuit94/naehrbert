@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FoodGroup } from '../lib/api'
 import type { PantryFilters, PantryView } from '../lib/shelfLife'
+import { useI18n } from '../lib/i18n'
 
 /**
  * Pantry toolbar, laid out as two clearly separate rows so the user can tell
@@ -30,6 +31,7 @@ export function PantryControls({
   onFiltersChange: (filters: PantryFilters) => void
   availableGroups: { group: FoodGroup; label: string }[]
 }) {
+  const { t } = useI18n()
   const [catsOpen, setCatsOpen] = useState(false)
   const catsRef = useRef<HTMLDivElement>(null)
 
@@ -100,7 +102,7 @@ export function PantryControls({
     <div className="pantry-controls">
       {/* ── Row 1: order (view toggle) + search ─────────────────── */}
       <div className="pantry-toolbar">
-        <div className="pantry-controls__views" role="radiogroup" aria-label="Sort order">
+        <div className="pantry-controls__views" role="radiogroup" aria-label={t('Sort order', 'Sortierung')}>
           <button
             type="button"
             role="radio"
@@ -110,7 +112,7 @@ export function PantryControls({
             }
             onClick={() => changeView('urgency')}
           >
-            Use first
+            {t('Use first', 'Zuerst verbrauchen')}
           </button>
           <button
             type="button"
@@ -123,17 +125,17 @@ export function PantryControls({
             }
             onClick={() => changeView('category')}
           >
-            By category
+            {t('By category', 'Nach Kategorie')}
           </button>
         </div>
 
         <input
           type="search"
           className="pantry-search"
-          placeholder="Search items…"
+          placeholder={t('Search items…', 'Artikel suchen…')}
           value={filters.search}
           onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
-          aria-label="Search items"
+          aria-label={t('Search items', 'Artikel suchen')}
         />
       </div>
 
@@ -150,7 +152,7 @@ export function PantryControls({
               aria-expanded={catsOpen}
               onClick={() => setCatsOpen((o) => !o)}
             >
-              Categories
+              {t('Categories', 'Kategorien')}
               <span className="filter-btn__count">
                 {shownCount}/{totalCount}
               </span>
@@ -160,23 +162,29 @@ export function PantryControls({
             </button>
 
             {catsOpen && (
-              <div className="cat-popover" role="group" aria-label="Show categories">
+              <div
+                className="cat-popover"
+                role="group"
+                aria-label={t('Show categories', 'Kategorien anzeigen')}
+              >
                 <div className="cat-popover__head">
-                  <span className="cat-popover__title">Show categories</span>
+                  <span className="cat-popover__title">
+                    {t('Show categories', 'Kategorien anzeigen')}
+                  </span>
                   <span className="cat-popover__actions">
                     <button
                       type="button"
                       className="btn-link"
                       onClick={() => setAllGroups(true)}
                     >
-                      All
+                      {t('All', 'Alle')}
                     </button>
                     <button
                       type="button"
                       className="btn-link"
                       onClick={() => setAllGroups(false)}
                     >
-                      None
+                      {t('None', 'Keine')}
                     </button>
                   </span>
                 </div>
@@ -209,12 +217,12 @@ export function PantryControls({
             onFiltersChange({ ...filters, onlyNext3Days: !filters.onlyNext3Days })
           }
         >
-          Next 3 days
+          {t('Next 3 days', 'Nächste 3 Tage')}
         </button>
 
         {hasActiveFilters && (
           <button type="button" className="btn-link pantry-clear" onClick={clearFilters}>
-            ✕ Clear filters
+            ✕ {t('Clear filters', 'Filter zurücksetzen')}
           </button>
         )}
       </div>

@@ -434,7 +434,10 @@ export function UploadPage() {
 
   if (screen === 'review' && current) {
     const { receipt, items } = current
-    const scanLooksIncomplete = items.length <= 1
+    // "Switch to typing it in manually" is a non-sequitur for a receipt
+    // that was already typed in manually -- a pasted-text receipt with
+    // few items just genuinely has few items, not a bad OCR scan.
+    const scanLooksIncomplete = items.length <= 1 && receipt.source !== 'pasted_text'
     const multi = receiptsData.length > 1
     const isLastReceipt = reviewIndex + 1 >= receiptsData.length
     const purchaseInfo = purchaseInfoLine(receipt)

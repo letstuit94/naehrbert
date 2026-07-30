@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -r backend/requirements.txt
 
 COPY backend backend
 COPY BLS_data BLS_data
+COPY micronutrients.md micronutrients.md
 
 ENV PYTHONPATH=/app
 

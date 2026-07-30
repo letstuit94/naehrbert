@@ -75,15 +75,16 @@ const EMPTY_FORM: FormState = {
  * profile payload. */
 const PREFS_FIELDS = new Set(['dietary_style', 'allergies', 'dislikes'])
 
-/** Color-theme choices for the Appearance card. */
+/** Color-theme choices for the Appearance row (Preferences card). */
 const themeOptions = (t: TranslateFn): { value: ThemePreference; label: string }[] => [
   { value: 'system', label: t('🖥️ System', '🖥️ System') },
   { value: 'light', label: t('☀️ Light', '☀️ Hell') },
   { value: 'dark', label: t('🌙 Dark', '🌙 Dunkel') },
 ]
 
-/** UI-language choices for the Language card. Labels are shown in their own
- * language (endonyms), so they read the same regardless of the active one. */
+/** UI-language choices for the Language row (Preferences card). Labels are shown
+ * in their own language (endonyms), so they read the same regardless of the
+ * active one. */
 const LANGUAGE_OPTIONS: { value: Lang; label: string }[] = [
   { value: 'de', label: '🇩🇪 Deutsch' },
   { value: 'en', label: '🇬🇧 English' },
@@ -185,6 +186,12 @@ export function ProfilePage() {
     setThemeState(pref)
   }, [])
 
+  // Appearance/language are edited as regular profile-field rows, but they
+  // apply live (so the choice previews immediately) and persist to
+  // localStorage / the i18n context rather than the profile API. This holds the
+  // value at the moment editing began, so Cancel can revert the live preview.
+  const [prefBeforeEdit, setPrefBeforeEdit] = useState<string | null>(null)
+
   // Load a profile's values into the editable working copy.
   const resetForm = useCallback((p: Profile) => {
     setForm(toForm(p))
@@ -261,10 +268,19 @@ export function ProfilePage() {
     if (profile) resetForm(profile)
     setAllergyDraft('')
     setFieldError(null)
+    if (key === 'theme') setPrefBeforeEdit(theme)
+    else if (key === 'language') setPrefBeforeEdit(lang)
     setEditingField(key)
   }
 
   function cancelField() {
+    // Revert the live preview for appearance/language back to where it started.
+    if (editingField === 'theme' && prefBeforeEdit) {
+      changeTheme(prefBeforeEdit as ThemePreference)
+    } else if (editingField === 'language' && prefBeforeEdit) {
+      setLang(prefBeforeEdit as Lang)
+    }
+    setPrefBeforeEdit(null)
     if (profile) resetForm(profile)
     setAllergyDraft('')
     setFieldError(null)
@@ -319,6 +335,12 @@ export function ProfilePage() {
   }
 
   async function saveField(key: string) {
+    // Appearance/language already applied live on change — just close the row.
+    if (key === 'theme' || key === 'language') {
+      setPrefBeforeEdit(null)
+      setEditingField(null)
+      return
+    }
     const invalid = fieldValidationError(key)
     if (invalid) {
       setFieldError(invalid)
@@ -787,66 +809,35 @@ export function ProfilePage() {
           </div>
 
           <div className="card">
-            <h2>{t('Appearance', 'Darstellung')}</h2>
-            <p className="profile-lead muted">
-              {t(
-                'Choose how NutriWise looks. “System” follows your device’s light or dark setting.',
-                'Wähle, wie NutriWise aussieht. „System“ folgt der Hell-/Dunkel-Einstellung deines Geräts.',
-              )}
-            </p>
-            <div
-              className="chat-choices"
-              role="radiogroup"
-              aria-label={t('Color theme', 'Farbschema')}
-            >
-              {themeOpts.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={theme === opt.value}
-                  className={
-                    theme === opt.value
-                      ? 'chat-choice chat-choice--selected'
-                      : 'chat-choice'
-                  }
-                  onClick={() => changeTheme(opt.value)}
+            <h2>{t('Preferences', 'Einstellungen')}</h2>
+            <div className="profile-fields">
+              {renderRow(
+                'theme',
+                t('Appearance', 'Darstellung'),
+                readableLabel(themeOpts, theme),
+                <select
+                  value={theme}
+                  onChange={(e) => changeTheme(e.target.value as ThemePreference)}
                 >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="card">
-            <h2>{t('Language', 'Sprache')}</h2>
-            <p className="profile-lead muted">
-              {t(
-                'Choose the language NutriWise is shown in.',
-                'Wähle die Sprache, in der NutriWise angezeigt wird.',
+                  {themeOpts.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>,
               )}
-            </p>
-            <div
-              className="chat-choices"
-              role="radiogroup"
-              aria-label={t('Language', 'Sprache')}
-            >
-              {LANGUAGE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={lang === opt.value}
-                  className={
-                    lang === opt.value
-                      ? 'chat-choice chat-choice--selected'
-                      : 'chat-choice'
-                  }
-                  onClick={() => setLang(opt.value)}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              {renderRow(
+                'language',
+                t('Language', 'Sprache'),
+                readableLabel(LANGUAGE_OPTIONS, lang),
+                <select value={lang} onChange={(e) => setLang(e.target.value as Lang)}>
+                  {LANGUAGE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>,
+              )}
             </div>
           </div>
         </>

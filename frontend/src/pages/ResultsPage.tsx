@@ -276,6 +276,16 @@ function purchasesOnlyNote(t: TranslateFn): string {
   )
 }
 
+// Coverage (purchased ÷ target) collapsed onto the app's 3-state signal scale
+// for the micronutrient meter: a big shortfall reads red, a partial one amber,
+// on-track (80%+) green. Same red/amber/green language as the pantry urgency
+// dots. Over-target just stays green with the bar capped at 100%.
+function coverageTier(pct: number): 'ok' | 'caution' | 'danger' {
+  if (pct >= 80) return 'ok'
+  if (pct >= 50) return 'caution'
+  return 'danger'
+}
+
 function TargetsSection({
   targets,
   targetsPct,
@@ -467,30 +477,31 @@ function TargetsSection({
           onToggleDrivers={setExpandedMacro}
         />
 
-        {expandedMacro && expandedDrivers && expandedDrivers.length > 0 && (
-          <div className="macro-drivers-overlay">
-            <div className="macro-drivers-overlay__header">
-              <strong>
-                {t('Top sources', 'Top-Quellen')} — {macroLabels(t)[expandedMacro]}
-              </strong>
-              <button
-                type="button"
-                className="btn-link"
-                onClick={() => setExpandedMacro(null)}
-              >
-                Close
-              </button>
-            </div>
-            <ol className="driver-list">
-              {expandedDrivers.map((driver) => (
-                <li key={driver.name}>
-                  {driver.name} — {driver.grams_per_100g} g/100g
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
       </div>
+
+      {expandedMacro && expandedDrivers && expandedDrivers.length > 0 && (
+        <div className="macro-drivers-panel">
+          <div className="macro-drivers-panel__header">
+            <strong>
+              {t('Top sources', 'Top-Quellen')} — {macroLabels(t)[expandedMacro]}
+            </strong>
+            <button
+              type="button"
+              className="btn-link"
+              onClick={() => setExpandedMacro(null)}
+            >
+              Close
+            </button>
+          </div>
+          <ol className="driver-list">
+            {expandedDrivers.map((driver) => (
+              <li key={driver.name}>
+                {driver.name} — {driver.grams_per_100g} g/100g
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
   )
 }
@@ -857,6 +868,9 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
             <tbody>
               {rows.map(({ key, label, unit, purchasedPerDay, target, coveragePct, drivers, info }) => {
                 const isOpen = expanded.has(key)
+                const maxDriverValue = drivers.length
+                  ? Math.max(...drivers.map((d) => d.value_per_100g))
+                  : 0
                 return (
                   <Fragment key={key}>
                     <tr>
@@ -874,31 +888,69 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
                         {purchasedPerDay.toFixed(1)} {unit}
                       </td>
                       <td>{target !== null ? `${target.toFixed(1)} ${unit}` : '—'}</td>
-                      <td>{coveragePct !== null ? `${coveragePct}%` : '—'}</td>
+                      <td>
+                        {coveragePct !== null ? (
+                          <span className="cov-meter">
+                            <span className="meter" aria-hidden="true">
+                              <span
+                                className={`meter__fill meter__fill--${coverageTier(coveragePct)}`}
+                                style={{ width: `${Math.min(coveragePct, 100)}%` }}
+                              />
+                            </span>
+                            <span className="cov-meter__value">{coveragePct}%</span>
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                     </tr>
                     {isOpen && (
                       <tr className="micronutrient-drivers-row">
                         <td colSpan={4}>
-                          {info.map((section) => (
-                            <div key={section.title} className="micronutrient-info-section">
-                              <p className="micronutrient-info-section__title">
-                                {section.title}
-                              </p>
-                              <p className="muted">{section.body}</p>
-                            </div>
-                          ))}
-                          <div className="micronutrient-info-section">
+                          <div className="micronutrient-info-grid">
+                            {info.map((section) => (
+                              <div
+                                key={section.title}
+                                className="micronutrient-info-section"
+                              >
+                                <p className="micronutrient-info-section__title">
+                                  {section.title}
+                                </p>
+                                <p className="muted">{section.body}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="micronutrient-drivers">
                             <p className="micronutrient-info-section__title">
                               Drivers from your purchases
                             </p>
                             {drivers.length > 0 ? (
-                              <ol className="driver-list">
-                                {drivers.map((driver) => (
-                                  <li key={driver.name}>
-                                    {driver.name} — {driver.value_per_100g} {unit}/100g
-                                  </li>
-                                ))}
-                              </ol>
+                              <ul className="driver-bar-list">
+                                {drivers.map((driver) => {
+                                  const rel = maxDriverValue
+                                    ? Math.max(
+                                        4,
+                                        Math.round(
+                                          (driver.value_per_100g / maxDriverValue) * 100,
+                                        ),
+                                      )
+                                    : 0
+                                  return (
+                                    <li key={driver.name} className="driver-bar">
+                                      <span className="driver-bar__name">{driver.name}</span>
+                                      <span className="driver-bar__track" aria-hidden="true">
+                                        <span
+                                          className="driver-bar__fill"
+                                          style={{ width: `${rel}%` }}
+                                        />
+                                      </span>
+                                      <span className="driver-bar__value">
+                                        {driver.value_per_100g} {unit}/100g
+                                      </span>
+                                    </li>
+                                  )
+                                })}
+                              </ul>
                             ) : (
                               <p className="muted">
                                 None of your purchases contain {label.toLowerCase()} yet.

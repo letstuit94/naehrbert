@@ -1,24 +1,24 @@
-# Hält das Render-Free-Backend wach, damit die Demo keinen ~50 s Kaltstart
-# hat (Render Free schläft nach 15 Min Inaktivität ein).
+# Keeps the Render free-tier backend awake so the demo doesn't suffer a ~50 s
+# cold start (Render Free goes to sleep after 15 min of inactivity).
 #
-# Kostenlose Alternative — nutzt die GitHub Actions, die das
-# Repo ohnehin schon verwendet, kein weiterer Drittanbieter nötig.
+# Free alternative — uses the GitHub Actions the repo already relies on,
+# no additional third-party service required.
 #
 # Setup: Repo → Settings → Secrets and variables → Actions → New secret
 #        Name  = BACKEND_HEALTH_URL
-#        Value = https://<dein-service>.onrender.com/health
+#        Value = https://<your-service>.onrender.com/health
 #
-# Bekannte Einschränkungen des GitHub-Cron (bewusst in Kauf genommen):
-#  - Der Zeitplan ist "best effort": bei GitHub-Last kann er ein paar Minuten
-#    verspätet feuern (die 15-Min-Grenze von Render verzeiht das).
-#  - GitHub deaktiviert geplante Workflows automatisch nach 60 Tagen ohne
-#    Repo-Aktivität. Für ein aktives Bootcamp-Projekt kein Problem.
+# Known limitations of GitHub cron (deliberately accepted):
+#  - The schedule is "best effort": under GitHub load it may fire a few minutes
+#    late (Render's 15-min limit tolerates that).
+#  - GitHub automatically disables scheduled workflows after 60 days without
+#    repo activity. Not an issue for an active bootcamp project.
 name: keepalive
 
 on:
   schedule:
-    - cron: "*/12 * * * *" # alle 12 Min < Renders 15-Min-Schlafgrenze
-  workflow_dispatch: {} # bleibt: manuelles Auslösen (Actions-Tab) weiter möglich
+    - cron: "*/12 * * * *" # every 12 min < Render's 15-min sleep threshold
+  workflow_dispatch: {} # stays: manual triggering (Actions tab) remains possible
 
 jobs:
   ping:
@@ -29,7 +29,7 @@ jobs:
           HEALTH_URL: ${{ secrets.BACKEND_HEALTH_URL }}
         run: |
           if [ -z "$HEALTH_URL" ]; then
-            echo "::warning::BACKEND_HEALTH_URL nicht gesetzt – Ping übersprungen."
+            echo "::warning::BACKEND_HEALTH_URL not set – ping skipped."
             exit 0
           fi
           curl --fail --show-error --silent \

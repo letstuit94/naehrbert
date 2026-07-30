@@ -544,10 +544,6 @@
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
   margin: var(--space-4) 0;
-  /* Anchors .macro-drivers-overlay's absolute positioning to this grid
-     (not the page) -- an absolutely positioned child is taken out of grid
-     flow entirely, so it doesn't consume a 5th track. */
-  position: relative;
 }
 
 /* Inline disclosure (§10) — a quiet, embedded "details" block, deliberately
@@ -645,7 +641,7 @@
 
 .micronutrient-table th:first-child,
 .micronutrient-table td:first-child {
-  width: 46%;
+  width: 40%;
   text-align: left;
 }
 
@@ -655,14 +651,65 @@
   text-align: right;
 }
 
+/* Coverage column carries the meter + value, so it gets the widest of the three
+   number columns (nutrient 40 · purchased/target 18 · coverage 24). */
+.micronutrient-table th:last-child,
+.micronutrient-table td:last-child {
+  width: 24%;
+}
+
 .micronutrient-table th {
   font-weight: 500;
   color: var(--text);
 }
 
-/* Per-row "Show drivers" toggle -- unlike the macro rings' shared overlay
-   (.macro-drivers-overlay), each micronutrient expands independently and
-   inline, pushing the rows below it down rather than floating over them. */
+/* Coverage meter (treatment B): a slim track filled to the coverage share and
+   tinted on the app's signal scale (red/amber/green, matching the pantry urgency
+   dots), with the exact figure alongside. The fill uses the -bright signal tones
+   since it's a non-textual bar (§2.2). */
+.cov-meter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cov-meter .meter {
+  position: relative;
+  flex: 0 0 auto;
+  width: 56px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--code-bg);
+  overflow: hidden;
+}
+
+.cov-meter .meter__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+}
+
+.cov-meter__value {
+  min-width: 40px;
+  text-align: right;
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+}
+
+.meter__fill--ok {
+  background: var(--ok);
+}
+.meter__fill--caution {
+  background: var(--caution-bright);
+}
+.meter__fill--danger {
+  background: var(--danger);
+}
+
+/* Per-row "Show drivers" toggle -- like the macro rings' shared panel
+   (.macro-drivers-panel), each micronutrient expands independently and inline,
+   pushing the rows below it down. */
 .micronutrient-row-toggle {
   display: inline-flex;
   align-items: center;
@@ -679,7 +726,7 @@
 
 .micronutrient-row-toggle::before {
   content: '▸';
-  font-size: 10px;
+  font-size: 16px;
   color: var(--text);
   transition: transform 0.15s ease;
 }
@@ -695,23 +742,95 @@
   border-bottom: 1px solid var(--border);
 }
 
-.micronutrient-drivers-row .driver-list {
-  margin: 0;
+/* Expanded row detail. The short "why / sources / signs" blocks flow into a
+   responsive two-column grid so the panel reads as a compact reference instead
+   of one tall wall of stacked paragraphs — the not-enough / too-much pair lands
+   side by side. */
+.micronutrient-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-3) var(--space-6);
+  margin-bottom: var(--space-4);
 }
 
 .micronutrient-info-section {
   max-width: 60ch;
-  margin-bottom: 10px;
-}
-
-.micronutrient-info-section:last-child {
-  margin-bottom: 0;
 }
 
 .micronutrient-info-section__title {
+  margin-bottom: 2px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-h);
-  margin-bottom: 2px;
+}
+
+/* "Drivers from your purchases" spans the full width below the info grid: each
+   source is a row of name · relative-contribution bar · value. The bar is a
+   neutral sage (contribution isn't good/bad, just how much), normalised to the
+   biggest driver in the list, so the top sources read at a glance — the same
+   meter language as the Coverage column above. */
+.micronutrient-drivers {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.driver-bar-list {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+
+.driver-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 88px auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+}
+
+.driver-bar:last-child {
+  border-bottom: none;
+}
+
+.driver-bar__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-h);
+}
+
+.driver-bar__track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--code-bg);
+  overflow: hidden;
+}
+
+.driver-bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--sage);
+}
+
+.driver-bar__value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+
+@media (max-width: 480px) {
+  /* Drop the contribution bar on very tight screens so name + value keep room. */
+  .driver-bar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .driver-bar__track {
+    display: none;
+  }
 }
 
 .micronutrient-table tbody tr:last-child td {
@@ -1141,12 +1260,18 @@
 
 /* ── Callouts ──────────────────────────────────────────────────────────── */
 
+/* Boxed notice/footnote. Sits at the secondary/meta type size (17px) with the
+   spacing scale — NOT the 20px body size, which made a boxed note tower over the
+   plain .muted notes sitting right beside it on Insights. One consistent set:
+   every callout (muted footnote or amber warning) reads as the same quiet aside. */
 .callout {
-  padding: 14px 18px;
+  padding: var(--space-3) var(--space-4);
   border-radius: 16px;
   background: var(--accent-bg);
   border: 1px solid var(--accent-border);
-  margin: 12px 0;
+  margin: var(--space-3) 0;
+  font-size: var(--fs-meta);
+  line-height: 1.5;
 }
 
 .callout--success {
@@ -1178,6 +1303,21 @@
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+/* Fill-in-the-blanks form inside a callout (Review screen: a receipt missing its
+   date/store). The callout isn't a flex container, so the note and its fields
+   would otherwise collapse together — give the group the same vertical rhythm as
+   the shared .form, and let the date/store controls fill the width. */
+.receipt-meta-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.receipt-meta-form .form-field input,
+.receipt-meta-form .form-field select {
+  width: 100%;
 }
 
 .muted {
@@ -1227,7 +1367,7 @@
 
 .driver-toggle::before {
   content: '▸';
-  font-size: 10px;
+  font-size: 16px;
   color: var(--text);
   transition: transform 0.15s ease;
 }
@@ -1236,24 +1376,20 @@
   transform: rotate(90deg);
 }
 
-/* Shared "Learn more" panel (one at a time, see ResultsPage.tsx's
-   expandedMacro state) -- absolutely positioned so it spans the full grid
-   width and floats above whatever's below it, instead of being squeezed
-   into a single 140px-wide card. */
-.macro-drivers-overlay {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  margin-top: 8px;
+/* Shared "Top sources" panel (one at a time, see ResultsPage.tsx's
+   expandedMacro state). Sits inline below the macro grid as a full-width block
+   and pushes the rest of the page down when opened -- the same in-flow disclosure
+   behaviour as the micronutrient rows, rather than floating over the content
+   beneath it. */
+.macro-drivers-panel {
+  margin: var(--space-4) 0 0;
   background: var(--surface);
   border-radius: 16px;
-  padding: 16px;
+  padding: var(--space-4);
   box-shadow: inset 0 0 0 1px var(--border);
 }
 
-.macro-drivers-overlay__header {
+.macro-drivers-panel__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1840,6 +1976,8 @@ a.btn {
 .purchase-row__macros,
 .purchase-row__nonfood {
   color: var(--text);
+  /* Subtitle under the product name — one step below the row's 17px name. */
+  font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
   text-align: right;
   white-space: nowrap;

@@ -6,6 +6,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 // (GDPR / performance / offline). Variable font, weight range 400..700.
 import '@fontsource-variable/instrument-sans'
 import './index.css'
+import { initTheme } from './lib/theme.ts'
 import App from './App.tsx'
 import { RequireProfile } from './components/RequireProfile.tsx'
 import { LoginPage } from './pages/LoginPage.tsx'
@@ -27,6 +28,10 @@ import { RecipeChatPage } from './pages/RecipeChatPage.tsx'
 // "unlock recipes" gate live on the separate Tips page (nav label "Recipes",
 // route /tips). Everything except Login/Onboarding requires a logged-in
 // profile (RequireProfile).
+// Apply the saved theme before the first render so an explicit light/dark
+// choice doesn't flash the OS default first.
+initTheme()
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>

@@ -24,6 +24,7 @@ import {
 } from '../lib/chatSteps'
 import { ALLERGEN_OPTIONS, DIETARY_STYLE_OPTIONS } from '../lib/recipePrefsSteps'
 import { ChipListInput, type ChipListInputHandle } from '../components/ChipListInput'
+import { getStoredTheme, setTheme, type ThemePreference } from '../lib/theme'
 
 /** Profile-page-only (not part of onboarding or the recipe-prefs chat) --
  * the DGE reference table's pregnancy/nursing life stages. */
@@ -72,6 +73,13 @@ const EMPTY_FORM: FormState = {
 /** Fields saved via the dietary-preferences endpoint rather than the core
  * profile payload. */
 const PREFS_FIELDS = new Set(['dietary_style', 'allergies', 'dislikes'])
+
+/** Color-theme choices for the Appearance card. */
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: 'system', label: '🖥️ System' },
+  { value: 'light', label: '☀️ Light' },
+  { value: 'dark', label: '🌙 Dark' },
+]
 
 type LabeledOption = { value: string; label: string }
 
@@ -148,6 +156,14 @@ export function ProfilePage() {
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  // Appearance / dark-mode preference (persisted in localStorage, applied to
+  // <html> via the theme helper — independent of the loaded profile).
+  const [theme, setThemeState] = useState<ThemePreference>(getStoredTheme)
+  const changeTheme = useCallback((pref: ThemePreference) => {
+    setTheme(pref)
+    setThemeState(pref)
+  }, [])
+
   // Load a profile's values into the editable working copy.
   const resetForm = useCallback((p: Profile) => {
     setForm(toForm(p))
@@ -181,6 +197,15 @@ export function ProfilePage() {
   useEffect(() => {
     fetchProfile()
   }, [fetchProfile])
+
+  // Scroll to a #hash target once the profile is loaded -- lets other pages
+  // (e.g. the recipe chat's Skip) deep-link straight to a section such as
+  // #diet-preferences. Same pattern as ResultsPage/TipsPage.
+  useEffect(() => {
+    if (state.status === 'ready' && window.location.hash) {
+      document.getElementById(window.location.hash.slice(1))?.scrollIntoView()
+    }
+  }, [state.status])
 
   function retryLoad() {
     setState({ status: 'loading' })
@@ -626,7 +651,7 @@ export function ProfilePage() {
             </div>
           </div>
 
-          <div className="card">
+          <div className="card" id="diet-preferences">
             <h2>Diet &amp; preferences</h2>
             <p className="profile-lead muted">
               Used to tailor your{' '}
@@ -709,6 +734,36 @@ export function ProfilePage() {
                   placeholder="e.g. mushrooms"
                 />,
               )}
+            </div>
+          </div>
+
+          <div className="card">
+            <h2>Appearance</h2>
+            <p className="profile-lead muted">
+              Choose how NutriWise looks. “System” follows your device’s light or
+              dark setting.
+            </p>
+            <div
+              className="chat-choices"
+              role="radiogroup"
+              aria-label="Color theme"
+            >
+              {THEME_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={theme === opt.value}
+                  className={
+                    theme === opt.value
+                      ? 'chat-choice chat-choice--selected'
+                      : 'chat-choice'
+                  }
+                  onClick={() => changeTheme(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
         </>

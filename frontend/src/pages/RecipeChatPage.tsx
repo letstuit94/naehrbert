@@ -219,6 +219,13 @@ export function RecipeChatPage() {
     }
   }
 
+  // Skip the chat for users who'd rather set things directly -- send them to
+  // the Diet & preferences section of their profile (same fields this chat
+  // collects), which is editable there via the #diet-preferences anchor.
+  function skipChat() {
+    navigate('/profile#diet-preferences')
+  }
+
   function goToNextPhase(next: Answers) {
     setFinished((f) => [
       ...f,
@@ -331,7 +338,14 @@ export function RecipeChatPage() {
 
   return (
     <section>
-      <h1>Recipe recommendations</h1>
+      <div className="summary-line">
+        <h1>Recipe recommendations</h1>
+        {stage === 'chat' && (
+          <button type="button" className="btn-link" onClick={skipChat}>
+            Skip
+          </button>
+        )}
+      </div>
       <p className="page-lead">
         Tell me what you're after and I'll build recipes around what's in your pantry.
       </p>

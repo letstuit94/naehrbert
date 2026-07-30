@@ -24,23 +24,23 @@ export interface Categorizable extends Matchable {
 
 // Leaf canonical category -> food-group emoji.
 export const CATEGORY_EMOJI: Record<string, string> = {
-  // 🥕 Vegetables
-  leafy_greens: '🥕',
-  cruciferous_vegetables: '🥕',
-  fruiting_vegetables: '🥕',
-  root_vegetables_nonstarchy: '🥕',
-  starchy_vegetables: '🥕',
-  mushrooms: '🥕',
-  alliums: '🥕',
-  fresh_legumes: '🥕',
+  // 🥒 Vegetables
+  leafy_greens: '🥒',
+  cruciferous_vegetables: '🥒',
+  fruiting_vegetables: '🥒',
+  root_vegetables_nonstarchy: '🥒',
+  starchy_vegetables: '🥒',
+  mushrooms: '🥒',
+  alliums: '🥒',
+  fresh_legumes: '🥒',
 
-  // 🍎 Fruits
-  berries: '🍎',
-  citrus_fruits: '🍎',
-  pome_fruits: '🍎',
-  stone_fruits: '🍎',
-  tropical_fruits: '🍎',
-  high_fat_fruits: '🍎',
+  // 🍏 Fruits
+  berries: '🍏',
+  citrus_fruits: '🍏',
+  pome_fruits: '🍏',
+  stone_fruits: '🍏',
+  tropical_fruits: '🍏',
+  high_fat_fruits: '🍏',
 
   // 🥛 Dairy, Eggs & Plant-Based Dairy Alternatives
   skim_dairy: '🥛',
@@ -50,11 +50,13 @@ export const CATEGORY_EMOJI: Record<string, string> = {
   hard_and_semi_hard_cheese: '🥛',
   cream_based_dairy: '🥛',
   butter_and_milk_fat: '🥛',
-  eggs: '🥛',
   unsweetened_plant_milk: '🥛',
   sweetened_plant_milk: '🥛',
   plant_yogurt: '🥛',
   vegan_cheese: '🥛',
+
+  // 🥚 Eggs
+  eggs: '🥚',
 
   // 🥩 Meat & Plant-Based Protein Products
   lean_poultry: '🥩',
@@ -141,9 +143,10 @@ export const CATEGORY_EMOJI: Record<string, string> = {
 
 // Human-readable food group per emoji, for the badge's title / aria-label.
 export const EMOJI_GROUP_LABEL: Record<string, string> = {
-  '🥕': 'Vegetables',
-  '🍎': 'Fruits',
-  '🥛': 'Dairy, Eggs & Plant-Based Alternatives',
+  '🥒': 'Vegetables',
+  '🍏': 'Fruits',
+  '🥛': 'Dairy & Plant-Based Alternatives',
+  '🥚': 'Eggs',
   '🥩': 'Meat & Plant-Based Protein',
   '🐟': 'Fish & Seafood',
   '🍞': 'Bread & Bakery',

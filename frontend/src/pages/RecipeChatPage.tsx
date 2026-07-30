@@ -11,8 +11,9 @@ import {
 } from '../lib/api'
 import { ChatBubble, SequenceView, TypewriterText } from '../lib/chatEngine'
 import { renderStaticSequence, typedItem, type SeqItem } from '../lib/chatSequence'
-import { ALLERGEN_OPTIONS, DIETARY_STYLE_OPTIONS } from '../lib/recipePrefsSteps'
+import { allergenOptions, dietaryStyleOptions } from '../lib/recipePrefsSteps'
 import { ChipListInput } from '../components/ChipListInput'
+import { useI18n, type TranslateFn } from '../lib/i18n'
 
 // The recipe-preferences chat (recipe recommendations feature): built on
 // the same chat engine as OnboardingPage.tsx. Runs every time the button
@@ -35,14 +36,15 @@ interface Answers {
   dislikes: string[]
 }
 
-function styleNoun(style: DietaryStyle): string {
-  const found = DIETARY_STYLE_OPTIONS.find((o) => o.value === style)
+function styleNoun(t: TranslateFn, style: DietaryStyle): string {
+  const found = dietaryStyleOptions(t).find((o) => o.value === style)
   return found ? found.label.replace(/^\S+\s/, '').toLowerCase() : style
 }
 
 type StyleSource = 'saved' | 'inferred' | null
 
 function askFor(
+  t: TranslateFn,
   phase: PhaseKey,
   name: string | null,
   inferredStyle: DietaryStyle | null,
@@ -50,12 +52,20 @@ function askFor(
 ): SeqItem[] {
   if (phase === 'nps') {
     return [
-      typedItem(name ? `Hey ${name}! 🎉` : 'Hey there! 🎉'),
       typedItem(
-        "Congrats on the progress so far -- you've uploaded enough matched food items to unlock recipe recommendations.",
+        name ? t(`Hey ${name}! 🎉`, `Hey ${name}! 🎉`) : t('Hey there! 🎉', 'Hallo! 🎉'),
       ),
       typedItem(
-        'I would love to hear how you like the app so far. How likely is it that you would recommend it to friends and family on a scale of 1 to 10?',
+        t(
+          "Congrats on the progress so far -- you've uploaded enough matched food items to unlock recipe recommendations.",
+          'Glückwunsch zu deinem bisherigen Fortschritt – du hast genug erkannte Lebensmittel hochgeladen, um Rezeptempfehlungen freizuschalten.',
+        ),
+      ),
+      typedItem(
+        t(
+          'I would love to hear how you like the app so far. How likely is it that you would recommend it to friends and family on a scale of 1 to 10?',
+          'Ich würde gern wissen, wie dir die App bisher gefällt. Wie wahrscheinlich ist es, dass du sie Freunden und Familie weiterempfiehlst – auf einer Skala von 1 bis 10?',
+        ),
       ),
     ]
   }
@@ -63,60 +73,84 @@ function askFor(
     if (styleSource === 'saved' && inferredStyle) {
       return [
         typedItem(
-          `Last time you told me you eat mostly ${styleNoun(inferredStyle)}. Still right, or would you like to change it?`,
+          t(
+            `Last time you told me you eat mostly ${styleNoun(t, inferredStyle)}. Still right, or would you like to change it?`,
+            `Letztes Mal hast du mir gesagt, dass du dich überwiegend ${styleNoun(t, inferredStyle)} ernährst. Passt das noch, oder möchtest du es ändern?`,
+          ),
         ),
       ]
     }
     if (styleSource === 'inferred' && inferredStyle) {
       return [
         typedItem(
-          `Based on your purchases so far, it looks like you eat mostly ${styleNoun(inferredStyle)}. Does that sound right, or should I correct it?`,
+          t(
+            `Based on your purchases so far, it looks like you eat mostly ${styleNoun(t, inferredStyle)}. Does that sound right, or should I correct it?`,
+            `Nach deinen bisherigen Einkäufen sieht es so aus, als würdest du dich überwiegend ${styleNoun(t, inferredStyle)} ernähren. Klingt das richtig, oder soll ich es korrigieren?`,
+          ),
         ),
       ]
     }
-    return [typedItem('How would you describe how you eat?')]
+    return [typedItem(t('How would you describe how you eat?', 'Wie würdest du deine Ernährung beschreiben?'))]
   }
   if (phase === 'allergies') {
-    return [typedItem('Do you have any allergies or intolerances I should know about?')]
-  }
-  return [typedItem("And finally -- are there any foods you just don't like?")]
-}
-
-function replyFor(phase: PhaseKey, answers: Answers): SeqItem[] {
-  if (phase === 'nps') {
     return [
-      typedItem('Thank you for sharing that!'),
       typedItem(
-        'Before I can start recommending you healthy recipes to close your nutrient gaps, I have a few more questions.',
+        t(
+          'Do you have any allergies or intolerances I should know about?',
+          'Hast du Allergien oder Unverträglichkeiten, von denen ich wissen sollte?',
+        ),
       ),
     ]
   }
-  if (phase === 'diet') return [typedItem('Got it, noted.')]
+  return [
+    typedItem(
+      t(
+        "And finally -- are there any foods you just don't like?",
+        'Und zum Schluss – gibt es Lebensmittel, die du einfach nicht magst?',
+      ),
+    ),
+  ]
+}
+
+function replyFor(t: TranslateFn, phase: PhaseKey, answers: Answers): SeqItem[] {
+  if (phase === 'nps') {
+    return [
+      typedItem(t('Thank you for sharing that!', 'Danke, dass du das geteilt hast!')),
+      typedItem(
+        t(
+          'Before I can start recommending you healthy recipes to close your nutrient gaps, I have a few more questions.',
+          'Bevor ich dir gesunde Rezepte empfehlen kann, um deine Nährstofflücken zu schließen, habe ich noch ein paar Fragen.',
+        ),
+      ),
+    ]
+  }
+  if (phase === 'diet') return [typedItem(t('Got it, noted.', 'Alles klar, notiert.'))]
   if (phase === 'allergies') {
     return [
       typedItem(
         answers.allergies.length > 0
-          ? "Thanks, I'll steer clear of those."
-          : 'Good to know, thanks!',
+          ? t("Thanks, I'll steer clear of those.", 'Danke, die lasse ich weg.')
+          : t('Good to know, thanks!', 'Gut zu wissen, danke!'),
       ),
     ]
   }
   return []
 }
 
-function answerLabel(phase: PhaseKey, answers: Answers): ReactNode {
+function answerLabel(t: TranslateFn, phase: PhaseKey, answers: Answers): ReactNode {
   if (phase === 'nps') return String(answers.npsScore)
   if (phase === 'diet') {
-    const opt = DIETARY_STYLE_OPTIONS.find((o) => o.value === answers.dietaryStyle)
+    const opt = dietaryStyleOptions(t).find((o) => o.value === answers.dietaryStyle)
     return opt ? opt.label : '—'
   }
   if (phase === 'allergies')
-    return answers.allergies.length ? answers.allergies.join(', ') : 'None'
-  return answers.dislikes.length ? answers.dislikes.join(', ') : 'None'
+    return answers.allergies.length ? answers.allergies.join(', ') : t('None', 'Keine')
+  return answers.dislikes.length ? answers.dislikes.join(', ') : t('None', 'Keine')
 }
 
 export function RecipeChatPage() {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const [stage, setStage] = useState<Stage>('loading')
   const [error, setError] = useState<string | null>(null)
 
@@ -185,12 +219,16 @@ export function RecipeChatPage() {
           allergies: profile.allergies ?? [],
           dislikes: profile.dislikes ?? [],
         }))
-        setLiveQueue(askFor('nps', profile.name ?? null, inferred, source))
+        setLiveQueue(askFor(t, 'nps', profile.name ?? null, inferred, source))
         setLiveRevealed(0)
         setStage('chat')
       } catch (err) {
         if (cancelled) return
-        setError(err instanceof ApiError ? err.message : 'Could not load your profile.')
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : t('Could not load your profile.', 'Dein Profil konnte nicht geladen werden.'),
+        )
         setStage('error')
       }
     }
@@ -214,9 +252,23 @@ export function RecipeChatPage() {
       // step is generating one, not detouring through Upload/Results.
       navigate('/tips')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save your preferences.')
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : t(
+              'Could not save your preferences.',
+              'Deine Einstellungen konnten nicht gespeichert werden.',
+            ),
+      )
       setStage('error')
     }
+  }
+
+  // Skip the chat for users who'd rather set things directly -- send them to
+  // the Diet & preferences section of their profile (same fields this chat
+  // collects), which is editable there via the #diet-preferences anchor.
+  function skipChat() {
+    navigate('/profile#diet-preferences')
   }
 
   function goToNextPhase(next: Answers) {
@@ -224,8 +276,8 @@ export function RecipeChatPage() {
       ...f,
       {
         phase: currentPhase,
-        ask: askFor(currentPhase, profileName, inferredStyle, styleSource),
-        answer: answerLabel(currentPhase, next),
+        ask: askFor(t, currentPhase, profileName, inferredStyle, styleSource),
+        answer: answerLabel(t, currentPhase, next),
       },
     ])
 
@@ -235,8 +287,8 @@ export function RecipeChatPage() {
     }
 
     const nextPhase = PHASE_ORDER[phaseIndex + 1]
-    const reply = replyFor(currentPhase, next)
-    const ask = askFor(nextPhase, profileName, inferredStyle, styleSource)
+    const reply = replyFor(t, currentPhase, next)
+    const ask = askFor(t, nextPhase, profileName, inferredStyle, styleSource)
     setLiveQueue([...reply, ...ask])
     setLiveRevealed(0)
     setPhaseIndex((i) => i + 1)
@@ -293,7 +345,7 @@ export function RecipeChatPage() {
   if (stage === 'loading') {
     return (
       <section aria-busy="true">
-        <h1>Recipe recommendations</h1>
+        <h1>{t('Recipe recommendations', 'Rezeptempfehlungen')}</h1>
         <div className="chat-card skeleton-card">
           <Skeleton w="40%" h={12} />
           <Skeleton h={40} />
@@ -306,7 +358,7 @@ export function RecipeChatPage() {
   if (stage === 'error') {
     return (
       <section>
-        <h1>Recipe recommendations</h1>
+        <h1>{t('Recipe recommendations', 'Rezeptempfehlungen')}</h1>
         <p className="form-error" role="alert">
           {error}
         </p>
@@ -317,11 +369,13 @@ export function RecipeChatPage() {
   if (stage === 'saving') {
     return (
       <section>
-        <h1>Recipe recommendations</h1>
+        <h1>{t('Recipe recommendations', 'Rezeptempfehlungen')}</h1>
         <div className="chat-card">
           <div className="chat-history">
             <ChatBubble from="bot">
-              <TypewriterText text="Saving your preferences..." />
+              <TypewriterText
+                text={t('Saving your preferences...', 'Deine Einstellungen werden gespeichert …')}
+              />
             </ChatBubble>
           </div>
         </div>
@@ -331,9 +385,19 @@ export function RecipeChatPage() {
 
   return (
     <section>
-      <h1>Recipe recommendations</h1>
+      <div className="summary-line">
+        <h1>{t('Recipe recommendations', 'Rezeptempfehlungen')}</h1>
+        {stage === 'chat' && (
+          <button type="button" className="btn-link" onClick={skipChat}>
+            {t('Skip', 'Überspringen')}
+          </button>
+        )}
+      </div>
       <p className="page-lead">
-        Tell me what you're after and I'll build recipes around what's in your pantry.
+        {t(
+          "Tell me what you're after and I'll build recipes around what's in your pantry.",
+          'Sag mir, worauf du Lust hast, und ich baue Rezepte rund um deinen Vorrat.',
+        )}
       </p>
       <div className="chat-card">
         <div ref={historyRef} className="chat-history">
@@ -375,7 +439,7 @@ export function RecipeChatPage() {
 
             {currentPhase === 'diet' && (
               <div className="chat-choices">
-                {DIETARY_STYLE_OPTIONS.map((opt) => (
+                {dietaryStyleOptions(t).map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
@@ -395,7 +459,7 @@ export function RecipeChatPage() {
             {currentPhase === 'allergies' && (
               <div className="chat-choices-block">
                 <div className="chat-choices">
-                  {ALLERGEN_OPTIONS.map((opt) => (
+                  {allergenOptions(t).map((opt) => (
                     <button
                       key={opt.value}
                       type="button"
@@ -413,7 +477,7 @@ export function RecipeChatPage() {
                 <div className="chip-input-row">
                   <input
                     type="text"
-                    placeholder="Other (type and add)"
+                    placeholder={t('Other (type and add)', 'Sonstiges (eingeben und hinzufügen)')}
                     value={allergyDraft}
                     onChange={(e) => setAllergyDraft(e.target.value)}
                     onKeyDown={(e) => {
@@ -426,14 +490,16 @@ export function RecipeChatPage() {
                   <button
                     type="button"
                     className="chip-add-btn"
-                    aria-label="Add"
+                    aria-label={t('Add', 'Hinzufügen')}
                     onClick={addCustomAllergy}
                   >
                     +
                   </button>
                 </div>
                 {answers.allergies.length > 0 && (
-                  <p className="muted">Selected: {answers.allergies.join(', ')}</p>
+                  <p className="muted">
+                    {t('Selected:', 'Ausgewählt:')} {answers.allergies.join(', ')}
+                  </p>
                 )}
                 <button
                   type="button"
@@ -441,8 +507,11 @@ export function RecipeChatPage() {
                   onClick={submitAllergies}
                 >
                   {answers.allergies.length > 0
-                    ? 'Continue'
-                    : 'No allergies or intolerances -- continue'}
+                    ? t('Continue', 'Weiter')
+                    : t(
+                        'No allergies or intolerances -- continue',
+                        'Keine Allergien oder Unverträglichkeiten – weiter',
+                      )}
                 </button>
               </div>
             )}
@@ -452,14 +521,16 @@ export function RecipeChatPage() {
                 <ChipListInput
                   value={answers.dislikes}
                   onChange={(next) => setAnswers((prev) => ({ ...prev, dislikes: next }))}
-                  placeholder="e.g. mushrooms"
+                  placeholder={t('e.g. mushrooms', 'z. B. Pilze')}
                 />
                 <button
                   type="button"
                   className="btn btn-primary"
                   onClick={submitDislikes}
                 >
-                  {answers.dislikes.length > 0 ? 'Continue' : 'No dislikes -- continue'}
+                  {answers.dislikes.length > 0
+                    ? t('Continue', 'Weiter')
+                    : t('No dislikes -- continue', 'Keine Abneigungen – weiter')}
                 </button>
               </div>
             )}

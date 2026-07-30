@@ -1,17 +1,14 @@
 import type { DailyMovement, ExerciseFrequency, Goal, Sex } from './api'
+import type { TranslateFn } from './i18n'
 
 /**
- * Content for the chat-style onboarding (Epic 1.1), adapted from an earlier
- * version of this app. Trimmed down for this rebuild:
- *  - single language (English) -- the old version was bilingual EN/DE, but
- *    clean_rebuild_epics.md cuts i18n entirely for v1.
- *  - no incremental/partial backend saves or resumable-onboarding support --
- *    the old version persisted progress after every answer so a partial
- *    profile survived a reload; this backend's `POST /profile` only accepts
- *    a complete 7-field payload in one shot (Epic 1.1), so answers are kept
- *    in memory and sent once, after `goal`.
- *  - no micronutrients tease -- this app doesn't have a micros feature at
- *    all (macro-only per the epics doc), not even a "coming soon" bullet.
+ * Content for the chat-style onboarding (Epic 1.1).
+ *
+ * All user-facing strings are language-dependent, so the option lists and the
+ * step list are factory functions taking the `t(en, de)` translate fn from
+ * useI18n() rather than plain constants. The `value`s (stored / sent to the
+ * backend) are language-independent and never change.
+ *
  *  - "name" is asked for warmth (so the chat can address the user, and to
  *    introduce the app); it's cosmetic (never used in any BMR/TDEE/macro
  *    calculation) but is persisted, so it also shows up pre-filled on the
@@ -38,137 +35,231 @@ export interface StepDef {
   placeholder?: string
 }
 
-export const SEX_OPTIONS: Option[] = [
-  { value: 'female', label: 'Female' },
-  { value: 'male', label: 'Male' },
-  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
-]
+export function sexOptions(t: TranslateFn): Option[] {
+  return [
+    { value: 'female', label: t('Female', 'Weiblich') },
+    { value: 'male', label: t('Male', 'Männlich') },
+    { value: 'prefer_not_to_say', label: t('Prefer not to say', 'Keine Angabe') },
+  ]
+}
 
-export const EXERCISE_OPTIONS: Option[] = [
-  { value: 'none', label: '🛋️ Rarely / never' },
-  { value: 'one_two', label: '🚶 1-2× per week' },
-  { value: 'three_four', label: '🏃 3-4× per week' },
-  { value: 'five_six', label: '💪 5-6× per week' },
-  { value: 'daily_athlete', label: '🏅 Daily / athlete' },
-]
+export function exerciseOptions(t: TranslateFn): Option[] {
+  return [
+    { value: 'none', label: t('🛋️ Rarely / never', '🛋️ Selten / nie') },
+    { value: 'one_two', label: t('🚶 1-2× per week', '🚶 1–2× pro Woche') },
+    { value: 'three_four', label: t('🏃 3-4× per week', '🏃 3–4× pro Woche') },
+    { value: 'five_six', label: t('💪 5-6× per week', '💪 5–6× pro Woche') },
+    { value: 'daily_athlete', label: t('🏅 Daily / athlete', '🏅 Täglich / sportlich') },
+  ]
+}
 
-export const MOVEMENT_OPTIONS: Option[] = [
-  { value: 'mostly_sitting', label: '🪑 Mostly sitting' },
-  { value: 'mixed', label: '🔀 A mix of sitting & moving' },
-  { value: 'mostly_standing', label: '🧍 Mostly on my feet' },
-  { value: 'physical_labor', label: '🏗️ Physical labor' },
-]
+export function movementOptions(t: TranslateFn): Option[] {
+  return [
+    { value: 'mostly_sitting', label: t('🪑 Mostly sitting', '🪑 Überwiegend sitzend') },
+    {
+      value: 'mixed',
+      label: t('🔀 A mix of sitting & moving', '🔀 Mischung aus Sitzen & Bewegung'),
+    },
+    {
+      value: 'mostly_standing',
+      label: t('🧍 Mostly on my feet', '🧍 Überwiegend auf den Beinen'),
+    },
+    { value: 'physical_labor', label: t('🏗️ Physical labor', '🏗️ Körperliche Arbeit') },
+  ]
+}
 
-export const GOAL_OPTIONS: Option[] = [
-  { value: 'lose_weight_gradually', label: '⚖️ Lose fat' },
-  { value: 'maintain', label: '🧭 Maintain weight' },
-  { value: 'build_muscle', label: '🏋️ Build muscle' },
-]
+export function goalOptions(t: TranslateFn): Option[] {
+  return [
+    { value: 'lose_weight_gradually', label: t('⚖️ Lose fat', '⚖️ Fett verlieren') },
+    { value: 'maintain', label: t('🧭 Maintain weight', '🧭 Gewicht halten') },
+    { value: 'build_muscle', label: t('🏋️ Build muscle', '🏋️ Muskeln aufbauen') },
+  ]
+}
 
-export const GOAL_LABEL: Record<Goal, string> = Object.fromEntries(
-  GOAL_OPTIONS.map((o) => [o.value, o.label.replace(/^\S+\s/, '')]),
-) as Record<Goal, string>
+/** The goal label without its leading emoji token, keyed by value. */
+export function goalLabel(t: TranslateFn, value: Goal): string {
+  const label = goalOptions(t).find((o) => o.value === value)?.label ?? value
+  return label.replace(/^\S+\s/, '')
+}
 
-export const ONBOARDING_STEPS: StepDef[] = [
-  {
-    key: 'name',
-    promptIntro: [
-      "Hi, I'm Nährbert — your companion for healthy eating and smart grocery shopping.",
-    ],
-    prompt: 'So I can address you properly from now on: what should I call you?',
-    kind: 'text',
-    placeholder: 'Your name',
-    feedback:
-      "Quick heads-up: I can't replace medical advice, and I'm not a dietitian in the traditional sense.",
-  },
-  {
-    key: 'sex',
-    prompt: 'What sex were you assigned at birth?',
-    hint: "Sorry if that sounds a little odd — being biologically male or female meaningfully affects your energy needs. If you'd rather not say, that's fine too: I'll just use the midpoint of both.",
-    kind: 'choice',
-    options: SEX_OPTIONS,
-  },
-  {
-    key: 'date_of_birth',
-    prompt: 'When were you born?',
-    kind: 'date',
-  },
-  {
-    key: 'height_cm',
-    prompt: 'How tall are you, in cm?',
-    placeholder: 'e.g. 170',
-    kind: 'number',
-  },
-  {
-    key: 'weight_kg',
-    prompt: 'And how much do you weigh, in kg?',
-    placeholder: 'e.g. 68',
-    kind: 'number',
-  },
-  {
-    key: 'exercise_frequency',
-    prompt:
-      "That's not all — depending on your goal and activity, we'll now adjust your Basal Metabolic Rate (BMR) into your Total Daily Energy Expenditure (TDEE). How often do you currently exercise per week?",
-    hint: 'Depending on your activity level, we add up to 600 kcal per day to your needs.',
-    kind: 'choice',
-    options: EXERCISE_OPTIONS,
-  },
-  {
-    key: 'daily_movement',
-    prompt: 'And what does your day-to-day look like?',
-    hint: 'Depending on your daily routine, we add up to 35% of your BMR on top.',
-    kind: 'choice',
-    options: MOVEMENT_OPTIONS,
-  },
-  {
-    key: 'goal',
-    prompt: 'Which of these goals fits you best?',
-    hint: "Depending on your choice, we'll lower your daily target, keep it the same, or raise it.",
-    kind: 'choice',
-    options: GOAL_OPTIONS,
-  },
-  {
-    key: 'household_size',
-    prompt:
-      'Almost done — how many people do you typically shop for when you go grocery shopping?',
-    hint: "This helps us judge how much of what's bought is actually just for you.",
-    placeholder: 'e.g. 2',
-    kind: 'number',
-    feedback: 'Got it, thanks!',
-  },
-  {
-    key: 'consumption_share_pct',
-    prompt: 'And roughly what share of those groceries would you say you personally eat?',
-    hint: "A rough % estimate is fine — this helps us scale your results accurately if you're not the only one eating from what's bought.",
-    placeholder: 'e.g. 50',
-    kind: 'number',
-    feedback: "Perfect — that's everything I need!",
-  },
-]
+export function onboardingSteps(t: TranslateFn): StepDef[] {
+  return [
+    {
+      key: 'name',
+      promptIntro: [
+        t(
+          "Hi, I'm Nährbert — your companion for healthy eating and smart grocery shopping.",
+          'Hi, ich bin Nährbert – dein Begleiter für gesunde Ernährung und cleveres Einkaufen.',
+        ),
+      ],
+      prompt: t(
+        'So I can address you properly from now on: what should I call you?',
+        'Damit ich dich ab jetzt richtig ansprechen kann: Wie soll ich dich nennen?',
+      ),
+      kind: 'text',
+      placeholder: t('Your name', 'Dein Name'),
+      feedback: t(
+        "Quick heads-up: I can't replace medical advice, and I'm not a dietitian in the traditional sense.",
+        'Kurzer Hinweis: Ich kann keine ärztliche Beratung ersetzen und bin auch keine Ernährungsberatung im klassischen Sinne.',
+      ),
+    },
+    {
+      key: 'sex',
+      prompt: t(
+        'What sex were you assigned at birth?',
+        'Welches Geschlecht wurde dir bei der Geburt zugewiesen?',
+      ),
+      hint: t(
+        "Sorry if that sounds a little odd — being biologically male or female meaningfully affects your energy needs. If you'd rather not say, that's fine too: I'll just use the midpoint of both.",
+        'Entschuldige, falls das etwas seltsam klingt – biologisch männlich oder weiblich zu sein beeinflusst deinen Energiebedarf spürbar. Wenn du es lieber nicht angeben möchtest, ist das auch okay: Dann nehme ich einfach den Mittelwert aus beiden.',
+      ),
+      kind: 'choice',
+      options: sexOptions(t),
+    },
+    {
+      key: 'date_of_birth',
+      prompt: t('When were you born?', 'Wann bist du geboren?'),
+      kind: 'date',
+    },
+    {
+      key: 'height_cm',
+      prompt: t('How tall are you, in cm?', 'Wie groß bist du (in cm)?'),
+      placeholder: t('e.g. 170', 'z. B. 170'),
+      kind: 'number',
+    },
+    {
+      key: 'weight_kg',
+      prompt: t('And how much do you weigh, in kg?', 'Und wie viel wiegst du (in kg)?'),
+      placeholder: t('e.g. 68', 'z. B. 68'),
+      kind: 'number',
+    },
+    {
+      key: 'exercise_frequency',
+      prompt: t(
+        "That's not all — depending on your goal and activity, we'll now adjust your Basal Metabolic Rate (BMR) into your Total Daily Energy Expenditure (TDEE). How often do you currently exercise per week?",
+        'Das ist noch nicht alles – je nach Ziel und Aktivität passen wir nun deinen Grundumsatz (BMR) zu deinem Gesamtumsatz (TDEE) an. Wie oft treibst du aktuell pro Woche Sport?',
+      ),
+      hint: t(
+        'Depending on your activity level, we add up to 600 kcal per day to your needs.',
+        'Je nach Aktivitätslevel rechnen wir bis zu 600 kcal pro Tag zu deinem Bedarf hinzu.',
+      ),
+      kind: 'choice',
+      options: exerciseOptions(t),
+    },
+    {
+      key: 'daily_movement',
+      prompt: t('And what does your day-to-day look like?', 'Und wie sieht dein Alltag aus?'),
+      hint: t(
+        'Depending on your daily routine, we add up to 35% of your BMR on top.',
+        'Je nach Alltag rechnen wir bis zu 35 % deines Grundumsatzes obendrauf.',
+      ),
+      kind: 'choice',
+      options: movementOptions(t),
+    },
+    {
+      key: 'goal',
+      prompt: t(
+        'Which of these goals fits you best?',
+        'Welches dieser Ziele passt am besten zu dir?',
+      ),
+      hint: t(
+        "Depending on your choice, we'll lower your daily target, keep it the same, or raise it.",
+        'Je nach Auswahl senken wir dein Tagesziel, lassen es gleich oder erhöhen es.',
+      ),
+      kind: 'choice',
+      options: goalOptions(t),
+    },
+    {
+      key: 'household_size',
+      prompt: t(
+        'Almost done — how many people do you typically shop for when you go grocery shopping?',
+        'Fast geschafft – für wie viele Personen kaufst du beim Einkaufen typischerweise ein?',
+      ),
+      hint: t(
+        "This helps us judge how much of what's bought is actually just for you.",
+        'Das hilft uns einzuschätzen, wie viel vom Eingekauften tatsächlich nur für dich ist.',
+      ),
+      placeholder: t('e.g. 2', 'z. B. 2'),
+      kind: 'number',
+      feedback: t('Got it, thanks!', 'Alles klar, danke!'),
+    },
+    {
+      key: 'consumption_share_pct',
+      prompt: t(
+        'And roughly what share of those groceries would you say you personally eat?',
+        'Und welchen Anteil dieser Lebensmittel isst du ungefähr selbst?',
+      ),
+      hint: t(
+        "A rough % estimate is fine — this helps us scale your results accurately if you're not the only one eating from what's bought.",
+        'Eine grobe %-Schätzung reicht – so können wir deine Ergebnisse korrekt skalieren, falls noch andere vom Eingekauften mitessen.',
+      ),
+      placeholder: t('e.g. 50', 'z. B. 50'),
+      kind: 'number',
+      feedback: t(
+        "Perfect — that's everything I need!",
+        'Perfekt – das ist alles, was ich brauche!',
+      ),
+    },
+  ]
+}
 
 // ── Dynamic content (formulas, computed reveals) ─────────────────────────
 
-const NAME_PROFILES_INTRO =
-  "But I'll help you eat in a more balanced way so you stay healthy and reach your goals — by working out 2 targets for you:"
-export const NAME_PROFILE_BULLETS = [
-  '🔥 Calories — your energy balance and body weight',
-  '💪 Macros — to fuel performance, muscle, and metabolism',
-]
-const NAME_BMR_INTRO =
-  'To do that, I need a bit of information about you. Let’s start with the baseline: your Basal Metabolic Rate (BMR).'
+export function nameProfileBullets(t: TranslateFn): string[] {
+  return [
+    t(
+      '🔥 Calories — your energy balance and body weight',
+      '🔥 Kalorien – deine Energiebilanz und dein Körpergewicht',
+    ),
+    t(
+      '💪 Macros — to fuel performance, muscle, and metabolism',
+      '💪 Makros – für Leistung, Muskeln und Stoffwechsel',
+    ),
+  ]
+}
 
-const SEX_FORMULA_INTRO = 'Thanks. Here’s the actual formula:'
-const SEX_FORMULA_NEXT =
-  "So next up, I'll need your date of birth, your height, and your weight."
+export function nameProfilesIntro(t: TranslateFn): string {
+  return t(
+    "But I'll help you eat in a more balanced way so you stay healthy and reach your goals — by working out 2 targets for you:",
+    'Aber ich helfe dir, ausgewogener zu essen, damit du gesund bleibst und deine Ziele erreichst – indem ich 2 Zielwerte für dich ermittle:',
+  )
+}
 
-export function sexFormulaLine(sex: string): string {
+export function nameBmrIntro(t: TranslateFn): string {
+  return t(
+    'To do that, I need a bit of information about you. Let’s start with the baseline: your Basal Metabolic Rate (BMR).',
+    'Dafür brauche ich ein paar Infos über dich. Fangen wir mit der Grundlage an: deinem Grundumsatz (BMR).',
+  )
+}
+
+export function sexFormulaIntro(t: TranslateFn): string {
+  return t('Thanks. Here’s the actual formula:', 'Danke. Hier ist die eigentliche Formel:')
+}
+
+export function sexFormulaNext(t: TranslateFn): string {
+  return t(
+    "So next up, I'll need your date of birth, your height, and your weight.",
+    'Als Nächstes brauche ich dein Geburtsdatum, deine Größe und dein Gewicht.',
+  )
+}
+
+export function sexFormulaLine(t: TranslateFn, sex: string): string {
   if (sex === 'male') {
-    return 'BMR = 10 × weight (kg) + 6.25 × height (cm) − 5 × age (years) + 5.'
+    return t(
+      'BMR = 10 × weight (kg) + 6.25 × height (cm) − 5 × age (years) + 5.',
+      'BMR = 10 × Gewicht (kg) + 6,25 × Größe (cm) − 5 × Alter (Jahre) + 5.',
+    )
   }
   if (sex === 'female') {
-    return 'BMR = 10 × weight (kg) + 6.25 × height (cm) − 5 × age (years) − 161.'
+    return t(
+      'BMR = 10 × weight (kg) + 6.25 × height (cm) − 5 × age (years) − 161.',
+      'BMR = 10 × Gewicht (kg) + 6,25 × Größe (cm) − 5 × Alter (Jahre) − 161.',
+    )
   }
-  return 'BMR = 10 × weight (kg) + 6.25 × height (cm) − 5 × age (years) − 78 (the midpoint between both, since you didn’t specify).'
+  return t(
+    'BMR = 10 × weight (kg) + 6.25 × height (cm) − 5 × age (years) − 78 (the midpoint between both, since you didn’t specify).',
+    'BMR = 10 × Gewicht (kg) + 6,25 × Größe (cm) − 5 × Alter (Jahre) − 78 (der Mittelwert aus beiden, da du keine Angabe gemacht hast).',
+  )
 }
 
 // Client-side preview only, mirroring backend/app/services/ideal_profile.py's
@@ -254,21 +345,15 @@ export function previewGoalAdjustmentKcal(goal: Goal, tdee: number): number {
   return Math.round(tdee * (1 + GOAL_ADJ[goal])) - tdee
 }
 
-export const EDIT_LATER_NOTE =
-  'If anything about you changes, you can always adjust these later from the Onboarding page.'
-export const CONTINUE_LABEL = 'Upload your first receipt'
+export function editLaterNote(t: TranslateFn): string {
+  return t(
+    'If anything about you changes, you can always adjust these later from the Onboarding page.',
+    'Falls sich bei dir etwas ändert, kannst du das jederzeit später auf der Onboarding-Seite anpassen.',
+  )
+}
 
-export function nameProfilesIntro(): string {
-  return NAME_PROFILES_INTRO
-}
-export function nameBmrIntro(): string {
-  return NAME_BMR_INTRO
-}
-export function sexFormulaIntro(): string {
-  return SEX_FORMULA_INTRO
-}
-export function sexFormulaNext(): string {
-  return SEX_FORMULA_NEXT
+export function continueLabel(t: TranslateFn): string {
+  return t('Upload your first receipt', 'Lade deinen ersten Kassenbon hoch')
 }
 
 export type Answers = {
@@ -304,12 +389,13 @@ const NUMERIC_RANGES: Record<string, { min: number; max: number }> = {
   consumption_share_pct: { min: 1, max: 100 },
 }
 
-export function rangeError(key: string, value: string): string | null {
+export function rangeError(t: TranslateFn, key: string, value: string): string | null {
   const range = NUMERIC_RANGES[key]
   if (!range || !value) return null
   const n = Number(value)
-  if (Number.isNaN(n)) return 'Please enter a realistic value.'
-  if (n < range.min || n > range.max) return 'Please enter a realistic value.'
+  const invalid = t('Please enter a realistic value.', 'Bitte gib einen realistischen Wert ein.')
+  if (Number.isNaN(n)) return invalid
+  if (n < range.min || n > range.max) return invalid
   return null
 }
 

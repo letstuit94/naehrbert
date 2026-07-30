@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ApiError, listProfiles, type ProfileSummary } from '../lib/api'
 import { setCurrentProfileId } from '../lib/session'
+import { useI18n } from '../lib/i18n'
 import { Logo } from '../components/Logo'
 
 type LoadState =
@@ -12,6 +13,7 @@ type LoadState =
 export function LoginPage() {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const navigate = useNavigate()
+  const { t } = useI18n()
 
   useEffect(() => {
     listProfiles()
@@ -19,10 +21,13 @@ export function LoginPage() {
       .catch((err) =>
         setState({
           status: 'error',
-          message: err instanceof ApiError ? err.message : 'Could not load users.',
+          message:
+            err instanceof ApiError
+              ? err.message
+              : t('Could not load users.', 'Nutzer konnten nicht geladen werden.'),
         }),
       )
-  }, [])
+  }, [t])
 
   function logIn(profile: ProfileSummary) {
     setCurrentProfileId(profile.id)
@@ -38,7 +43,7 @@ export function LoginPage() {
         <span className="login-logo__word">NutriWise</span>
       </span>
 
-      {state.status === 'loading' && <p className="muted">Loading…</p>}
+      {state.status === 'loading' && <p className="muted">{t('Loading…', 'Wird geladen…')}</p>}
 
       {state.status === 'error' && (
         <p className="form-error" role="alert">
@@ -55,7 +60,7 @@ export function LoginPage() {
               className="btn login-user-btn"
               onClick={() => logIn(profile)}
             >
-              {profile.name || `User #${profile.id}`}
+              {profile.name || t(`User #${profile.id}`, `Nutzer #${profile.id}`)}
             </button>
           ))}
 
@@ -64,7 +69,7 @@ export function LoginPage() {
             className="btn login-user-btn login-add-user-btn"
             onClick={() => navigate('/onboarding')}
           >
-            + Add new user
+            {t('+ Add new user', '+ Neuen Nutzer hinzufügen')}
           </button>
         </div>
       )}

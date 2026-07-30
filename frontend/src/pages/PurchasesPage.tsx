@@ -12,10 +12,11 @@ import {
 import { matchInfo } from '../lib/matchInfo'
 import {
   quantityBasis,
-  QUANTITY_BASIS_LABEL,
+  quantityBasisLabel,
   type QuantityBasis,
 } from '../lib/quantityBasis'
 import { MatchSearchPanel } from '../components/MatchSearchPanel'
+import { useI18n, type TranslateFn } from '../lib/i18n'
 
 type LoadState =
   | { status: 'loading' }
@@ -42,12 +43,12 @@ const QUANTITY_BASIS_ICON: Record<QuantityBasis, string> = {
  * receipt_text_parser.py never returns a real null for store, only this
  * string) -- the one place that mapping happens, used both for the group
  * header and as the filter chips' grouping key so they can't disagree. */
-function storeLabel(store: string | null): string {
-  return store && store !== 'unknown' ? store : 'Unknown store'
+function storeLabel(t: TranslateFn, store: string | null): string {
+  return store && store !== 'unknown' ? store : t('Unknown store', 'Unbekannter Laden')
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return 'Unknown date'
+function formatDate(t: TranslateFn, iso: string | null): string {
+  if (!iso) return t('Unknown date', 'Unbekanntes Datum')
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleDateString(undefined, {
@@ -94,10 +95,13 @@ function groupTotal(group: ReceiptGroup): number {
 /** Per-store totals across every loaded item (not just the currently
  * visible ones) -- the chip row is meant to stay stable and complete as a
  * menu of what CAN be shown, while toggling only affects what IS shown. */
-function storeTotals(items: PurchaseItem[]): { label: string; total: number }[] {
+function storeTotals(
+  t: TranslateFn,
+  items: PurchaseItem[],
+): { label: string; total: number }[] {
   const totals = new Map<string, number>()
   for (const item of items) {
-    const label = storeLabel(item.store)
+    const label = storeLabel(t, item.store)
     totals.set(label, (totals.get(label) ?? 0) + (item.price ?? 0))
   }
   return [...totals.entries()]
@@ -106,6 +110,7 @@ function storeTotals(items: PurchaseItem[]): { label: string; total: number }[] 
 }
 
 export function PurchasesPage() {
+  const { t } = useI18n()
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [actionError, setActionError] = useState<string | null>(null)
   // Which store labels are currently shown -- starts as "everything" on the
@@ -123,14 +128,18 @@ export function PurchasesPage() {
             : { status: 'ready', items: result.items },
         )
         setActiveStores((prev) =>
-          prev.size === 0 ? new Set(result.items.map((i) => storeLabel(i.store))) : prev,
+          prev.size === 0
+            ? new Set(result.items.map((i) => storeLabel(t, i.store)))
+            : prev,
         )
       })
       .catch((err) => {
         setState({
           status: 'error',
           message:
-            err instanceof ApiError ? err.message : 'Could not load your purchases.',
+            err instanceof ApiError
+              ? err.message
+              : t('Could not load your purchases.', 'Deine Einkäufe konnten nicht geladen werden.'),
         })
       })
   }
@@ -153,7 +162,7 @@ export function PurchasesPage() {
       await updateReceiptItem(item.receipt_id, item.id, fields)
       await load()
     } catch {
-      setActionError('Could not save that change.')
+      setActionError(t('Could not save that change.', 'Diese Änderung konnte nicht gespeichert werden.'))
     }
   }
 
@@ -163,14 +172,14 @@ export function PurchasesPage() {
       await correctReceiptItem(item.receipt_id, item.id, correction)
       await load()
     } catch {
-      setActionError('Could not save that match.')
+      setActionError(t('Could not save that match.', 'Diese Zuordnung konnte nicht gespeichert werden.'))
     }
   }
 
   if (state.status === 'loading') {
     return (
       <section aria-busy="true">
-        <h1>Purchases</h1>
+        <h1>{t('Purchases', 'Einkäufe')}</h1>
         <PageSkeleton cards={3} lines={1} />
       </section>
     )
@@ -179,7 +188,7 @@ export function PurchasesPage() {
   if (state.status === 'error') {
     return (
       <section>
-        <h1>Purchases</h1>
+        <h1>{t('Purchases', 'Einkäufe')}</h1>
         <p className="form-error" role="alert">
           {state.message}
         </p>
@@ -190,19 +199,20 @@ export function PurchasesPage() {
   if (state.status === 'empty') {
     return (
       <section>
-        <h1>Purchases</h1>
+        <h1>{t('Purchases', 'Einkäufe')}</h1>
         <p>
-          No confirmed receipts yet. <Link to="/upload">Upload one</Link> to see your
-          purchases here.
+          {t('No confirmed receipts yet. ', 'Noch keine bestätigten Belege. ')}
+          <Link to="/upload">{t('Upload one', 'Lade einen hoch')}</Link>
+          {t(' to see your purchases here.', ', um deine Einkäufe hier zu sehen.')}
         </p>
       </section>
     )
   }
 
   const groups = groupByReceipt(state.items).filter((group) =>
-    activeStores.has(storeLabel(group.store)),
+    activeStores.has(storeLabel(t, group.store)),
   )
-  const totals = storeTotals(state.items)
+  const totals = storeTotals(t, state.items)
 
   function toggleStore(label: string) {
     setActiveStores((prev) => {
@@ -215,13 +225,20 @@ export function PurchasesPage() {
 
   return (
     <section>
-      <h1>Purchases</h1>
+      <h1>{t('Purchases', 'Einkäufe')}</h1>
       <p className="page-lead">
-        Everything you've uploaded and confirmed, grouped by receipt.
+        {t(
+          "Everything you've uploaded and confirmed, grouped by receipt.",
+          'Alles, was du hochgeladen und bestätigt hast, nach Beleg gruppiert.',
+        )}
       </p>
 
       {totals.length > 1 && (
-        <div className="filter-bar" role="group" aria-label="Filter by store">
+        <div
+          className="filter-bar"
+          role="group"
+          aria-label={t('Filter by store', 'Nach Laden filtern')}
+        >
           {totals.map(({ label, total }) => {
             const active = activeStores.has(label)
             return (
@@ -255,8 +272,8 @@ export function PurchasesPage() {
         <div key={group.receiptId} className="purchase-group">
           <h2 className="purchase-group__header">
             <span>
-              {storeLabel(group.store)}{' '}
-              <span className="muted">· {formatDate(group.purchasedAt)}</span>
+              {storeLabel(t, group.store)}{' '}
+              <span className="muted">· {formatDate(t, group.purchasedAt)}</span>
             </span>
             <span className="purchase-group__total">{formatPrice(groupTotal(group))}</span>
           </h2>
@@ -285,13 +302,14 @@ function PurchaseRow({
   onQuantityUnitSave: (fields: { quantity?: number; unit?: string }) => void
   onCorrect: (correction: ItemCorrection) => void
 }) {
+  const { t } = useI18n()
   const [editing, setEditing] = useState(false)
   const [searching, setSearching] = useState(false)
   const [quantity, setQuantity] = useState(
     item.quantity !== null ? String(item.quantity) : '',
   )
   const [unit, setUnit] = useState(item.unit ?? 'piece')
-  const match = matchInfo(item)
+  const match = matchInfo(t, item)
   const basis = quantityBasis(item)
 
   return (
@@ -319,21 +337,21 @@ function PurchaseRow({
           className="btn-link purchase-row__edit-toggle"
           onClick={() => setEditing((e) => !e)}
         >
-          {editing ? 'Close' : 'Edit'}
+          {editing ? t('Close', 'Schließen') : t('Edit', 'Bearbeiten')}
         </button>
       </div>
       <span className="purchase-row__qty">
         {item.quantity ?? '—'} {item.unit ?? ''}
         <span
           className={`qty-basis qty-basis--${basis}`}
-          title={QUANTITY_BASIS_LABEL[basis]}
-          aria-label={QUANTITY_BASIS_LABEL[basis]}
+          title={quantityBasisLabel(t, basis)}
+          aria-label={quantityBasisLabel(t, basis)}
         >
           {QUANTITY_BASIS_ICON[basis]}
         </span>
       </span>
       {item.is_non_food ? (
-        <span className="purchase-row__nonfood muted">Not food</span>
+        <span className="purchase-row__nonfood muted">{t('Not food', 'Kein Lebensmittel')}</span>
       ) : (
         <span className="purchase-row__macros">
           {item.calories_kcal !== null ? `${Math.round(item.calories_kcal)} kcal` : '—'} ·
@@ -357,7 +375,7 @@ function PurchaseRow({
                   onQuantityUnitSave({ quantity: n })
                 }
               }}
-              aria-label="Quantity"
+              aria-label={t('Quantity', 'Menge')}
             />
             <select
               value={unit}
@@ -365,7 +383,7 @@ function PurchaseRow({
                 setUnit(e.target.value)
                 onQuantityUnitSave({ unit: e.target.value })
               }}
-              aria-label="Unit"
+              aria-label={t('Unit', 'Einheit')}
             >
               {UNIT_OPTIONS.map((u) => (
                 <option key={u} value={u}>
@@ -379,7 +397,7 @@ function PurchaseRow({
                 className="btn-link"
                 onClick={() => setSearching((s) => !s)}
               >
-                {searching ? 'Cancel search' : 'Fix match'}
+                {searching ? t('Cancel search', 'Suche abbrechen') : t('Fix match', 'Zuordnung korrigieren')}
               </button>
             )}
           </div>

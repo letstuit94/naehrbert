@@ -6,6 +6,8 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 // (GDPR / performance / offline). Variable font, weight range 400..700.
 import '@fontsource-variable/instrument-sans'
 import './index.css'
+import { initTheme } from './lib/theme.ts'
+import { initLang, I18nProvider } from './lib/i18n.tsx'
 import App from './App.tsx'
 import { RequireProfile } from './components/RequireProfile.tsx'
 import { LoginPage } from './pages/LoginPage.tsx'
@@ -27,24 +29,32 @@ import { RecipeChatPage } from './pages/RecipeChatPage.tsx'
 // "unlock recipes" gate live on the separate Tips page (nav label "Recipes",
 // route /tips). Everything except Login/Onboarding requires a logged-in
 // profile (RequireProfile).
+// Apply the saved theme + language before the first render so an explicit
+// light/dark choice doesn't flash the OS default first, and <html lang> is
+// correct from the very first paint.
+initTheme()
+initLang()
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<App />}>
-          <Route index element={<LoginPage />} />
-          <Route path="onboarding" element={<OnboardingPage />} />
-          <Route element={<RequireProfile />}>
-            <Route path="profile" element={<ProfilePage />} />
-            <Route path="upload" element={<UploadPage />} />
-            <Route path="pantry" element={<PantryPage />} />
-            <Route path="purchases" element={<PurchasesPage />} />
-            <Route path="results" element={<ResultsPage />} />
-            <Route path="tips" element={<TipsPage />} />
-            <Route path="recipes/new" element={<RecipeChatPage />} />
+    <I18nProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<App />}>
+            <Route index element={<LoginPage />} />
+            <Route path="onboarding" element={<OnboardingPage />} />
+            <Route element={<RequireProfile />}>
+              <Route path="profile" element={<ProfilePage />} />
+              <Route path="upload" element={<UploadPage />} />
+              <Route path="pantry" element={<PantryPage />} />
+              <Route path="purchases" element={<PurchasesPage />} />
+              <Route path="results" element={<ResultsPage />} />
+              <Route path="tips" element={<TipsPage />} />
+              <Route path="recipes/new" element={<RecipeChatPage />} />
+            </Route>
           </Route>
-        </Route>
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </I18nProvider>
   </StrictMode>,
 )

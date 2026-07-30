@@ -25,7 +25,8 @@ from typing import Optional
 FOOD_GROUP_LABELS: dict[str, str] = {
     "fruits": "Fruits",
     "vegetables": "Vegetables",
-    "dairy_eggs": "Dairy Products & Eggs",
+    "dairy": "Dairy Products",
+    "eggs": "Eggs",
     "meat": "Meat & Sausages",
     "fish_seafood": "Fish & Seafood",
     "bread_bakery": "Bread & Bakery",
@@ -47,7 +48,8 @@ DEFAULT_SHELF_LIFE: dict[str, Optional[int]] = {
     "fish_seafood": 3,
     "meat": 5,
     "bread_bakery": 5,
-    "dairy_eggs": 10,
+    "dairy": 10,
+    "eggs": 28,
     "fruits": 7,
     "vegetables": 7,
     "nuts_seeds": 180,
@@ -75,13 +77,15 @@ _LEAF_TO_GROUP: dict[str, str] = {
         "berries", "citrus_fruits", "pome_fruits", "stone_fruits",
         "tropical_fruits", "high_fat_fruits",
     )},
-    # Dairy, Eggs & plant-based dairy alternatives
-    **{leaf: "dairy_eggs" for leaf in (
+    # Dairy & plant-based dairy alternatives
+    **{leaf: "dairy" for leaf in (
         "skim_dairy", "low_fat_dairy", "full_fat_dairy", "soft_cheese",
         "hard_and_semi_hard_cheese", "cream_based_dairy",
-        "butter_and_milk_fat", "eggs", "unsweetened_plant_milk",
+        "butter_and_milk_fat", "unsweetened_plant_milk",
         "sweetened_plant_milk", "plant_yogurt", "vegan_cheese",
     )},
+    # Eggs
+    "eggs": "eggs",
     # Meat & plant-based protein
     **{leaf: "meat" for leaf in (
         "lean_poultry", "medium_fat_poultry", "lean_red_meat",

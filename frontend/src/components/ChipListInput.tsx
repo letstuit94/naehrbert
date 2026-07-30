@@ -1,4 +1,5 @@
 import { forwardRef, useCallback, useImperativeHandle, useState } from 'react'
+import { useI18n } from '../lib/i18n'
 
 /** Imperative handle: lets a parent commit an unconfirmed draft before it
  * reads `value` (e.g. on a "Save" click), so typed-but-not-added text isn't
@@ -15,8 +16,10 @@ export const ChipListInput = forwardRef<
     onChange: (next: string[]) => void
     placeholder?: string
   }
->(function ChipListInput({ value, onChange, placeholder = 'Add a food...' }, ref) {
+>(function ChipListInput({ value, onChange, placeholder }, ref) {
+  const { t } = useI18n()
   const [draft, setDraft] = useState('')
+  const resolvedPlaceholder = placeholder ?? t('Add a food...', 'Lebensmittel hinzufügen...')
 
   // Commit the current draft (if any) into the list; returns the resulting
   // list so callers can use it without waiting for the onChange state update.
@@ -52,7 +55,7 @@ export const ChipListInput = forwardRef<
               <button
                 type="button"
                 className="chip__remove"
-                aria-label={`Remove ${item}`}
+                aria-label={t(`Remove ${item}`, `${item} entfernen`)}
                 onClick={() => remove(item)}
               >
                 ×
@@ -65,7 +68,7 @@ export const ChipListInput = forwardRef<
         <input
           type="text"
           value={draft}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -74,7 +77,7 @@ export const ChipListInput = forwardRef<
             }
           }}
         />
-        <button type="button" className="chip-add-btn" aria-label="Add" onClick={add}>
+        <button type="button" className="chip-add-btn" aria-label={t('Add', 'Hinzufügen')} onClick={add}>
           +
         </button>
       </div>

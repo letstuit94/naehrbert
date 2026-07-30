@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { getCurrentProfileId } from '../lib/session'
+import { useI18n } from '../lib/i18n'
 import { Logo } from './Logo'
 
 // Persistent nav across all logged-in routes, incl. "Results" (Epic 7.3) so
@@ -8,14 +9,18 @@ import { Logo } from './Logo'
 // feature): it's now the sign-up flow reached from the login screen's
 // "Add new user" button, not a page an already-logged-in user revisits.
 // "Profile" lives as its own icon on the far right, not in this list.
-const NAV_LINKS = [
-  { to: '/upload', label: 'Upload', icon: 'upload' as const },
-  { to: '/results', label: 'Insights', icon: 'results' as const },
-  { to: '/pantry', label: 'Pantry', icon: 'pantry' as const },
-  { to: '/tips', label: 'Recipes', icon: 'recipes' as const },
-]
+type NavIconName = 'upload' | 'results' | 'pantry' | 'recipes'
 
-type NavIconName = (typeof NAV_LINKS)[number]['icon']
+// Labels are language-dependent, so the list is built inside the component
+// from the active t(). Structure (to/icon) is otherwise static.
+function navLinks(t: (en: string, de: string) => string) {
+  return [
+    { to: '/upload', label: t('Update', 'Update'), icon: 'upload' as const },
+    { to: '/results', label: t('Insights', 'Insights'), icon: 'results' as const },
+    { to: '/pantry', label: t('Pantry', 'Vorrat'), icon: 'pantry' as const },
+    { to: '/tips', label: t('Recipes', 'Rezepte'), icon: 'recipes' as const },
+  ]
+}
 
 // Thin inline line-icons in the same family as the profile icon and the leaf
 // logo (stroke=currentColor, no fill, round caps) -- so they inherit the link
@@ -73,6 +78,8 @@ function NavIcon({ name }: { name: NavIconName }) {
 }
 
 export function NavBar() {
+  const { t } = useI18n()
+
   // useLocation() ties this read to the router's own location context, so
   // it's re-evaluated on every navigation (login/logout always navigate
   // right after changing the stored profile id) rather than depending on
@@ -82,6 +89,8 @@ export function NavBar() {
   // No nav chrome on the login/sign-up screens -- nothing there to link to
   // yet (RequireProfile would just bounce every link straight back here).
   if (getCurrentProfileId() === null) return null
+
+  const NAV_LINKS = navLinks(t)
 
   return (
     // Full-width sticky header (CI §6): the bar itself spans the viewport so its
@@ -95,7 +104,7 @@ export function NavBar() {
           <span className="nav-logo">
             <Logo size={18} />
           </span>
-          <span className="nav-wordmark">NutriWise</span>
+          <span className="nav-wordmark">{t('NutriWise', 'NutriWise')}</span>
         </span>
 
         {/* Two separate pills: Upload (the "add data" action) stands alone in
@@ -136,7 +145,7 @@ export function NavBar() {
 
         <NavLink
           to="/profile"
-          aria-label="Profile"
+          aria-label={t('Profile', 'Profil')}
           className={({ isActive }) =>
             isActive ? 'nav-profile-icon nav-profile-icon--active' : 'nav-profile-icon'
           }

@@ -14,6 +14,7 @@ import {
   type RecipeGenerateInput,
   type UnlockStatus,
 } from '../lib/api'
+import { useI18n, type TranslateFn } from '../lib/i18n'
 
 type Slice<T> = { data: T | null; unavailable: boolean }
 
@@ -26,18 +27,31 @@ function settledSlice<T>(result: PromiseSettledResult<T>): Slice<T> {
 // Filter chip labels intentionally plainer than the badge text on the card
 // itself (DIETARY_LABEL_DISPLAY below) -- "Meat"/"Fish"/"Veggie" read faster
 // as quick filter toggles than the more precise "Omnivore"/"Pescatarian".
-const LABEL_FILTERS: { value: DietaryStyle; label: string }[] = [
-  { value: 'omnivore', label: 'Meat' },
-  { value: 'pescatarian', label: 'Fish' },
-  { value: 'vegetarian', label: 'Veggie' },
-  { value: 'vegan', label: 'Vegan' },
+// Stable list of filter values, decoupled from their (translated) labels so
+// state initialization doesn't need the translate fn.
+const LABEL_FILTER_VALUES: DietaryStyle[] = [
+  'omnivore',
+  'pescatarian',
+  'vegetarian',
+  'vegan',
 ]
 
-const DIETARY_LABEL_DISPLAY: Record<DietaryStyle, string> = {
-  omnivore: 'Omnivore',
-  pescatarian: 'Pescatarian',
-  vegetarian: 'Vegetarian',
-  vegan: 'Vegan',
+function labelFilters(t: TranslateFn): { value: DietaryStyle; label: string }[] {
+  return [
+    { value: 'omnivore', label: t('Meat', 'Fleisch') },
+    { value: 'pescatarian', label: t('Fish', 'Fisch') },
+    { value: 'vegetarian', label: t('Veggie', 'Veggie') },
+    { value: 'vegan', label: t('Vegan', 'Vegan') },
+  ]
+}
+
+function dietaryLabelDisplay(t: TranslateFn): Record<DietaryStyle, string> {
+  return {
+    omnivore: t('Omnivore', 'Alles'),
+    pescatarian: t('Pescatarian', 'Pescetarisch'),
+    vegetarian: t('Vegetarian', 'Vegetarisch'),
+    vegan: t('Vegan', 'Vegan'),
+  }
 }
 
 // Restrictiveness order (fewer animal products -> higher rank) -- mirrors
@@ -86,6 +100,7 @@ function matchesSearch(recipe: Recipe, query: string): boolean {
 // Results stays a pure analysis view. This page only needs the unlock status
 // and the recipe list -- not the full targets/composition fetch Results does.
 export function TipsPage() {
+  const { t } = useI18n()
   const [unlockStatus, setUnlockStatus] = useState<Slice<UnlockStatus>>({
     data: null,
     unavailable: false,
@@ -97,7 +112,7 @@ export function TipsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [activeLabels, setActiveLabels] = useState<Set<DietaryStyle>>(
-    new Set(LABEL_FILTERS.map((f) => f.value)),
+    new Set(LABEL_FILTER_VALUES),
   )
 
   useEffect(() => {
@@ -137,7 +152,7 @@ export function TipsPage() {
 
   function resetFilters() {
     setSearch('')
-    setActiveLabels(new Set(LABEL_FILTERS.map((f) => f.value)))
+    setActiveLabels(new Set(LABEL_FILTER_VALUES))
   }
 
   useEffect(() => {
@@ -149,7 +164,7 @@ export function TipsPage() {
   if (loading) {
     return (
       <section aria-busy="true">
-        <h1>Recipes</h1>
+        <h1>{t('Recipes', 'Rezepte')}</h1>
         <PageSkeleton cards={3} lines={2} />
       </section>
     )
@@ -162,22 +177,26 @@ export function TipsPage() {
 
   return (
     <section>
-      <h1>Recipes</h1>
+      <h1>{t('Recipes', 'Rezepte')}</h1>
       <p className="page-lead">
-        Recipes are to generated to help close the gap from your Result page, using your saved dietary
-        preferences plus whatever cuisine, time and servings you set below.
+        {t(
+          'Recipes are to generated to help close the gap from your Result page, using your saved dietary preferences plus whatever cuisine, time and servings you set below.',
+          'Rezepte werden erstellt, um die Lücke aus deiner Ergebnisseite zu schließen – auf Basis deiner gespeicherten Ernährungsvorlieben sowie der Küche, Zeit und Portionen, die du unten festlegst.',
+        )}
       </p>
 
       {unlockStatus.data?.unlocked && unlockStatus.data.prefs_completed ? (
         <>
-          <h2 id="recipes">Recipe generation</h2>
+          <h2 id="recipes">{t('Recipe generation', 'Rezept erstellen')}</h2>
           <RecipeGenerationForm onGenerated={prependRecipe} />
 
-          <h2>Your recipes</h2>
+          <h2>{t('Your recipes', 'Deine Rezepte')}</h2>
           {allRecipes.length === 0 && (
             <p>
-              No recipes yet — fill in the form above (or leave it blank) and generate
-              one.
+              {t(
+                'No recipes yet — fill in the form above (or leave it blank) and generate one.',
+                'Noch keine Rezepte – fülle das Formular oben aus (oder lass es leer) und erstelle eines.',
+              )}
             </p>
           )}
 
@@ -186,9 +205,9 @@ export function TipsPage() {
               <div
                 className="filter-bar"
                 role="group"
-                aria-label="Filter by dietary label"
+                aria-label={t('Filter by dietary label', 'Nach Ernährungsweise filtern')}
               >
-                {LABEL_FILTERS.map((filter) => {
+                {labelFilters(t).map((filter) => {
                   const active = activeLabels.has(filter.value)
                   return (
                     <button
@@ -213,10 +232,10 @@ export function TipsPage() {
               <input
                 type="search"
                 className="recipe-search-input"
-                placeholder="Search recipes or ingredients…"
+                placeholder={t('Search recipes or ingredients…', 'Rezepte oder Zutaten suchen…')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                aria-label="Search recipes"
+                aria-label={t('Search recipes', 'Rezepte suchen')}
               />
             </div>
           )}
@@ -226,9 +245,9 @@ export function TipsPage() {
               <span className="empty-state__emoji" aria-hidden="true">
                 🔍
               </span>
-              <p>No recipes match your search or filters.</p>
+              <p>{t('No recipes match your search or filters.', 'Keine Rezepte passen zu deiner Suche oder deinen Filtern.')}</p>
               <button type="button" className="btn btn-soft" onClick={resetFilters}>
-                Clear filters
+                {t('Clear filters', 'Filter zurücksetzen')}
               </button>
             </div>
           )}
@@ -250,6 +269,7 @@ export function TipsPage() {
 }
 
 function UnlockRecipesSection({ status }: { status: UnlockStatus }) {
+  const { t } = useI18n()
   const pct = Math.min(
     100,
     Math.round((status.matched_items_count / status.threshold) * 100),
@@ -257,20 +277,30 @@ function UnlockRecipesSection({ status }: { status: UnlockStatus }) {
 
   return (
     <div className="unlock-recipes">
-      <h2>Unlock recipes</h2>
+      <h2>{t('Unlock recipes', 'Rezepte freischalten')}</h2>
       {status.unlocked ? (
         <>
           <p className="callout callout--success">
-            You've uploaded {status.matched_items_count} matched food items -- recipe
-            recommendations are unlocked.
+            {t(
+              `You've uploaded ${status.matched_items_count} matched food items -- recipe recommendations are unlocked.`,
+              `Du hast ${status.matched_items_count} zugeordnete Lebensmittel hochgeladen – Rezeptempfehlungen sind freigeschaltet.`,
+            )}
           </p>
           <Link to="/recipes/new" className="btn btn-primary">
-            Get recipe recommendations to close your gaps
+            {t(
+              'Get recipe recommendations to close your gaps',
+              'Rezeptempfehlungen erhalten, um deine Lücken zu schließen',
+            )}
           </Link>
         </>
       ) : (
         <>
-          <p>To unlock recipe recommendations upload 50+ food items.</p>
+          <p>
+            {t(
+              'To unlock recipe recommendations upload 50+ food items.',
+              'Lade 50+ Lebensmittel hoch, um Rezeptempfehlungen freizuschalten.',
+            )}
+          </p>
           <div
             className="progress-bar"
             role="progressbar"
@@ -281,7 +311,8 @@ function UnlockRecipesSection({ status }: { status: UnlockStatus }) {
             <div className="progress-bar__fill" style={{ width: `${pct}%` }} />
           </div>
           <p className="muted">
-            {status.matched_items_count} / {status.threshold} matched items
+            {status.matched_items_count} / {status.threshold}{' '}
+            {t('matched items', 'zugeordnete Lebensmittel')}
           </p>
         </>
       )}
@@ -293,11 +324,19 @@ function UnlockRecipesSection({ status }: { status: UnlockStatus }) {
 // discrete backend phase to reflect (unlike Upload's OCR->parse->match
 // steps), so these just rotate on a timer to keep the wait from feeling
 // like a frozen "Generating..." button.
-const FUN_GENERATING_PHRASES = [
-  "Digging through Grandma's cookbook for something you'll love…",
-  'Double-checking it fits your targets and your taste…',
-  'Adding a little Nährbert magic…',
-] as const
+function funGeneratingPhrases(t: TranslateFn): string[] {
+  return [
+    t(
+      "Digging through Grandma's cookbook for something you'll love…",
+      'Wir stöbern in Omas Kochbuch nach etwas, das dir schmeckt…',
+    ),
+    t(
+      'Double-checking it fits your targets and your taste…',
+      'Wir prüfen noch, ob es zu deinen Zielen und deinem Geschmack passt…',
+    ),
+    t('Adding a little Nährbert magic…', 'Ein bisschen Nährbert-Magie kommt dazu…'),
+  ]
+}
 const PHRASE_ROTATE_MS = 5000
 
 function RecipeGenerationForm({
@@ -305,6 +344,8 @@ function RecipeGenerationForm({
 }: {
   onGenerated: (recipe: Recipe) => void
 }) {
+  const { t } = useI18n()
+  const phrases = funGeneratingPhrases(t)
   const [cuisine, setCuisine] = useState('')
   const [maxTimeMinutes, setMaxTimeMinutes] = useState('')
   const [servings, setServings] = useState('')
@@ -317,7 +358,7 @@ function RecipeGenerationForm({
     setPhraseIndex(0)
     if (phraseTimerRef.current) clearInterval(phraseTimerRef.current)
     phraseTimerRef.current = setInterval(() => {
-      setPhraseIndex((i) => (i + 1) % FUN_GENERATING_PHRASES.length)
+      setPhraseIndex((i) => (i + 1) % phrases.length)
     }, PHRASE_ROTATE_MS)
   }
 
@@ -355,7 +396,9 @@ function RecipeGenerationForm({
       setServings('')
     } catch (err) {
       setGenerateError(
-        err instanceof ApiError ? err.message : 'Could not generate a recipe right now.',
+        err instanceof ApiError
+          ? err.message
+          : t('Could not generate a recipe right now.', 'Gerade konnte kein Rezept erstellt werden.'),
       )
     } finally {
       setGenerating(false)
@@ -367,35 +410,35 @@ function RecipeGenerationForm({
     <form className="recipe-generate-form" onSubmit={handleGenerate}>
       <div className="form-row">
         <div className="form-field">
-          <label htmlFor="recipe-cuisine">Cuisine</label>
+          <label htmlFor="recipe-cuisine">{t('Cuisine', 'Küche')}</label>
           <input
             id="recipe-cuisine"
             type="text"
-            placeholder="e.g. Italian, Thai, Mexican..."
+            placeholder={t('e.g. Italian, Thai, Mexican...', 'z. B. Italienisch, Thai, Mexikanisch...')}
             value={cuisine}
             onChange={(e) => setCuisine(e.target.value)}
           />
         </div>
 
         <div className="form-field">
-          <label htmlFor="recipe-max-time">Max. cooking time </label>
+          <label htmlFor="recipe-max-time">{t('Max. cooking time ', 'Max. Kochzeit ')}</label>
           <input
             id="recipe-max-time"
             type="number"
             min={1}
-            placeholder="e.g. 30"
+            placeholder={t('e.g. 30', 'z. B. 30')}
             value={maxTimeMinutes}
             onChange={(e) => setMaxTimeMinutes(e.target.value)}
           />
         </div>
 
         <div className="form-field">
-          <label htmlFor="recipe-servings">Servings / portions </label>
+          <label htmlFor="recipe-servings">{t('Servings / portions ', 'Portionen ')}</label>
           <input
             id="recipe-servings"
             type="number"
             min={1}
-            placeholder="e.g. 2"
+            placeholder={t('e.g. 2', 'z. B. 2')}
             value={servings}
             onChange={(e) => setServings(e.target.value)}
           />
@@ -414,7 +457,7 @@ function RecipeGenerationForm({
 
       {generating && (
         <p className="muted recipe-generating-note">
-          {FUN_GENERATING_PHRASES[phraseIndex]}
+          {phrases[phraseIndex]}
         </p>
       )}
     </form>
@@ -445,6 +488,7 @@ function RecipeSummaryCard({
   onArchived: () => void
   onFeedback: (updated: Recipe) => void
 }) {
+  const { t } = useI18n()
   const totalMinutes = recipe.prep_minutes + recipe.cook_minutes
   const share = macroShare(recipe)
   const kcalPerServing =
@@ -517,14 +561,14 @@ function RecipeSummaryCard({
           </span>
           {recipe.dietary_label && (
             <span className="chip recipe-card__label">
-              {DIETARY_LABEL_DISPLAY[recipe.dietary_label]}
+              {dietaryLabelDisplay(t)[recipe.dietary_label]}
             </span>
           )}
         </div>
       </summary>
 
       <div className="recipe-card__body">
-        <h3>Ingredients</h3>
+        <h3>{t('Ingredients', 'Zutaten')}</h3>
         <ul className="recipe-card__ingredients">
           {recipe.ingredients.map((ing, i) => (
             <li key={i}>
@@ -533,7 +577,7 @@ function RecipeSummaryCard({
           ))}
         </ul>
 
-        <h3>Steps</h3>
+        <h3>{t('Steps', 'Zubereitung')}</h3>
         <ol className="recipe-card__steps">
           {recipe.steps.map((step, i) => (
             <li key={i}>{step}</li>

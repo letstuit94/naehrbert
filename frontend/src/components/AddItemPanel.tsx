@@ -9,6 +9,7 @@ import {
   type MatchCandidate,
 } from '../lib/api'
 import { CandidateSection } from './MatchSearchPanel'
+import { useI18n } from '../lib/i18n'
 
 // Units offered for a manual add: the mass/volume amounts (g/kg/ml/l) plus a
 // discrete piece count -- same list the Purchases edit form uses.
@@ -29,6 +30,7 @@ export function AddItemPanel({
   onAdded: () => void
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [quantity, setQuantity] = useState('1')
   const [unit, setUnit] = useState<string>('piece')
@@ -51,7 +53,7 @@ export function AddItemPanel({
       const result = await searchMatchCandidates(name.trim())
       setCandidates(result)
     } catch {
-      setError('Search failed. Please try again.')
+      setError(t('Search failed. Please try again.', 'Suche fehlgeschlagen. Bitte versuch es erneut.'))
     } finally {
       setBusy(false)
     }
@@ -96,12 +98,12 @@ export function AddItemPanel({
     // stays enabled so the click surfaces this as a message rather than a
     // silently dead button.
     if (!picked) {
-      setError('Please search for the product first.')
+      setError(t('Please search for the product first.', 'Bitte suche zuerst nach dem Produkt.'))
       return
     }
     const qty = Number(quantity)
     if (Number.isNaN(qty) || qty <= 0) {
-      setError('Please enter a valid quantity.')
+      setError(t('Please enter a valid quantity.', 'Bitte gib eine gültige Menge ein.'))
       return
     }
     setBusy(true)
@@ -115,7 +117,7 @@ export function AddItemPanel({
       })
       onAdded()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not add that item.')
+      setError(err instanceof ApiError ? err.message : t('Could not add that item.', 'Dieser Artikel konnte nicht hinzugefügt werden.'))
       setBusy(false)
     }
   }
@@ -126,12 +128,12 @@ export function AddItemPanel({
       <div className="add-item-panel__line">
         <div className="add-item-panel__group add-item-panel__group--name">
           <label className="add-item-panel__label" htmlFor="add-item-name">
-            Product name
+            {t('Product name', 'Produktname')}
           </label>
           <input
             id="add-item-name"
             value={name}
-            placeholder="e.g. Banane"
+            placeholder={t('e.g. Banane', 'z. B. Banane')}
             onChange={(e) => editName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && runSearch()}
             autoFocus
@@ -139,7 +141,7 @@ export function AddItemPanel({
         </div>
         <div className="add-item-panel__group">
           <label className="add-item-panel__label" htmlFor="add-item-qty">
-            Quantity
+            {t('Quantity', 'Menge')}
           </label>
           <input
             id="add-item-qty"
@@ -153,7 +155,7 @@ export function AddItemPanel({
         </div>
         <div className="add-item-panel__group">
           <label className="add-item-panel__label" htmlFor="add-item-unit">
-            Unit
+            {t('Unit', 'Einheit')}
           </label>
           <select
             id="add-item-unit"
@@ -162,7 +164,7 @@ export function AddItemPanel({
           >
             {UNIT_OPTIONS.map((u) => (
               <option key={u} value={u}>
-                {u}
+                {u === 'piece' ? t('piece', 'Stück') : u}
               </option>
             ))}
           </select>
@@ -175,32 +177,32 @@ export function AddItemPanel({
             void runSearch()
           }}
           disabled={!name.trim() || busy}
-          title="Search OpenFoodFacts / BLS for this product"
+          title={t('Search OpenFoodFacts / BLS for this product', 'OpenFoodFacts / BLS nach diesem Produkt durchsuchen')}
         >
-          🔍 Search product
+          🔍 {t('Search product', 'Produkt suchen')}
         </button>
         {/* Before a product is selected there's no "Add to pantry" yet, so
             Cancel lives next to the search button. */}
         {!picked && (
           <button type="button" className="btn-link" onClick={onClose}>
-            Cancel
+            {t('Cancel', 'Abbrechen')}
           </button>
         )}
       </div>
 
       {picked && (
         <p className="add-item-panel__picked" role="status">
-          ✓ Selected <strong>{picked.matched_name}</strong> (
+          {t('✓ Selected ', '✓ Ausgewählt: ')}<strong>{picked.matched_name}</strong> (
           {formatMacro(picked.nutrition.calories_kcal)} kcal / 100g).{' '}
           <button type="button" className="btn-link" onClick={() => setPicked(null)}>
-            Change
+            {t('Change', 'Ändern')}
           </button>
         </p>
       )}
 
       {searching && !picked && (
         <>
-          {busy && <p className="muted">Searching…</p>}
+          {busy && <p className="muted">{t('Searching…', 'Suche läuft…')}</p>}
           {candidates && (
             <>
               <CandidateSection
@@ -238,10 +240,10 @@ export function AddItemPanel({
             onClick={() => void submit()}
             disabled={busy}
           >
-            Add to pantry
+            {t('Add to pantry', 'Zum Vorrat hinzufügen')}
           </button>
           <button type="button" className="btn-link" onClick={onClose}>
-            Cancel
+            {t('Cancel', 'Abbrechen')}
           </button>
         </div>
       )}

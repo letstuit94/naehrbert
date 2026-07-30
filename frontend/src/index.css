@@ -133,11 +133,54 @@
   }
 }
 
+/* Dark theme tokens, applied in two situations (the two blocks below hold an
+   identical token set -- keep them in sync when tuning the dark palette):
+     1. The user explicitly picks Dark  -> :root[data-theme='dark']
+     2. The user follows the system ('system' = no data-theme attribute) and the
+        OS is in dark mode -> the media query below, which deliberately EXCLUDES
+        [data-theme='light'] so an explicit Light choice still wins over an
+        OS that is in dark mode.
+   Light values remain the defaults on :root, so an explicit Light choice needs
+   no overrides -- just the absence of the dark selectors. */
+:root[data-theme='dark'] {
+  --canvas: #17181f;
+  --surface: #1e202a;
+  --text: #b4b4bd;
+  --text-h: #f2f2f0;
+  --bg: var(--canvas);
+  --border: rgba(255, 255, 255, 0.09);
+  --code-bg: #26262e;
+  --accent: #f2f2f0;
+  --accent-contrast: #1c1c1f;
+  --accent-bg: rgba(255, 255, 255, 0.06);
+  --accent-border: rgba(255, 255, 255, 0.14);
+  --social-bg: rgba(38, 38, 46, 0.6);
+
+  /* CI v2 Signal-/Akzent-Tokens · Dark (vorläufig, §-Dark noch offen).
+     Werte aus dem Mockup-Dark-Set, damit der bestehende Dark-Mode nicht
+     bricht; final wird Dark als eigenes Token-Set nachgezogen (§17). */
+  --sage: #8fb079;
+  --sage-soft: #232a20;
+  --sage-ink: #adc79a;
+  --ok: #adc79a;
+  --ok-soft: #232a20;
+  --warn: #df8a63;
+  --warn-soft: #33241d;
+  --warn-bright: #df8a63;
+  --caution: #e0b158;
+  --caution-soft: #332a18;
+  --caution-bright: #e0b158;
+  --danger: #f87171;
+  --danger-soft: #3a1f1f;
+  --shadow-raise: 0 8px 22px -14px rgb(0 0 0 / 0.5);
+  --shadow-float: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 28px rgb(0 0 0 / 0.5);
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']):not([data-theme='dark']) {
     --canvas: #17181f;
     --surface: #1e202a;
-    --text: #9a9aa3;
+    --text: #b4b4bd;
     --text-h: #f2f2f0;
     --bg: var(--canvas);
     --border: rgba(255, 255, 255, 0.09);

@@ -19,6 +19,9 @@ import {
 } from '../lib/api'
 import { matchInfo } from '../lib/matchInfo'
 import { MatchSearchPanel } from '../components/MatchSearchPanel'
+import { useI18n } from '../lib/i18n'
+
+type TFn = (en: string, de: string) => string
 
 const UNIT_OPTIONS = ['g', 'kg', 'ml', 'l', 'piece'] as const
 
@@ -38,36 +41,56 @@ interface ReceiptData {
 // than a single frozen "Reading your receipt..." line for up to a minute.
 // Pasted text skips OCR entirely, so it gets its own shorter step list
 // rather than awkwardly skipping into the middle of the file-mode one.
-const FILE_PROGRESS_STEPS = [
-  'Reading your receipt…',
-  'Extracting the text…',
-  'Parsing the items…',
-  'Matching your items against our food database…',
-] as const
+function fileProgressSteps(t: TFn): string[] {
+  return [
+    t('Reading your receipt…', 'Beleg wird gelesen…'),
+    t('Extracting the text…', 'Text wird extrahiert…'),
+    t('Parsing the items…', 'Artikel werden erkannt…'),
+    t(
+      'Matching your items against our food database…',
+      'Deine Artikel werden mit unserer Lebensmitteldatenbank abgeglichen…',
+    ),
+  ]
+}
 const FILE_PROGRESS_DELAYS_MS = [1200, 3000, 5000]
 
-const TEXT_PROGRESS_STEPS = [
-  'Parsing the items…',
-  'Matching your items against our food database…',
-] as const
+function textProgressSteps(t: TFn): string[] {
+  return [
+    t('Parsing the items…', 'Artikel werden erkannt…'),
+    t(
+      'Matching your items against our food database…',
+      'Deine Artikel werden mit unserer Lebensmitteldatenbank abgeglichen…',
+    ),
+  ]
+}
 const TEXT_PROGRESS_DELAYS_MS = [1000]
 
 const LONGER_NOTE_DELAY_MS = 15000
-const LONGER_NOTE = 'New or unusual products can take a little longer to match…'
+function longerNote(t: TFn): string {
+  return t(
+    'New or unusual products can take a little longer to match…',
+    'Neue oder ungewöhnliche Produkte brauchen manchmal etwas länger…',
+  )
+}
 
 /** "Purchase from {date} at {store}" (or just the date if the store
  * couldn't be identified) above the review list -- omitted entirely when
  * even the date wasn't found, since "at {store}" alone with no date reads
  * like a fragment rather than a useful fact. */
-function purchaseInfoLine(receipt: Receipt): string | null {
+function purchaseInfoLine(t: TFn, receipt: Receipt): string | null {
   if (!receipt.purchased_at) return null
-  const date = new Date(`${receipt.purchased_at}T00:00:00`).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  const date = new Date(`${receipt.purchased_at}T00:00:00`).toLocaleDateString(
+    t('en-US', 'de-DE'),
+    {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    },
+  )
   const store = receipt.store && receipt.store !== 'unknown' ? receipt.store : null
-  return store ? `Purchase from ${date} at ${store}` : `Purchase from ${date}`
+  return store
+    ? t(`Purchase from ${date} at ${store}`, `Kauf vom ${date} bei ${store}`)
+    : t(`Purchase from ${date}`, `Kauf vom ${date}`)
 }
 
 // Matches backend/app/api/analysis.py's _RESULTS_WINDOW_DAYS and
@@ -105,6 +128,7 @@ function UploadArrowIcon() {
 }
 
 export function UploadPage() {
+  const { t } = useI18n()
   const [screen, setScreen] = useState<Screen>('upload')
   const [uploadMode, setUploadMode] = useState<'file' | 'text'>('file')
   const [pastedText, setPastedText] = useState('')
@@ -117,7 +141,7 @@ export function UploadPage() {
   const [currentFileName, setCurrentFileName] = useState('')
   const [fileProgress, setFileProgress] = useState({ index: 0, total: 0 })
   const [progressSteps, setProgressSteps] =
-    useState<readonly string[]>(FILE_PROGRESS_STEPS)
+    useState<readonly string[]>(() => fileProgressSteps(t))
   const [progressStep, setProgressStep] = useState(0)
   const [showLongerNote, setShowLongerNote] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -210,13 +234,13 @@ export function UploadPage() {
       const file = files[i]
       setCurrentFileName(file.name)
       setFileProgress({ index: i, total: files.length })
-      startProgress(FILE_PROGRESS_STEPS, FILE_PROGRESS_DELAYS_MS)
+      startProgress(fileProgressSteps(t), FILE_PROGRESS_DELAYS_MS)
       try {
         const result = await uploadReceiptFile(file)
         results.push({ receipt: result.receipt, items: result.items })
       } catch (err) {
         failures.push(
-          `${file.name} (${err instanceof ApiError ? err.message : 'could not be read'})`,
+          `${file.name} (${err instanceof ApiError ? err.message : t('could not be read', 'konnte nicht gelesen werden')})`,
         )
       } finally {
         stopProgress()
@@ -228,10 +252,19 @@ export function UploadPage() {
       setReceiptsData(results)
       setReviewIndex(0)
       setScreen('review')
-      setError(failures.length ? `Could not read: ${failures.join(', ')}.` : null)
+      setError(
+        failures.length
+          ? t(`Could not read: ${failures.join(', ')}.`, `Konnte nicht gelesen werden: ${failures.join(', ')}.`)
+          : null,
+      )
     } else {
       setScreen('upload')
-      setError('Could not read any of those files. Please try another.')
+      setError(
+        t(
+          'Could not read any of those files. Please try another.',
+          'Keine dieser Dateien konnte gelesen werden. Bitte versuch eine andere.',
+        ),
+      )
     }
   }
 
@@ -258,14 +291,18 @@ export function UploadPage() {
     if (!pastedText.trim()) return
     setBusy(true)
     setError(null)
-    startProgress(TEXT_PROGRESS_STEPS, TEXT_PROGRESS_DELAYS_MS)
+    startProgress(textProgressSteps(t), TEXT_PROGRESS_DELAYS_MS)
     try {
       const result = await uploadReceiptText(pastedText)
       setReceiptsData([{ receipt: result.receipt, items: result.items }])
       setReviewIndex(0)
       setScreen('review')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not parse that text.')
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : t('Could not parse that text.', 'Dieser Text konnte nicht verarbeitet werden.'),
+      )
     } finally {
       setBusy(false)
       stopProgress()
@@ -284,7 +321,7 @@ export function UploadPage() {
       const updated = await updateReceiptItem(current.receipt.id, itemId, fields)
       updateCurrentItems((items) => items.map((it) => (it.id === itemId ? updated : it)))
     } catch {
-      setError('Could not save that change.')
+      setError(t('Could not save that change.', 'Diese Änderung konnte nicht gespeichert werden.'))
     }
   }
 
@@ -294,7 +331,7 @@ export function UploadPage() {
       const updated = await correctReceiptItem(current.receipt.id, itemId, correction)
       updateCurrentItems((items) => items.map((it) => (it.id === itemId ? updated : it)))
     } catch {
-      setError('Could not save that match.')
+      setError(t('Could not save that match.', 'Diese Zuordnung konnte nicht gespeichert werden.'))
     }
   }
 
@@ -304,7 +341,7 @@ export function UploadPage() {
       await deleteReceiptItem(current.receipt.id, itemId)
       updateCurrentItems((items) => items.filter((it) => it.id !== itemId))
     } catch {
-      setError('Could not delete that item.')
+      setError(t('Could not delete that item.', 'Dieser Artikel konnte nicht gelöscht werden.'))
     }
   }
 
@@ -317,11 +354,13 @@ export function UploadPage() {
     if (needsDate || needsStore) {
       const finalStore = metaIsNewStore ? metaNewStoreName.trim() : metaStore
       if (needsDate && !metaDate) {
-        setMetaError('Please enter the purchase date.')
+        setMetaError(t('Please enter the purchase date.', 'Bitte gib das Kaufdatum ein.'))
         return
       }
       if (needsStore && !finalStore) {
-        setMetaError('Please select or enter a store.')
+        setMetaError(
+          t('Please select or enter a store.', 'Bitte wähle einen Laden aus oder gib einen ein.'),
+        )
         return
       }
       setMetaError(null)
@@ -340,7 +379,12 @@ export function UploadPage() {
         }
       } catch {
         setBusy(false)
-        setMetaError('Could not save those details. Please try again.')
+        setMetaError(
+          t(
+            'Could not save those details. Please try again.',
+            'Diese Angaben konnten nicht gespeichert werden. Bitte versuch es erneut.',
+          ),
+        )
         return
       }
     }
@@ -356,7 +400,12 @@ export function UploadPage() {
         setScreen('confirmed')
       }
     } catch {
-      setError('Could not finalize this receipt. Please try again.')
+      setError(
+        t(
+          'Could not finalize this receipt. Please try again.',
+          'Dieser Beleg konnte nicht abgeschlossen werden. Bitte versuch es erneut.',
+        ),
+      )
     } finally {
       setBusy(false)
     }
@@ -367,29 +416,45 @@ export function UploadPage() {
     const totalItems = confirmResults.reduce((sum, r) => sum + r.items.length, 0)
     return (
       <section>
-        <h1>{multi ? 'Receipts confirmed' : 'Receipt confirmed'}</h1>
+        <h1>
+          {multi ? t('Receipts confirmed', 'Belege bestätigt') : t('Receipt confirmed', 'Beleg bestätigt')}
+        </h1>
         <p className="callout callout--success">
-          Saved {totalItems} item{totalItems === 1 ? '' : 's'}
-          {multi && ` across ${confirmResults.length} receipts`}.
+          {t(
+            `Saved ${totalItems} item${totalItems === 1 ? '' : 's'}${multi ? ` across ${confirmResults.length} receipts` : ''}.`,
+            `${totalItems} Artikel gespeichert${multi ? ` über ${confirmResults.length} Belege hinweg` : ''}.`,
+          )}
         </p>
         {confirmResults.map((result, i) => {
           const q = result.match_quality
           if (!q) return null
           return (
             <p key={result.receipt_id}>
-              {multi && `Receipt ${i + 1}: `}
-              {q.matched_items} of {q.total_items} items matched confidently
-              {q.fallback_items > 0 && `, ${q.fallback_items} estimated from category`}
-              {q.failed_items > 0 && `, ${q.failed_items} could not be matched`}.
+              {multi && t(`Receipt ${i + 1}: `, `Beleg ${i + 1}: `)}
+              {t(
+                `${q.matched_items} of ${q.total_items} items matched confidently`,
+                `${q.matched_items} von ${q.total_items} Artikeln sicher zugeordnet`,
+              )}
+              {q.fallback_items > 0 &&
+                t(
+                  `, ${q.fallback_items} estimated from category`,
+                  `, ${q.fallback_items} anhand der Kategorie geschätzt`,
+                )}
+              {q.failed_items > 0 &&
+                t(
+                  `, ${q.failed_items} could not be matched`,
+                  `, ${q.failed_items} konnten nicht zugeordnet werden`,
+                )}
+              .
             </p>
           )
         })}
         <div className="upload-confirmed-actions">
           <Link to="/results" className="btn btn-primary">
-            See your insights →
+            {t('See your insights →', 'Zu deinen Einblicken →')}
           </Link>
           <button className="btn btn-secondary" onClick={reset}>
-            Upload another receipt
+            {t('Upload another receipt', 'Weiteren Beleg hochladen')}
           </button>
         </div>
       </section>
@@ -399,10 +464,13 @@ export function UploadPage() {
   if (screen === 'uploading') {
     return (
       <section>
-        <h1>Uploading your receipts</h1>
+        <h1>{t('Uploading your receipts', 'Deine Belege werden hochgeladen')}</h1>
         {fileProgress.total > 1 && (
           <p className="muted">
-            File {fileProgress.index + 1} of {fileProgress.total}
+            {t(
+              `File ${fileProgress.index + 1} of ${fileProgress.total}`,
+              `Datei ${fileProgress.index + 1} von ${fileProgress.total}`,
+            )}
           </p>
         )}
         <div className="upload-progress">
@@ -426,7 +494,7 @@ export function UploadPage() {
               </li>
             ))}
           </ul>
-          {showLongerNote && <p className="muted upload-progress__note">{LONGER_NOTE}</p>}
+          {showLongerNote && <p className="muted upload-progress__note">{longerNote(t)}</p>}
         </div>
       </section>
     )
@@ -440,19 +508,27 @@ export function UploadPage() {
     const scanLooksIncomplete = items.length <= 1 && receipt.source !== 'pasted_text'
     const multi = receiptsData.length > 1
     const isLastReceipt = reviewIndex + 1 >= receiptsData.length
-    const purchaseInfo = purchaseInfoLine(receipt)
+    const purchaseInfo = purchaseInfoLine(t, receipt)
     const needsDate = !receipt.purchased_at
     const needsStore = receipt.store === 'unknown'
 
     return (
       <section>
-        <h1>Review your receipt</h1>
+        <h1>{t('Review your receipt', 'Beleg überprüfen')}</h1>
         {multi && (
           <p className="muted">
-            Receipt {reviewIndex + 1} of {receiptsData.length}
+            {t(
+              `Receipt ${reviewIndex + 1} of ${receiptsData.length}`,
+              `Beleg ${reviewIndex + 1} von ${receiptsData.length}`,
+            )}
           </p>
         )}
-        <p>Fix anything the scan got wrong, mark non-food items, then confirm.</p>
+        <p>
+          {t(
+            'Fix anything the scan got wrong, mark non-food items, then confirm.',
+            'Korrigiere alles, was der Scan falsch erkannt hat, markiere Nicht-Lebensmittel und bestätige dann.',
+          )}
+        </p>
         {purchaseInfo && <p className="review-purchase-info">{purchaseInfo}</p>}
 
         {(needsDate || needsStore) && (
@@ -708,7 +784,7 @@ export function UploadPage() {
               </li>
             ))}
           </ul>
-          {showLongerNote && <p className="muted upload-progress__note">{LONGER_NOTE}</p>}
+          {showLongerNote && <p className="muted upload-progress__note">{longerNote(t)}</p>}
         </div>
       )}
       {error && (
@@ -739,11 +815,12 @@ function ReviewRow({
   onDelete: () => void
   onCorrect: (correction: ItemCorrection) => void
 }) {
+  const { t } = useI18n()
   const [name, setName] = useState(item.name)
   const [quantity, setQuantity] = useState(String(item.quantity))
   const [unit, setUnit] = useState(item.unit)
   const [searching, setSearching] = useState(false)
-  const match = matchInfo(item)
+  const match = matchInfo(t, item)
 
   return (
     <li className={item.is_non_food ? 'review-row review-row--non-food' : 'review-row'}>

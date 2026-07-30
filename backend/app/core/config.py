@@ -19,9 +19,9 @@ class Settings(BaseSettings):
     # Recipe recommendations feature — optional (not required) so a missing
     # key only disables POST /recipes/generate rather than crashing the
     # whole app at Settings() construction time (every other route still
-    # needs to work with no Gemini key configured).
-    gemini_api_key: Optional[str] = None
-    gemini_model: str = "gemini-2.5-flash"
+    # needs to work with no Groq key configured).
+    groq_api_key: Optional[str] = None
+    groq_model: str = "openai/gpt-oss-120b"
 
     @property
     def cors_origins(self) -> list[str]:

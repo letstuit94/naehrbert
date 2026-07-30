@@ -16,31 +16,41 @@ from backend.app.db.supabase import get_client
 
 # ── profiles ────────────────────────────────────────────────────────────
 
-def list_profiles() -> List[dict]:
-    """Login screen's "pick a user" directory (multi-user feature)."""
-
-    res = get_client().table("profiles").select("id, name").order("id").execute()
-    return res.data or []
-
-
 def get_profile(profile_id: int) -> Optional[dict]:
     res = get_client().table("profiles").select("*").eq("id", profile_id).execute()
     rows = res.data or []
     return rows[0] if rows else None
 
 
-def upsert_profile(profile: dict, profile_id: Optional[int] = None) -> dict:
-    """Create a brand-new profile (signup -- `profile_id` is None, so
-    `id` is left for the DB's identity column to assign) or replace an
-    existing one in place (an already-logged-in user editing their own
-    biometrics on the Profile page -- `profile_id` is their own id, never
-    someone else's, since it comes from the X-Profile-Id header)."""
+def get_profile_by_auth_user_id(auth_user_id: str) -> Optional[dict]:
+    """The auth dependency's one lookup (core/auth.py's require_profile_id/
+    api/profile.py's create_profile) -- resolves a verified Supabase
+    session to this app's own profile row, or None if this account hasn't
+    created one yet."""
+
+    res = (
+        get_client().table("profiles").select("*").eq("auth_user_id", auth_user_id).execute()
+    )
+    rows = res.data or []
+    return rows[0] if rows else None
+
+
+def upsert_profile(profile: dict, profile_id: Optional[int] = None, auth_user_id: Optional[str] = None) -> dict:
+    """Create a brand-new profile (signup -- `profile_id` is None, so `id`
+    is left for the DB's identity column to assign, and `auth_user_id`
+    links it to the caller's Supabase account) or replace an existing one
+    in place (an already-logged-in user editing their own biometrics on
+    the Profile page -- `profile_id` is their own id, resolved from their
+    own auth_user_id; `auth_user_id` is ignored here since an existing
+    link never changes)."""
 
     row = {**profile, "updated_at": datetime.now(timezone.utc).isoformat()}
     if profile_id is not None:
         row["id"] = profile_id
         res = get_client().table("profiles").upsert(row, on_conflict="id").execute()
     else:
+        if auth_user_id is not None:
+            row["auth_user_id"] = auth_user_id
         res = get_client().table("profiles").insert(row).execute()
     return res.data[0]
 
@@ -318,6 +328,29 @@ def get_recipe(recipe_id: str) -> Optional[dict]:
 
 def update_recipe(recipe_id: str, fields: dict) -> dict:
     res = get_client().table("recipes").update(fields).eq("id", recipe_id).execute()
+    return res.data[0]
+
+
+# ── gap_recommendations (Insights page gap-closing recommendations) ──────
+
+def get_gap_recommendation(profile_id: int) -> Optional[dict]:
+    res = get_client().table("gap_recommendations").select("*").eq("profile_id", profile_id).execute()
+    rows = res.data or []
+    return rows[0] if rows else None
+
+
+def upsert_gap_recommendation(profile_id: int, summary: str, items: list) -> dict:
+    """One row per profile (profile_id is the primary key) -- a regenerate
+    replaces the previous recommendation rather than adding to a history,
+    same "keep only the latest" semantics as upsert_profile."""
+
+    row = {
+        "profile_id": profile_id,
+        "summary": summary,
+        "items": items,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    res = get_client().table("gap_recommendations").upsert(row, on_conflict="profile_id").execute()
     return res.data[0]
 
 

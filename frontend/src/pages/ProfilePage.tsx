@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { setCurrentProfileId } from '../lib/session'
+import { useAuth } from '../lib/authContext'
 import {
   ApiError,
   createProfile,
@@ -127,6 +127,7 @@ function toForm(profile: Profile): FormState {
 
 export function ProfilePage() {
   const navigate = useNavigate()
+  const { signOut } = useAuth()
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [profile, setProfile] = useState<Profile | null>(null)
 
@@ -318,8 +319,8 @@ export function ProfilePage() {
     }
   }
 
-  function logOut() {
-    setCurrentProfileId(null)
+  async function logOut() {
+    await signOut()
     navigate('/')
   }
 
@@ -328,9 +329,11 @@ export function ProfilePage() {
     setDeleteError(null)
     try {
       await deleteProfile()
-      // Account is gone -- clear the stored profile id and return to the
-      // login screen. (Verified matches stay in the DB by design.)
-      setCurrentProfileId(null)
+      // The profiles row is gone, but the Supabase login itself still
+      // exists -- sign out too, rather than leaving them authenticated
+      // with no profile (which would just bounce straight into a fresh
+      // onboarding). Verified matches stay in the DB by design.
+      await signOut()
       navigate('/')
     } catch (err) {
       setDeleteError(

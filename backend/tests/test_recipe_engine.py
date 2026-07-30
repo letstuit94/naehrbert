@@ -1,5 +1,5 @@
 """
-No real Gemini/network calls here -- services.gemini_client.generate_recipe_suggestion
+No real Groq/network calls here -- services.groq_client.generate_recipe_suggestion
 is monkeypatched throughout, matching test_api_smoke.py's approach of
 patching out the one boundary that would otherwise reach a live service.
 """
@@ -7,7 +7,7 @@ patching out the one boundary that would otherwise reach a live service.
 import pytest
 
 from backend.app.models.profile import DietaryStyle, Profile
-from backend.app.models.recipe import GeminiRecipeSuggestion, RecipeIngredient
+from backend.app.models.recipe import RecipeSuggestion, RecipeIngredient
 from backend.app.services import recipe_engine
 
 _PROFILE = Profile(
@@ -37,7 +37,7 @@ def _suggestion(
     # dietary_label defaults to "vegan" (the most restrictive label) so
     # existing tests -- none of which are testing the diet-compliance check
     # itself -- never accidentally trip it against _PROFILE's "vegetarian".
-    return GeminiRecipeSuggestion(
+    return RecipeSuggestion(
         title="Test recipe",
         ingredients=[RecipeIngredient(name=n, quantity="100 g") for n in ingredient_names],
         steps=["Do the thing."],
@@ -53,20 +53,21 @@ def _suggestion(
     )
 
 
-def test_build_prompt_includes_diet_style_allergies_dislikes_and_gap():
-    prompt = recipe_engine.build_prompt(_PROFILE, _GAP, ["Your protein comes mostly from one source."])
+def test_build_prompt_includes_diet_style_allergies_gap_and_metric_instruction():
+    prompt = recipe_engine.build_prompt(_PROFILE, _GAP)
     assert "Vegetarian" in prompt
     assert "peanuts" in prompt
     assert "mushrooms" in prompt
     assert "UNDER target" in prompt  # protein delta is -13
-    assert "protein comes mostly from one source" in prompt
+    assert "metric measurements" in prompt
+    assert "imperial" in prompt
 
 
 def test_generate_and_assemble_recipe_returns_clean_suggestion(monkeypatch):
     monkeypatch.setattr(
         recipe_engine, "generate_recipe_suggestion", lambda prompt, temperature=0.6: _suggestion("lentils", "spinach")
     )
-    result = recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP, [])
+    result = recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP)
     assert result.title == "Test recipe"
     assert [i.name for i in result.ingredients] == ["lentils", "spinach"]
 
@@ -81,7 +82,7 @@ def test_retries_once_when_first_suggestion_violates_allergy(monkeypatch):
         return _suggestion("chickpeas", "rice")  # clean retry
 
     monkeypatch.setattr(recipe_engine, "generate_recipe_suggestion", fake_generate)
-    result = recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP, [])
+    result = recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP)
 
     assert len(calls) == 2
     assert "peanuts" in calls[1]  # reinforced prompt names the violation
@@ -93,7 +94,7 @@ def test_raises_when_violation_persists_after_retry(monkeypatch):
         recipe_engine, "generate_recipe_suggestion", lambda prompt, temperature=0.6: _suggestion("peanuts", "rice")
     )
     with pytest.raises(ValueError):
-        recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP, [])
+        recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP)
 
 
 def test_dislike_is_also_enforced_not_just_allergies(monkeypatch):
@@ -101,24 +102,24 @@ def test_dislike_is_also_enforced_not_just_allergies(monkeypatch):
         recipe_engine, "generate_recipe_suggestion", lambda prompt, temperature=0.6: _suggestion("mushrooms", "rice")
     )
     with pytest.raises(ValueError):
-        recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP, [])
+        recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP)
 
 
 def test_build_prompt_includes_cuisine_and_time_budget_when_given():
-    prompt = recipe_engine.build_prompt(_PROFILE, _GAP, [], cuisine="Thai", max_time_minutes=30)
+    prompt = recipe_engine.build_prompt(_PROFILE, _GAP, cuisine="Thai", max_time_minutes=30)
     assert "Thai" in prompt
     assert "30 minutes" in prompt
 
 
 def test_build_prompt_omits_cuisine_and_time_section_when_not_given():
-    prompt = recipe_engine.build_prompt(_PROFILE, _GAP, [])
+    prompt = recipe_engine.build_prompt(_PROFILE, _GAP)
     assert "Cuisine style" not in prompt
     assert "Time budget" not in prompt
     assert "Servings:" not in prompt
 
 
 def test_build_prompt_includes_servings_when_given():
-    prompt = recipe_engine.build_prompt(_PROFILE, _GAP, [], servings=4)
+    prompt = recipe_engine.build_prompt(_PROFILE, _GAP, servings=4)
     assert "Servings:" in prompt
     assert "4 servings" in prompt
 
@@ -133,7 +134,7 @@ def test_retries_once_when_suggestion_exceeds_time_budget(monkeypatch):
         return _suggestion("lentils", prep_minutes=10, cook_minutes=15)  # 25 min, within budget
 
     monkeypatch.setattr(recipe_engine, "generate_recipe_suggestion", fake_generate)
-    result = recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP, [], max_time_minutes=30)
+    result = recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP, max_time_minutes=30)
 
     assert len(calls) == 2
     assert "exceeds the 30 min budget" in calls[1]
@@ -147,7 +148,7 @@ def test_raises_when_time_budget_still_violated_after_retry(monkeypatch):
         lambda prompt, temperature=0.6: _suggestion("lentils", prep_minutes=20, cook_minutes=30),
     )
     with pytest.raises(ValueError):
-        recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP, [], max_time_minutes=30)
+        recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP, max_time_minutes=30)
 
 
 # ── dietary_label compliance (Recipes page labels/filter feature) ─────────
@@ -164,7 +165,7 @@ def test_vegetarian_or_vegan_label_is_compatible_with_a_vegetarian_request(monke
         "generate_recipe_suggestion",
         lambda prompt, temperature=0.6: _suggestion("lentils", dietary_label="vegetarian"),
     )
-    result = recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP, [])
+    result = recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP)
     assert result.dietary_label == "vegetarian"
 
 
@@ -178,7 +179,7 @@ def test_retries_once_when_label_is_less_restrictive_than_requested_diet(monkeyp
         return _suggestion("lentils", "rice", dietary_label="vegetarian")  # clean retry
 
     monkeypatch.setattr(recipe_engine, "generate_recipe_suggestion", fake_generate)
-    result = recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP, [])
+    result = recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP)
 
     assert len(calls) == 2
     assert "less restrictive" in calls[1]  # reinforced prompt names the violation
@@ -192,7 +193,7 @@ def test_raises_when_diet_violation_persists_after_retry(monkeypatch):
         lambda prompt, temperature=0.6: _suggestion("chicken", "rice", dietary_label="omnivore"),
     )
     with pytest.raises(ValueError):
-        recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP, [])
+        recipe_engine.generate_and_assemble_recipe(_PROFILE, _GAP)
 
 
 def test_pescatarian_label_is_not_compatible_with_a_vegan_request(monkeypatch):
@@ -203,4 +204,4 @@ def test_pescatarian_label_is_not_compatible_with_a_vegan_request(monkeypatch):
         lambda prompt, temperature=0.6: _suggestion("salmon", "rice", dietary_label="pescatarian"),
     )
     with pytest.raises(ValueError):
-        recipe_engine.generate_and_assemble_recipe(vegan_profile, _GAP, [])
+        recipe_engine.generate_and_assemble_recipe(vegan_profile, _GAP)

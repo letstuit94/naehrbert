@@ -48,7 +48,7 @@ pydantic-settings==2.14.2
 openpyxl==3.1.5
 
 # ==========================
-# Gemini (recipe recommendations feature) — the current unified SDK, NOT
-# the deprecated `google-generativeai` package.
+# Groq (recipe recommendations feature) — OpenAI-compatible chat API,
+# used for its structured-outputs (strict json_schema) mode.
 # ==========================
-google-genai==2.12.1
+groq==1.6.0

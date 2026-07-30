@@ -1,13 +1,13 @@
 """
 One-off backfill: classify dietary_label for every recipe generated before
-that column existed (GeminiRecipeSuggestion.dietary_label, added alongside
-the Recipes page's Meat/Fish/Veggie/Vegan filter). Those rows read back
-with dietary_label=None, which the filter always shows regardless of which
+that column existed (RecipeSuggestion.dietary_label, added alongside the
+Recipes page's Meat/Fish/Veggie/Vegan filter). Those rows read back with
+dietary_label=None, which the filter always shows regardless of which
 buttons are active -- harmless, but means the filter has nothing to act on
 until either new recipes are generated or old ones are classified here.
 
 Classifies from each recipe's stored ingredient list via
-gemini_client.classify_dietary_label -- one Gemini call per recipe still
+groq_client.classify_dietary_label -- one Groq call per recipe still
 missing a label. Only touches rows where dietary_label IS NULL, so running
 this again after new (already-labeled) recipes exist is a no-op for those.
 
@@ -16,7 +16,7 @@ Run from the repo root: `python -m backend.scripts.backfill_recipe_dietary_label
 
 from backend.app.db import repo
 from backend.app.db.supabase import get_client
-from backend.app.services.gemini_client import classify_dietary_label
+from backend.app.services.groq_client import classify_dietary_label
 
 
 def backfill_recipe_dietary_labels() -> None:

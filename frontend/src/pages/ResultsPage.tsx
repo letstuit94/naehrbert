@@ -1,9 +1,12 @@
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { PageSkeleton } from '../components/Skeleton'
 import { Link } from 'react-router-dom'
 import {
+  ApiError,
+  generateGapRecommendations,
   getComposition,
   getDiversity,
+  getGapRecommendations,
   getMealCoverage,
   getMicronutrients,
   getPlantDiversity,
@@ -14,6 +17,7 @@ import {
   type CompositionResult,
   type DiversityDriver,
   type DiversityResult,
+  type GapRecommendationsResult,
   type Goal,
   type MealCoverageResult,
   type MicronutrientsResult,
@@ -66,6 +70,10 @@ export function ResultsPage() {
     data: null,
     unavailable: false,
   })
+  const [recommendation, setRecommendation] = useState<Slice<GapRecommendationsResult | null>>({
+    data: null,
+    unavailable: false,
+  })
   const [profileGoal, setProfileGoal] = useState<Goal | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -80,7 +88,8 @@ export function ResultsPage() {
       getDiversity(),
       getMealCoverage(),
       getMicronutrients(),
-    ]).then(([s, c, t, tg, p, pd, d, mc, mn]) => {
+      getGapRecommendations(),
+    ]).then(([s, c, t, tg, p, pd, d, mc, mn, rec]) => {
       setSummary(settledSlice(s))
       setComposition(settledSlice(c))
       setComparison(settledSlice(t))
@@ -90,6 +99,7 @@ export function ResultsPage() {
       setDiversity(settledSlice(d))
       setMealCoverage(settledSlice(mc))
       setMicronutrients(settledSlice(mn))
+      setRecommendation(settledSlice(rec))
       setLoading(false)
     })
   }, [])
@@ -217,6 +227,13 @@ export function ResultsPage() {
 
       {micronutrients.data && !noReceiptsYet && (
         <MicronutrientsSection micronutrients={micronutrients.data} />
+      )}
+
+      {!noReceiptsYet && (
+        <GapRecommendationsSection
+          recommendation={recommendation.data}
+          onGenerated={(r) => setRecommendation({ data: r, unavailable: false })}
+        />
       )}
     </section>
   )
@@ -871,6 +888,100 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
           include micronutrients.
         </p>
       )}
+    </div>
+  )
+}
+
+// Purely cosmetic while the one Groq call is in flight -- same rationale
+// as TipsPage.tsx's FUN_GENERATING_PHRASES: no discrete backend phase to
+// reflect, so these just rotate on a timer to keep the wait from feeling
+// like a frozen button.
+const FUN_ANALYZING_PHRASES = [
+  'Comparing your purchases against your targets…',
+  'Checking what fits your diet and what you’d rather avoid…',
+  'Turning the gaps into something you can actually shop for…',
+] as const
+const PHRASE_ROTATE_MS = 5000
+
+function GapRecommendationsSection({
+  recommendation,
+  onGenerated,
+}: {
+  recommendation: GapRecommendationsResult | null
+  onGenerated: (recommendation: GapRecommendationsResult) => void
+}) {
+  const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [phraseIndex, setPhraseIndex] = useState(0)
+  const phraseTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (phraseTimerRef.current) clearInterval(phraseTimerRef.current)
+    }
+  }, [])
+
+  async function handleGenerate() {
+    setGenerating(true)
+    setError(null)
+    setPhraseIndex(0)
+    phraseTimerRef.current = setInterval(() => {
+      setPhraseIndex((i) => (i + 1) % FUN_ANALYZING_PHRASES.length)
+    }, PHRASE_ROTATE_MS)
+    try {
+      const result = await generateGapRecommendations()
+      onGenerated(result)
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : 'Could not generate recommendations right now.',
+      )
+    } finally {
+      setGenerating(false)
+      if (phraseTimerRef.current) {
+        clearInterval(phraseTimerRef.current)
+        phraseTimerRef.current = null
+      }
+    }
+  }
+
+  return (
+    <div className="section-divider">
+      <h2>Quick Wins</h2>
+      <p className="muted">
+        Groq-generated, concrete actions for closing the macro and micronutrient gaps
+        above, respecting your saved dietary style, allergies, and dislikes.
+      </p>
+
+      {recommendation && (
+        <div className="card">
+          <p>{recommendation.summary}</p>
+          <ul className="gap-recommendation-list">
+            {recommendation.items.map((item, i) => (
+              <li key={i}>
+                <strong>{item.focus}: </strong>
+                {item.suggestion}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      <button
+        type="button"
+        className="btn btn-primary"
+        onClick={handleGenerate}
+        disabled={generating}
+      >
+        {generating ? 'Analyzing…' : recommendation ? 'Refresh Quick Wins' : 'Get Quick Wins'}
+      </button>
+
+      {generating && <p className="muted recipe-generating-note">{FUN_ANALYZING_PHRASES[phraseIndex]}</p>}
     </div>
   )
 }

@@ -16,20 +16,26 @@ from backend.app.api import analysis as analysis_api
 from backend.app.api import feedback as feedback_api
 from backend.app.api import pantry as pantry_api
 from backend.app.api import profile as profile_api
-from backend.app.api import profiles as profiles_api
 from backend.app.api import receipts as receipts_api
 from backend.app.api import recipes as recipes_api
+from backend.app.api import recommendations as recommendations_api
+from backend.app.core import auth as auth_module
+from backend.app.db import repo
 from backend.app.main import app
 from backend.app.models.nutrition import MatchedProduct, MatchType
-from backend.app.models.recipe import GeminiRecipeSuggestion, RecipeIngredient
-from backend.app.services.gemini_client import GeminiNotConfigured
+from backend.app.models.recipe import RecipeSuggestion, RecipeIngredient
+from backend.app.models.recommendation import GapRecommendationItem, GapRecommendations
+from backend.app.services.groq_client import GroqNotConfigured
 
 client = TestClient(app)
 
-# Every protected endpoint reads the logged-in profile off this header
-# (multi-user feature, backend/app/core/auth.py) -- tests act as profile 1
-# throughout, matching _PROFILE_ROW below.
-AUTH = {"X-Profile-Id": "1"}
+# Every protected endpoint now verifies a Supabase session (Bearer token,
+# backend/app/core/auth.py) instead of trusting a client-supplied header.
+# _fake_auth patches that verification directly so tests never make a real
+# network call to Supabase Auth, and resolves the (fake) session to
+# _PROFILE_ROW's id via the same auth_user_id link the real code uses.
+AUTH = {"Authorization": "Bearer fake-token"}
+FAKE_AUTH_USER_ID = "11111111-1111-1111-1111-111111111111"
 
 _PROFILE_ROW = {
     "id": 1,
@@ -45,6 +51,15 @@ _PROFILE_ROW = {
 }
 
 
+def _fake_auth(monkeypatch, profile_id: int = 1, auth_user_id: str = FAKE_AUTH_USER_ID):
+    monkeypatch.setattr(auth_module, "_verify_token", lambda authorization: auth_user_id)
+    monkeypatch.setattr(
+        repo,
+        "get_profile_by_auth_user_id",
+        lambda uid: {"id": profile_id} if uid == auth_user_id else None,
+    )
+
+
 def test_health():
     resp = client.get("/health")
     assert resp.status_code == 200
@@ -52,8 +67,14 @@ def test_health():
 
 
 def test_create_profile_returns_profile_and_targets(monkeypatch):
+    # Authenticated account that already has a linked profile -- the
+    # Profile page's biometric edit path.
+    monkeypatch.setattr(auth_module, "_verify_token", lambda authorization: FAKE_AUTH_USER_ID)
+    monkeypatch.setattr(repo, "get_profile_by_auth_user_id", lambda uid: _PROFILE_ROW)
     monkeypatch.setattr(
-        profile_api.repo, "upsert_profile", lambda payload, profile_id: _PROFILE_ROW
+        profile_api.repo,
+        "upsert_profile",
+        lambda payload, profile_id, auth_user_id: _PROFILE_ROW,
     )
 
     resp = client.post(
@@ -76,16 +97,20 @@ def test_create_profile_returns_profile_and_targets(monkeypatch):
     assert abs(sum(body["targets_pct"].values()) - 100) < 1.0
 
 
-def test_create_profile_signup_has_no_profile_id_yet(monkeypatch):
-    """No X-Profile-Id header -- the onboarding-chat signup path, a brand
-    new user with nothing to log in as yet -- must insert rather than
-    update, so `profile_id` reaches the repo as None (repo.upsert_profile
-    branches insert-vs-update on exactly this)."""
+def test_create_profile_inserts_new_when_account_has_no_profile_yet(monkeypatch):
+    """An authenticated account with no linked profile (onboarding signup)
+    must insert rather than update, so `profile_id` reaches the repo as
+    None (repo.upsert_profile branches insert-vs-update on exactly this)
+    -- and the new row gets linked to the caller's own auth_user_id."""
+
+    monkeypatch.setattr(auth_module, "_verify_token", lambda authorization: FAKE_AUTH_USER_ID)
+    monkeypatch.setattr(repo, "get_profile_by_auth_user_id", lambda uid: None)
 
     captured = {}
 
-    def fake_upsert(payload, profile_id):
+    def fake_upsert(payload, profile_id, auth_user_id):
         captured["profile_id"] = profile_id
+        captured["auth_user_id"] = auth_user_id
         return _PROFILE_ROW
 
     monkeypatch.setattr(profile_api.repo, "upsert_profile", fake_upsert)
@@ -100,12 +125,31 @@ def test_create_profile_signup_has_no_profile_id_yet(monkeypatch):
             "daily_movement": "mixed",
             "goal": "maintain",
         },
+        headers=AUTH,
     )
     assert resp.status_code == 200
     assert captured["profile_id"] is None
+    assert captured["auth_user_id"] == FAKE_AUTH_USER_ID
+
+
+def test_create_profile_401_without_login():
+    resp = client.post(
+        "/profile",
+        json={
+            "sex": "female",
+            "date_of_birth": "1994-03-15",
+            "height_cm": 168,
+            "weight_kg": 64,
+            "exercise_frequency": "three_four",
+            "daily_movement": "mixed",
+            "goal": "maintain",
+        },
+    )
+    assert resp.status_code == 401
 
 
 def test_read_profile_404_when_none_exists(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(profile_api.repo, "get_profile", lambda profile_id: None)
     resp = client.get("/profile", headers=AUTH)
     assert resp.status_code == 404
@@ -116,18 +160,42 @@ def test_read_profile_401_without_login(monkeypatch):
     assert resp.status_code == 401
 
 
-def test_list_profiles_endpoint(monkeypatch):
-    monkeypatch.setattr(
-        profiles_api.repo,
-        "list_profiles",
-        lambda: [{"id": 1, "name": "Stu"}, {"id": 2, "name": None}],
-    )
-    resp = client.get("/profiles")
+def test_read_profile_404_when_authenticated_but_no_profile_yet(monkeypatch):
+    """A valid session with no linked profile is a distinct state from "not
+    logged in" -- require_profile_id 404s (not 401) so the frontend can
+    route to onboarding instead of back to login."""
+
+    monkeypatch.setattr(auth_module, "_verify_token", lambda authorization: FAKE_AUTH_USER_ID)
+    monkeypatch.setattr(repo, "get_profile_by_auth_user_id", lambda uid: None)
+    resp = client.get("/profile", headers=AUTH)
+    assert resp.status_code == 404
+
+
+# ── Account linking (Google/email auth -> profiles, api/auth.py) ─────────
+
+
+def test_auth_me_returns_null_profile_id_when_unclaimed(monkeypatch):
+    monkeypatch.setattr(auth_module, "_verify_token", lambda authorization: FAKE_AUTH_USER_ID)
+    monkeypatch.setattr(repo, "get_profile_by_auth_user_id", lambda uid: None)
+    resp = client.get("/auth/me", headers=AUTH)
     assert resp.status_code == 200
-    assert resp.json() == [{"id": 1, "name": "Stu"}, {"id": 2, "name": None}]
+    assert resp.json() == {"profile_id": None}
+
+
+def test_auth_me_returns_linked_profile_id(monkeypatch):
+    _fake_auth(monkeypatch, profile_id=15)
+    resp = client.get("/auth/me", headers=AUTH)
+    assert resp.status_code == 200
+    assert resp.json() == {"profile_id": 15}
+
+
+def test_auth_me_401_without_login():
+    resp = client.get("/auth/me")
+    assert resp.status_code == 401
 
 
 def test_purchases_converts_per_100g_to_actual_quantity_and_includes_non_food(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(
         analysis_api.repo,
         "get_all_confirmed_receipt_items_with_receipt_info",
@@ -200,6 +268,7 @@ def test_confirm_receipt_404_when_owned_by_a_different_profile(monkeypatch):
     to a missing one from profile 1's point of view -- no leaking whether
     the id exists at all."""
 
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(
         receipts_api.repo, "get_receipt", lambda rid: {"id": rid, "store": "Lidl", "profile_id": 2}
     )
@@ -240,6 +309,7 @@ def test_correct_item_records_verified_match_keyed_on_cleaned_name(monkeypatch):
     the same way _clean_name does, so the two sides silently diverged and
     a correction was never found again. Both sides must key on `name`."""
 
+    _fake_auth(monkeypatch)
     fake_item = {
         "id": "item-1",
         "name": "Bio Paprika Mix",
@@ -273,6 +343,7 @@ def test_update_item_marking_non_food_learns_the_term(monkeypatch):
     marking an item "Not food" in review never actually taught the system,
     so the same product kept needing the checkbox on every future receipt."""
 
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(
         receipts_api.repo, "get_receipt", lambda rid: {"id": rid, "store": "Netto", "profile_id": 1}
     )
@@ -298,6 +369,7 @@ def test_update_item_marking_non_food_learns_the_term(monkeypatch):
 
 
 def test_update_item_editing_other_fields_does_not_learn_non_food(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(
         receipts_api.repo, "get_receipt", lambda rid: {"id": rid, "store": "Netto", "profile_id": 1}
     )
@@ -322,6 +394,7 @@ def test_update_item_unmarking_non_food_does_not_learn(monkeypatch):
     """Setting is_non_food back to False is just a correction -- it must not
     also (re-)teach the term as if it had been marked non-food."""
 
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(
         receipts_api.repo, "get_receipt", lambda rid: {"id": rid, "store": "Netto", "profile_id": 1}
     )
@@ -343,6 +416,7 @@ def test_update_item_unmarking_non_food_does_not_learn(monkeypatch):
 
 
 def test_summary_counts_distinct_receipts_and_items(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(
         analysis_api.repo,
         "get_all_confirmed_receipt_items",
@@ -363,6 +437,7 @@ def test_summary_401_without_login(monkeypatch):
 
 
 def test_summary_empty_state_without_receipts(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: [])
     resp = client.get("/analysis/summary", headers=AUTH)
     assert resp.status_code == 200
@@ -370,6 +445,7 @@ def test_summary_empty_state_without_receipts(monkeypatch):
 
 
 def test_composition_empty_state_without_receipts(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: [])
     resp = client.get("/analysis/composition", headers=AUTH)
     assert resp.status_code == 200
@@ -383,6 +459,7 @@ def test_target_comparison_closeness_score_sums_not_averages_macro_diffs(monkeyp
     purchase pattern that's actually missing a target by a lot. It now sums
     the absolute per-macro differences instead."""
 
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(analysis_api.repo, "get_profile", lambda profile_id: _PROFILE_ROW)
     monkeypatch.setattr(
         analysis_api.repo,
@@ -418,6 +495,7 @@ def test_target_comparison_closeness_score_sums_not_averages_macro_diffs(monkeyp
 
 
 def test_diversity_empty_state_without_receipts(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: [])
     resp = client.get("/analysis/diversity", headers=AUTH)
     assert resp.status_code == 200
@@ -436,6 +514,7 @@ _RECIPE_PROFILE_ROW = {
 
 
 def test_unlock_status_counts_matched_items(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(
         recipes_api.repo,
         "get_all_confirmed_receipt_items",
@@ -458,6 +537,7 @@ def test_unlock_status_counts_matched_items(monkeypatch):
 
 
 def test_inferred_dietary_style_endpoint(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(
         recipes_api.repo,
         "get_all_confirmed_receipt_items",
@@ -469,6 +549,7 @@ def test_inferred_dietary_style_endpoint(monkeypatch):
 
 
 def test_update_dietary_preferences(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(profile_api.repo, "get_profile", lambda profile_id: _PROFILE_ROW)
     monkeypatch.setattr(
         profile_api.repo,
@@ -489,12 +570,13 @@ def test_update_dietary_preferences(monkeypatch):
 
 
 def test_generate_recipe_endpoint(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(recipes_api.repo, "get_profile", lambda profile_id: _RECIPE_PROFILE_ROW)
     monkeypatch.setattr(
         analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: []
     )
 
-    fake_suggestion = GeminiRecipeSuggestion(
+    fake_suggestion = RecipeSuggestion(
         title="Lentil bowl",
         ingredients=[RecipeIngredient(name="lentils", quantity="200 g")],
         steps=["Simmer lentils."],
@@ -510,7 +592,7 @@ def test_generate_recipe_endpoint(monkeypatch):
     )
     captured_kwargs = {}
 
-    def fake_generate(profile, gap, recs, cuisine=None, max_time_minutes=None, servings=None):
+    def fake_generate(profile, gap, cuisine=None, max_time_minutes=None, servings=None):
         captured_kwargs["cuisine"] = cuisine
         captured_kwargs["max_time_minutes"] = max_time_minutes
         captured_kwargs["servings"] = servings
@@ -540,12 +622,13 @@ def test_generate_recipe_without_body_uses_no_cuisine_or_time_limit(monkeypatch)
     still work -- cuisine/max_time_minutes/servings are optional
     per-generation inputs, not required ones."""
 
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(recipes_api.repo, "get_profile", lambda profile_id: _RECIPE_PROFILE_ROW)
     monkeypatch.setattr(
         analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: []
     )
 
-    fake_suggestion = GeminiRecipeSuggestion(
+    fake_suggestion = RecipeSuggestion(
         title="Simple bowl",
         ingredients=[RecipeIngredient(name="rice", quantity="200 g")],
         steps=["Cook rice."],
@@ -561,7 +644,7 @@ def test_generate_recipe_without_body_uses_no_cuisine_or_time_limit(monkeypatch)
     )
     captured_kwargs = {}
 
-    def fake_generate(profile, gap, recs, cuisine=None, max_time_minutes=None, servings=None):
+    def fake_generate(profile, gap, cuisine=None, max_time_minutes=None, servings=None):
         captured_kwargs["cuisine"] = cuisine
         captured_kwargs["max_time_minutes"] = max_time_minutes
         captured_kwargs["servings"] = servings
@@ -580,31 +663,121 @@ def test_generate_recipe_without_body_uses_no_cuisine_or_time_limit(monkeypatch)
 
 
 def test_generate_recipe_404_without_profile(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(recipes_api.repo, "get_profile", lambda profile_id: None)
     resp = client.post("/recipes/generate", headers=AUTH)
     assert resp.status_code == 404
 
 
-def test_generate_recipe_401_without_login(monkeypatch):
+def test_generate_recipe_401_without_login():
     resp = client.post("/recipes/generate")
     assert resp.status_code == 401
 
 
-def test_generate_recipe_returns_503_when_gemini_not_configured(monkeypatch):
+def test_generate_recipe_returns_503_when_groq_not_configured(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(recipes_api.repo, "get_profile", lambda profile_id: _RECIPE_PROFILE_ROW)
     monkeypatch.setattr(
         analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: []
     )
 
-    def raise_not_configured(profile, gap, recs, cuisine=None, max_time_minutes=None, servings=None):
-        raise GeminiNotConfigured("GEMINI_API_KEY is not set")
+    def raise_not_configured(profile, gap, cuisine=None, max_time_minutes=None, servings=None):
+        raise GroqNotConfigured("GROQ_API_KEY is not set")
 
     monkeypatch.setattr(recipes_api, "generate_and_assemble_recipe", raise_not_configured)
     resp = client.post("/recipes/generate", headers=AUTH)
     assert resp.status_code == 503
 
 
+# ── Insights page gap-closing recommendations (api/recommendations.py) ───
+
+
+def test_read_recommendation_returns_null_when_none_generated_yet(monkeypatch):
+    _fake_auth(monkeypatch)
+    monkeypatch.setattr(repo, "get_gap_recommendation", lambda profile_id: None)
+    resp = client.get("/analysis/recommendations", headers=AUTH)
+    assert resp.status_code == 200
+    assert resp.json() == {"recommendation": None}
+
+
+def test_read_recommendation_returns_the_persisted_row(monkeypatch):
+    _fake_auth(monkeypatch)
+    stored_row = {
+        "profile_id": 1,
+        "summary": "Eat more greens.",
+        "items": [{"focus": "fiber", "suggestion": "Add more vegetables."}],
+        "created_at": "2026-07-30T00:00:00+00:00",
+    }
+    monkeypatch.setattr(repo, "get_gap_recommendation", lambda profile_id: stored_row)
+    resp = client.get("/analysis/recommendations", headers=AUTH)
+    assert resp.status_code == 200
+    assert resp.json()["recommendation"]["summary"] == "Eat more greens."
+
+
+def test_read_recommendation_401_without_login():
+    resp = client.get("/analysis/recommendations")
+    assert resp.status_code == 401
+
+
+def test_generate_recommendation_endpoint(monkeypatch):
+    _fake_auth(monkeypatch)
+    monkeypatch.setattr(repo, "get_profile", lambda profile_id: _RECIPE_PROFILE_ROW)
+    monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: [])
+
+    fake_result = GapRecommendations(
+        summary="Test summary.",
+        items=[GapRecommendationItem(focus="protein", suggestion="Eat more lentils.")],
+    )
+    monkeypatch.setattr(recommendations_api, "generate_recommendations", lambda *a, **k: fake_result)
+
+    captured = {}
+
+    def fake_upsert(profile_id, summary, items):
+        captured.update(profile_id=profile_id, summary=summary, items=items)
+        return {
+            "profile_id": profile_id,
+            "summary": summary,
+            "items": items,
+            "created_at": "2026-07-30T00:00:00+00:00",
+        }
+
+    monkeypatch.setattr(repo, "upsert_gap_recommendation", fake_upsert)
+
+    resp = client.post("/analysis/recommendations/generate", headers=AUTH)
+    assert resp.status_code == 200
+    body = resp.json()["recommendation"]
+    assert body["summary"] == "Test summary."
+    assert body["items"] == [{"focus": "protein", "suggestion": "Eat more lentils."}]
+    assert captured["profile_id"] == 1
+
+
+def test_generate_recommendation_404_without_profile(monkeypatch):
+    _fake_auth(monkeypatch)
+    monkeypatch.setattr(repo, "get_profile", lambda profile_id: None)
+    resp = client.post("/analysis/recommendations/generate", headers=AUTH)
+    assert resp.status_code == 404
+
+
+def test_generate_recommendation_401_without_login():
+    resp = client.post("/analysis/recommendations/generate")
+    assert resp.status_code == 401
+
+
+def test_generate_recommendation_returns_503_when_groq_not_configured(monkeypatch):
+    _fake_auth(monkeypatch)
+    monkeypatch.setattr(repo, "get_profile", lambda profile_id: _RECIPE_PROFILE_ROW)
+    monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: [])
+
+    def raise_not_configured(*args, **kwargs):
+        raise GroqNotConfigured("GROQ_API_KEY is not set")
+
+    monkeypatch.setattr(recommendations_api, "generate_recommendations", raise_not_configured)
+    resp = client.post("/analysis/recommendations/generate", headers=AUTH)
+    assert resp.status_code == 503
+
+
 def test_list_recipes_endpoint(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(
         recipes_api.repo,
         "get_all_recipes",
@@ -652,6 +825,7 @@ _STORED_RECIPE_ROW = {
 
 
 def test_set_recipe_feedback_endpoint(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(recipes_api.repo, "get_recipe", lambda rid: _STORED_RECIPE_ROW)
     captured = {}
     monkeypatch.setattr(
@@ -667,6 +841,7 @@ def test_set_recipe_feedback_endpoint(monkeypatch):
 
 
 def test_set_recipe_feedback_clears_with_null(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(
         recipes_api.repo, "get_recipe", lambda rid: {**_STORED_RECIPE_ROW, "feedback": "up"}
     )
@@ -681,6 +856,7 @@ def test_set_recipe_feedback_clears_with_null(monkeypatch):
 
 
 def test_set_recipe_feedback_404_for_another_profiles_recipe(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(
         recipes_api.repo, "get_recipe", lambda rid: {**_STORED_RECIPE_ROW, "profile_id": 2}
     )
@@ -688,12 +864,13 @@ def test_set_recipe_feedback_404_for_another_profiles_recipe(monkeypatch):
     assert resp.status_code == 404
 
 
-def test_set_recipe_feedback_401_without_login(monkeypatch):
+def test_set_recipe_feedback_401_without_login():
     resp = client.patch("/recipes/r1/feedback", json={"feedback": "up"})
     assert resp.status_code == 401
 
 
 def test_archive_recipe_endpoint(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(recipes_api.repo, "get_recipe", lambda rid: _STORED_RECIPE_ROW)
     captured = {}
     monkeypatch.setattr(
@@ -708,6 +885,7 @@ def test_archive_recipe_endpoint(monkeypatch):
 
 
 def test_archive_recipe_404_for_another_profiles_recipe(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(
         recipes_api.repo, "get_recipe", lambda rid: {**_STORED_RECIPE_ROW, "profile_id": 2}
     )
@@ -715,7 +893,7 @@ def test_archive_recipe_404_for_another_profiles_recipe(monkeypatch):
     assert resp.status_code == 404
 
 
-def test_archive_recipe_401_without_login(monkeypatch):
+def test_archive_recipe_401_without_login():
     resp = client.delete("/recipes/r1")
     assert resp.status_code == 401
 
@@ -725,6 +903,7 @@ def test_list_recipes_excludes_archived(monkeypatch):
     this just confirms the endpoint returns whatever the repo hands back,
     i.e. it doesn't re-include archived rows some other way."""
 
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(recipes_api.repo, "get_all_recipes", lambda profile_id: [])
     resp = client.get("/recipes", headers=AUTH)
     assert resp.status_code == 200
@@ -743,6 +922,7 @@ def test_pantry_scales_macros_to_remaining_food_only_urgency_first(monkeypatch):
     estimated date itself never appears in the response -- only a fuzzy
     `urgency` bucket and the coarse `food_group`."""
 
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(pantry_api.repo, "get_shelf_life_overrides", lambda profile_id: {})
     monkeypatch.setattr(
         pantry_api.repo,
@@ -813,6 +993,7 @@ def test_shelf_life_config_merges_defaults_with_overrides(monkeypatch):
     (code default overlaid with the profile's overrides) and flags which are
     custom. A group with no override keeps the conservative default."""
 
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(
         pantry_api.repo, "get_shelf_life_overrides", lambda profile_id: {"bread_bakery": 3}
     )
@@ -830,6 +1011,7 @@ def test_shelf_life_update_persists_and_rejects_unknown_group(monkeypatch):
     """PUT /pantry/shelf-life upserts each override and returns the recomputed
     config; an unknown group is a 422 so a typo can't create a phantom bucket."""
 
+    _fake_auth(monkeypatch)
     saved = {}
     monkeypatch.setattr(
         pantry_api.repo,
@@ -854,6 +1036,7 @@ def test_pantry_removal_whole_lot_applies_full_remaining(monkeypatch):
     """No quantity in the payload = withdraw the whole remaining amount; the
     server resolves that to the current remaining and reports it."""
 
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
     monkeypatch.setattr(pantry_api.repo, "get_lot_remaining", lambda item_id: 3.0)
     captured = {}
@@ -877,6 +1060,7 @@ def test_pantry_removal_whole_lot_applies_full_remaining(monkeypatch):
 
 
 def test_pantry_removal_partial_leaves_remainder(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
     monkeypatch.setattr(pantry_api.repo, "get_lot_remaining", lambda item_id: 1.0)
     captured = {}
@@ -904,6 +1088,7 @@ def test_pantry_removal_clamps_overshoot(monkeypatch):
     """Requesting more than what's left is clamped to the remaining, not
     rejected -- the honest outcome for a stale UI / concurrent request."""
 
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
     monkeypatch.setattr(pantry_api.repo, "get_lot_remaining", lambda item_id: 0.3)
     captured = {}
@@ -928,6 +1113,7 @@ def test_pantry_removal_clamps_overshoot(monkeypatch):
 
 
 def test_pantry_removal_409_when_nothing_left(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
     monkeypatch.setattr(pantry_api.repo, "get_lot_remaining", lambda item_id: 0.0)
     called = {"added": False}
@@ -942,6 +1128,7 @@ def test_pantry_removal_409_when_nothing_left(monkeypatch):
 
 
 def test_pantry_removal_rejects_invalid_reason(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 1)
     resp = client.post(
         "/pantry/removals", json={"receipt_item_id": "i1", "reason": "burned"}, headers=AUTH
@@ -953,6 +1140,7 @@ def test_pantry_removal_404_for_another_profiles_item(monkeypatch):
     """You can't withdraw a lot you don't own -- and it must look like the
     item simply doesn't exist, never revealing it belongs to someone else."""
 
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: 2)
     called = {"added": False}
     monkeypatch.setattr(
@@ -968,6 +1156,7 @@ def test_pantry_removal_404_for_another_profiles_item(monkeypatch):
 
 
 def test_pantry_removal_404_for_unknown_item(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(pantry_api.repo, "get_receipt_item_owner", lambda item_id: None)
     resp = client.post(
         "/pantry/removals", json={"receipt_item_id": "nope", "reason": "removed"}, headers=AUTH
@@ -976,6 +1165,7 @@ def test_pantry_removal_404_for_unknown_item(monkeypatch):
 
 
 def test_delete_pantry_removal_undo_checks_ownership(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(
         pantry_api.repo, "get_pantry_removal", lambda rid: {"id": rid, "receipt_item_id": "i1"}
     )
@@ -990,6 +1180,7 @@ def test_delete_pantry_removal_undo_checks_ownership(monkeypatch):
 
 
 def test_delete_pantry_removal_404_for_another_profiles_removal(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(
         pantry_api.repo, "get_pantry_removal", lambda rid: {"id": rid, "receipt_item_id": "i1"}
     )
@@ -1006,6 +1197,7 @@ def test_pantry_401_without_login(monkeypatch):
 
 
 def test_submit_feedback(monkeypatch):
+    _fake_auth(monkeypatch)
     monkeypatch.setattr(
         feedback_api.repo,
         "insert_feedback",
@@ -1021,6 +1213,6 @@ def test_submit_feedback(monkeypatch):
     assert resp.json()["nps_score"] == 9
 
 
-def test_submit_feedback_401_without_login(monkeypatch):
+def test_submit_feedback_401_without_login():
     resp = client.post("/feedback", json={"nps_score": 9})
     assert resp.status_code == 401

@@ -38,7 +38,7 @@ import {
   typedItem,
   type SeqItem,
 } from '../lib/chatSequence'
-import { setCurrentProfileId } from '../lib/session'
+import { useAuth } from '../lib/authContext'
 
 // Chat-style onboarding (Epic 1.1) -- a warmer alternative to a plain form,
 // adapted from an earlier version of this app (see repo-root
@@ -212,6 +212,7 @@ function dobValidationError(value: string): string | null {
 
 export function OnboardingPage() {
   const navigate = useNavigate()
+  const { refresh } = useAuth()
   const [answers, setAnswers] = useState<Answers>(INITIAL_ANSWERS)
   const [draftText, setDraftText] = useState('')
   const [phase, setPhase] = useState<'chat' | 'saving' | 'reveal'>('chat')
@@ -241,15 +242,6 @@ export function OnboardingPage() {
     if (historyRef.current) historyRef.current.scrollTop = historyRef.current.scrollHeight
   }, [stepIndex, phase, turnRevealed])
 
-  // Reaching this page always means "create a brand-new user" -- never
-  // "edit my own profile" (that's the Profile page's job) -- so drop any
-  // stale login first. Otherwise a leftover X-Profile-Id from a previous
-  // session would make submit() below silently overwrite that user's
-  // profile instead of creating a new one (multi-user feature).
-  useEffect(() => {
-    setCurrentProfileId(null)
-  }, [])
-
   function saveEdit(key: string, value: string) {
     setAnswers((prev) => ({ ...prev, [key]: value }))
     setEditingKey(null)
@@ -264,7 +256,7 @@ export function OnboardingPage() {
     setPhase('saving')
     setError(null)
     try {
-      const result = await createProfile({
+      await createProfile({
         name: null,
         sex: 'prefer_not_to_say',
         date_of_birth: '2000-01-01',
@@ -276,7 +268,7 @@ export function OnboardingPage() {
         household_size: null,
         consumption_share_pct: null,
       })
-      setCurrentProfileId(result.profile.id)
+      await refresh()
       navigate('/profile')
     } catch (err) {
       setError(
@@ -309,7 +301,7 @@ export function OnboardingPage() {
           : null,
       }
       const result = await createProfile(payload)
-      setCurrentProfileId(result.profile.id)
+      await refresh()
       setTurnQueue(revealSequence(result.targets))
       setTurnReplyCount(0)
       setTurnRevealed(0)

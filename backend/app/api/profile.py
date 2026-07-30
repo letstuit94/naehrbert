@@ -1,11 +1,10 @@
 """Epic 1 (onboarding) & Epic 2 (target calculation) endpoints."""
 
 from datetime import datetime, timezone
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.app.core.auth import optional_profile_id, require_profile_id
+from backend.app.core.auth import authenticated_user_id, require_profile_id
 from backend.app.db import repo
 from backend.app.models.profile import DietaryPreferencesUpdate, Profile, ProfileCreate
 from backend.app.services.ideal_profile import compute_ideal_profile, macro_percentages
@@ -22,15 +21,20 @@ def _targets_payload(profile: Profile) -> dict:
 
 @router.post("")
 def create_profile(
-    payload: ProfileCreate, profile_id: Optional[int] = Depends(optional_profile_id)
+    payload: ProfileCreate, auth_user_id: str = Depends(authenticated_user_id)
 ):
-    """Create a brand-new profile (onboarding signup -- no X-Profile-Id
-    header sent yet) or replace the caller's own profile in place (the
-    Profile page's biometric edit form -- header present). Computes targets
-    synchronously either way (Epic 1.1, Epic 1.2) so the frontend can
-    render the targets screen from this one response."""
+    """Create a brand-new profile (onboarding signup -- this account has
+    no linked profile yet) or replace the caller's own profile in place
+    (the Profile page's biometric edit form -- this account already has
+    one). Which branch runs is resolved from the verified session, not a
+    client-supplied id, so an authenticated user can never create/edit
+    someone else's profile. Computes targets synchronously either way
+    (Epic 1.1, Epic 1.2) so the frontend can render the targets screen
+    from this one response."""
 
-    stored = repo.upsert_profile(payload.model_dump(mode="json"), profile_id)
+    existing = repo.get_profile_by_auth_user_id(auth_user_id)
+    profile_id = existing["id"] if existing else None
+    stored = repo.upsert_profile(payload.model_dump(mode="json"), profile_id, auth_user_id)
     profile = Profile(**stored)
     return {"profile": profile, **_targets_payload(profile)}
 
@@ -49,8 +53,9 @@ def read_profile(profile_id: int = Depends(require_profile_id)):
 def delete_profile(profile_id: int = Depends(require_profile_id)):
     """Account deletion: erase the caller's profile and everything they own
     (receipts + items, recipes, feedback, pantry data). `require_profile_id`
-    means a user can only ever delete their own account -- profile_id comes
-    from the X-Profile-Id header, never a path/body param.
+    means a user can only ever delete their own account -- profile_id is
+    resolved from the caller's verified Supabase session, never a
+    path/body param.
 
     Verified matches are preserved by design: the verified_matches (and
     non_food_terms) table is a global correction cache with no profile_id

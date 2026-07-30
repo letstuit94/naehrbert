@@ -1,7 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api import analysis, feedback, match, pantry, profile, profiles, receipts, recipes
+from backend.app.api import (
+    analysis,
+    auth,
+    feedback,
+    match,
+    pantry,
+    profile,
+    receipts,
+    recipes,
+    recommendations,
+)
 from backend.app.core.config import get_settings
 
 app = FastAPI(title="naehrbert", version="0.1.0")
@@ -14,12 +24,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(profile.router)
-app.include_router(profiles.router)
 app.include_router(receipts.router)
 app.include_router(match.router)
 app.include_router(analysis.router)
 app.include_router(recipes.router)
+app.include_router(recommendations.router)
 app.include_router(feedback.router)
 app.include_router(pantry.router)
 

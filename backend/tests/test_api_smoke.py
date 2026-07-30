@@ -980,7 +980,7 @@ def test_pantry_scales_macros_to_remaining_food_only_urgency_first(monkeypatch):
     assert all(i["urgency"] in valid_urgency for i in items)
     assert all("expiry" not in i and "estimated_expiry" not in i for i in items)
     milk = items[0]
-    assert milk["food_group"] == "dairy_eggs"
+    assert milk["food_group"] == "dairy"
     assert items[1]["food_group"] == "grains_starches"
     assert milk["quantity"] == 250  # remaining shown, not the 500 bought
     assert milk["original_quantity"] == 500

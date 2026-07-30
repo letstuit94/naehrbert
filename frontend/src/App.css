@@ -641,7 +641,7 @@
 
 .micronutrient-table th:first-child,
 .micronutrient-table td:first-child {
-  width: 40%;
+  width: 46%;
   text-align: left;
 }
 
@@ -651,60 +651,38 @@
   text-align: right;
 }
 
-/* Coverage column carries the meter + value, so it gets the widest of the three
-   number columns (nutrient 40 · purchased/target 18 · coverage 24). */
-.micronutrient-table th:last-child,
-.micronutrient-table td:last-child {
-  width: 24%;
-}
-
 .micronutrient-table th {
   font-weight: 500;
   color: var(--text);
 }
 
-/* Coverage meter (treatment B): a slim track filled to the coverage share and
-   tinted on the app's signal scale (red/amber/green, matching the pantry urgency
-   dots), with the exact figure alongside. The fill uses the -bright signal tones
-   since it's a non-textual bar (§2.2). */
-.cov-meter {
+/* Coverage as a signal-tinted badge with the % inside — a soft coloured pill
+   (the app's chip aesthetic) that carries the state by colour (see
+   coverageTier): amber→red as a shortfall deepens, green on target, amber/red
+   again for over-target where food excess harms (sodium). Soft fill + AA-tuned
+   signal text tone (§2.2), tabular so the figures line up down the column. */
+.cov-badge {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.cov-meter .meter {
-  position: relative;
-  flex: 0 0 auto;
-  width: 56px;
-  height: 6px;
+  justify-content: center;
+  min-width: 54px;
+  padding: 3px 11px;
   border-radius: 999px;
-  background: var(--code-bg);
-  overflow: hidden;
-}
-
-.cov-meter .meter__fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  border-radius: 999px;
-}
-
-.cov-meter__value {
-  min-width: 40px;
-  text-align: right;
-  color: var(--text-h);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.meter__fill--ok {
-  background: var(--ok);
+.cov-badge--ok {
+  background: var(--ok-soft);
+  color: var(--ok);
 }
-.meter__fill--caution {
-  background: var(--caution-bright);
+.cov-badge--caution {
+  background: var(--caution-soft);
+  color: var(--caution);
 }
-.meter__fill--danger {
-  background: var(--danger);
+.cov-badge--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 /* Per-row "Show drivers" toggle -- like the macro rings' shared panel
@@ -742,15 +720,26 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* Expanded row detail. The short "why / sources / signs" blocks flow into a
-   responsive two-column grid so the panel reads as a compact reference instead
-   of one tall wall of stacked paragraphs — the not-enough / too-much pair lands
-   side by side. */
+/* Expanded row detail. The short "why / sources" blocks flow into a responsive
+   grid so the panel reads as a compact reference instead of one tall wall of
+   stacked paragraphs. */
 .micronutrient-info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: var(--space-3) var(--space-6);
   margin-bottom: var(--space-4);
+}
+
+/* Under-/Overconsumption always share one row as a two-up pair (they read as a
+   comparison), collapsing to stacked only on a narrow screen. */
+.micronutrient-signs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 520px) {
+  .micronutrient-signs {
+    grid-template-columns: 1fr;
+  }
 }
 
 .micronutrient-info-section {
@@ -767,8 +756,7 @@
 /* "Drivers from your purchases" spans the full width below the info grid: each
    source is a row of name · relative-contribution bar · value. The bar is a
    neutral sage (contribution isn't good/bad, just how much), normalised to the
-   biggest driver in the list, so the top sources read at a glance — the same
-   meter language as the Coverage column above. */
+   biggest driver in the list, so the top sources read at a glance. */
 .micronutrient-drivers {
   padding-top: var(--space-3);
   border-top: 1px solid var(--border);

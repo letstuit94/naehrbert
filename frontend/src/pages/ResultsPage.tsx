@@ -276,14 +276,33 @@ function purchasesOnlyNote(t: TranslateFn): string {
   )
 }
 
-// Coverage (purchased ÷ target) collapsed onto the app's 3-state signal scale
-// for the micronutrient meter: a big shortfall reads red, a partial one amber,
-// on-track (80%+) green. Same red/amber/green language as the pantry urgency
-// dots. Over-target just stays green with the bar capped at 100%.
-function coverageTier(pct: number): 'ok' | 'caution' | 'danger' {
-  if (pct >= 80) return 'ok'
-  if (pct >= 50) return 'caution'
-  return 'danger'
+// Micronutrients where overconsumption FROM FOOD is a genuine concern (a
+// tolerable upper intake that groceries can realistically push past). For every
+// other tracked nutrient the DGE value is a recommended intake, not a ceiling,
+// and food excess is harmless (see micronutrients.md "Signs of too much", which
+// for most notes the risk is supplement-only) — so those stay green over target.
+const OVERCONSUMPTION_HARM = new Set<string>(['sodium_mg', 'chloride_mg'])
+
+// Coverage (purchased ÷ target) on the app's 3-state signal scale — the same
+// red/amber/green language as the pantry urgency dots. A shortfall reads amber
+// then red as it deepens; on target is green. Over target stays green EXCEPT for
+// the nutrients above, where it flags amber past ~120% and red past ~200%.
+function coverageTier(pct: number, key: string): 'ok' | 'caution' | 'danger' {
+  if (pct < 50) return 'danger'
+  if (pct < 80) return 'caution'
+  if (OVERCONSUMPTION_HARM.has(key) && pct > 120) {
+    return pct > 200 ? 'danger' : 'caution'
+  }
+  return 'ok'
+}
+
+// The two backend "signs" section titles get tighter, localized display labels
+// (used for the side-by-side Under-/Overconsumption pair); every other section
+// title passes through as-is.
+function infoTitle(t: TranslateFn, title: string): string {
+  if (title === 'Signs of not enough') return t('Underconsumption', 'Unterkonsum')
+  if (title === 'Signs of too much') return t('Overconsumption', 'Überkonsum')
+  return title
 }
 
 function TargetsSection({
@@ -868,6 +887,12 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
                 const maxDriverValue = drivers.length
                   ? Math.max(...drivers.map((d) => d.value_per_100g))
                   : 0
+                const generalInfo = info.filter(
+                  (s) => s.title !== 'Signs of not enough' && s.title !== 'Signs of too much',
+                )
+                const signsInfo = ['Signs of not enough', 'Signs of too much']
+                  .map((title) => info.find((s) => s.title === title))
+                  .filter((s): s is { title: string; body: string } => Boolean(s))
                 return (
                   <Fragment key={key}>
                     <tr>
@@ -887,14 +912,10 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
                       <td>{target !== null ? `${target.toFixed(1)} ${unit}` : '—'}</td>
                       <td>
                         {coveragePct !== null ? (
-                          <span className="cov-meter">
-                            <span className="meter" aria-hidden="true">
-                              <span
-                                className={`meter__fill meter__fill--${coverageTier(coveragePct)}`}
-                                style={{ width: `${Math.min(coveragePct, 100)}%` }}
-                              />
-                            </span>
-                            <span className="cov-meter__value">{coveragePct}%</span>
+                          <span
+                            className={`cov-badge cov-badge--${coverageTier(coveragePct, key)}`}
+                          >
+                            {coveragePct}%
                           </span>
                         ) : (
                           '—'
@@ -905,7 +926,7 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
                       <tr className="micronutrient-drivers-row">
                         <td colSpan={4}>
                           <div className="micronutrient-info-grid">
-                            {info.map((section) => (
+                            {generalInfo.map((section) => (
                               <div
                                 key={section.title}
                                 className="micronutrient-info-section"
@@ -917,6 +938,21 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
                               </div>
                             ))}
                           </div>
+                          {signsInfo.length > 0 && (
+                            <div className="micronutrient-info-grid micronutrient-signs">
+                              {signsInfo.map((section) => (
+                                <div
+                                  key={section.title}
+                                  className="micronutrient-info-section"
+                                >
+                                  <p className="micronutrient-info-section__title">
+                                    {infoTitle(t, section.title)}
+                                  </p>
+                                  <p className="muted">{section.body}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                           <div className="micronutrient-drivers">
                             <p className="micronutrient-info-section__title">
                               Drivers from your purchases

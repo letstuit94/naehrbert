@@ -12,11 +12,7 @@ plus the 3 pregnancy trimesters and nursing (all listed under the sheet's
 'Weiblich'/female column). There's no under-19 bracket in this workbook --
 ages below 19 fall back to the lowest bracket (19 bis unter 25) as the
 closest available reference, not because that bracket is actually
-validated for a minor. Sulfur (sulfur_mg) is the one tracked micronutrient
-with no DGE row at all -- the DGE simply doesn't publish a reference value
-for it (isolated sulfur deficiency isn't a recognized condition, see
-micronutrients.md), so it has no entry in _NUTRIENT_MAP and its target is
-always None.
+validated for a minor.
 
 Simplifications, all because this app doesn't track the extra
 distinguishing factor the DGE table itself offers:
@@ -27,10 +23,10 @@ distinguishing factor the DGE table itself offers:
   - Zink (zinc) is given at three phytate-intake tiers (low/medium/high --
     phytate, common in whole grains/legumes, reduces zinc absorption); the
     medium tier is used as the general-population default.
-  - Kupfer/Mangan/Chrom/Molybdän (copper/manganese/chromium/molybdenum) are
-    published as a range ("1,0-1,5 mg/Tag") rather than a single value --
-    DGE's own hedge for less precise "Schätzwert" (estimated) data; the
-    midpoint is used as a single comparable target number.
+  - Kupfer/Mangan (copper/manganese) are published as a range
+    ("1,0-1,5 mg/Tag") rather than a single value -- DGE's own hedge for
+    less precise "Schätzwert" (estimated) data; the midpoint is used as a
+    single comparable target number.
 """
 
 import json
@@ -47,8 +43,9 @@ _XLSX_PATH = Path(__file__).resolve().parents[3] / "DGE_data" / "DGE-Referenzwer
 _CACHE_PATH = Path(__file__).parent / "_dge_cache.json"
 _SHEET_NAME = "Referenzwerte"
 
-# Our micro key -> the sheet's German "Nährstoff" label. sulfur_mg has no
-# entry here on purpose -- see the module docstring.
+# Our micro key -> the sheet's German "Nährstoff" label. Only covers keys
+# in services/micronutrients.py's _MICRO_KEYS -- Sulfur, Chromium, and
+# Molybdenum are dropped there entirely, not just omitted here.
 _NUTRIENT_MAP = {
     "vitamin_a_ug": "Vitamin A",
     "vitamin_d_ug": "Vitamin D",
@@ -75,8 +72,6 @@ _NUTRIENT_MAP = {
     "manganese_mg": "Mangan",
     "iodine_ug": "Jod",
     "fluoride_mg": "Fluorid",
-    "chromium_ug": "Chrom",
-    "molybdenum_ug": "Molybdän",
 }
 
 _PREGNANCY_GROUP = {

@@ -708,15 +708,12 @@ const MICRONUTRIENT_LABELS: { key: keyof MicronutrientsResult['totals']; label: 
   { key: 'sodium_mg', label: 'Sodium', unit: 'mg' },
   { key: 'chloride_mg', label: 'Chloride', unit: 'mg' },
   { key: 'potassium_mg', label: 'Potassium', unit: 'mg' },
-  { key: 'sulfur_mg', label: 'Sulfur', unit: 'mg' },
   { key: 'iron_mg', label: 'Iron', unit: 'mg' },
   { key: 'zinc_mg', label: 'Zinc', unit: 'mg' },
   { key: 'copper_mg', label: 'Copper', unit: 'mg' },
   { key: 'manganese_mg', label: 'Manganese', unit: 'mg' },
   { key: 'iodine_ug', label: 'Iodine', unit: 'µg' },
   { key: 'fluoride_mg', label: 'Fluoride', unit: 'mg' },
-  { key: 'chromium_ug', label: 'Chromium', unit: 'µg' },
-  { key: 'molybdenum_ug', label: 'Molybdenum', unit: 'µg' },
 ]
 
 function MicronutrientsSection({ micronutrients }: { micronutrients: MicronutrientsResult }) {

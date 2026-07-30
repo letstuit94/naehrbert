@@ -78,13 +78,14 @@ _MICRO_COLS: Dict[str, int] = {
     "biotin_ug": 102,            # BIOT    [µg/100g]
     "chloride_mg": 126,          # CLD (Chlorid) [mg/100g]
     "phosphorus_mg": 138,        # P (Phosphor) [mg/100g]
-    "sulfur_mg": 141,            # S (Schwefel) [mg/100g] -- no DGE target exists for this one
     "copper_mg": 153,            # CU (Kupfer) [µg/100g] -- converted to mg
     "manganese_mg": 156,         # MN (Mangan) [µg/100g] -- converted to mg
     "fluoride_mg": 159,          # FD (Fluorid) [µg/100g] -- converted to mg
-    "chromium_ug": 162,          # CR (Chrom) [µg/100g]
-    "molybdenum_ug": 165,        # MO (Molybdän) [µg/100g]
 }
+# Sulfur (S, col 141), Chromium (CR, col 162), and Molybdenum (MO, col 165)
+# are deliberately not tracked -- dropped per product decision even though
+# BLS has real data for them (see git history for the column indices if
+# ever revisited).
 
 # BLS reports these in µg, but DGE's reference values (and this app's own
 # key suffix) are in mg -- convert once here rather than at every later

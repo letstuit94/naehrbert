@@ -431,15 +431,12 @@ export interface MicronutrientTotals {
   calcium_mg: number
   phosphorus_mg: number
   magnesium_mg: number
-  sulfur_mg: number
   iron_mg: number
   zinc_mg: number
   copper_mg: number
   manganese_mg: number
   iodine_ug: number
   fluoride_mg: number
-  chromium_ug: number
-  molybdenum_ug: number
 }
 
 /** A purchased item's per-100g density for this micronutrient -- same
@@ -466,9 +463,10 @@ export interface MicronutrientsResult {
   items_considered: number
   /** DGE daily targets for this profile's age/sex/life_stage, or null if
    * the profile's age can't be resolved (e.g. incomplete profile).
-   * Partial, not full, because the DGE publishes no reference value for
-   * sulfur_mg at all (see services/dge_matcher.py) -- that key is simply
-   * absent here rather than present with some placeholder. */
+   * Partial (defensively) in case a future tracked micronutrient ever
+   * lacks a DGE reference value the way dropped Sulfur once did -- every
+   * currently tracked key does have one (see services/dge_matcher.py's
+   * _NUTRIENT_MAP). */
   targets: Partial<MicronutrientTotals> | null
   /** Up to 5 purchased items ranked by per-100g density, per micronutrient
    * -- backs each row's "Show drivers" expansion. */

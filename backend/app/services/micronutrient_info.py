@@ -5,12 +5,14 @@ Educational per-nutrient content for the Results page's micronutrient
 minerals) -- so that content lives in one place rather than being
 duplicated into the frontend.
 
-Only the micronutrients services/micronutrients.py actually tracks (the
-ones BLS supplies real purchase data for) are extracted here -- Selenium is
-the sole nutrient micronutrients.md covers with no BLS column at all (see
-services/bls_matcher.py's _MICRO_COLS), so it has no corresponding purchase
-data to show a "drivers from your purchases" section for and is
-deliberately left out rather than shown with an always-empty drivers list.
+Only the micronutrients services/micronutrients.py actually tracks are
+extracted here. Selenium is the sole nutrient micronutrients.md covers
+with no BLS column at all (see services/bls_matcher.py's _MICRO_COLS), so
+it has no corresponding purchase data to show a "drivers from your
+purchases" section for. Sulfur, Chromium, and Molybdenum do have real BLS
+columns but are deliberately not tracked (dropped per product decision) --
+both are left out here rather than shown with an always-empty drivers list
+or, worse, a KeyError from _MICRO_KEYS not matching this map.
 """
 
 import re
@@ -40,15 +42,12 @@ _HEADING_TO_KEY = {
     "Sodium": "sodium_mg",
     "Potassium": "potassium_mg",
     "Chloride": "chloride_mg",
-    "Sulfur": "sulfur_mg",
     "Iron": "iron_mg",
     "Zinc": "zinc_mg",
     "Copper": "copper_mg",
     "Manganese": "manganese_mg",
     "Iodine": "iodine_ug",
     "Fluoride": "fluoride_mg",
-    "Chromium": "chromium_ug",
-    "Molybdenum": "molybdenum_ug",
 }
 
 # Displayed in this order regardless of the .md file's own bullet order.

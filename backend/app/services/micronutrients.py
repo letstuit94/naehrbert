@@ -23,9 +23,10 @@ from typing import List, Optional
 from backend.app.services.basket_composition import _item_purchase_date
 from backend.app.services.nutrition_profile import grams_for
 
-# Same keys as bls_matcher._MICRO_COLS / NutritionValues.micros -- every
-# micronutrient BLS provides real data for (Selenium is the one nutrient
-# micronutrients.md covers that BLS 4.0 has no column for at all).
+# Same keys as bls_matcher._MICRO_COLS / NutritionValues.micros. Selenium
+# is the one nutrient micronutrients.md covers that BLS 4.0 has no column
+# for at all; Sulfur, Chromium, and Molybdenum have real BLS columns but
+# are deliberately not tracked here (dropped per product decision).
 _MICRO_KEYS = (
     "vitamin_a_ug",
     "vitamin_d_ug",
@@ -46,15 +47,12 @@ _MICRO_KEYS = (
     "calcium_mg",
     "phosphorus_mg",
     "magnesium_mg",
-    "sulfur_mg",
     "iron_mg",
     "zinc_mg",
     "copper_mg",
     "manganese_mg",
     "iodine_ug",
     "fluoride_mg",
-    "chromium_ug",
-    "molybdenum_ug",
 )
 
 

@@ -105,7 +105,7 @@ export function ResultsPage() {
   if (loading) {
     return (
       <section aria-busy="true">
-        <h1>{t('Your insights', 'Deine Einblicke')}</h1>
+        <h1>{t('Your insights', 'Deine Insights')}</h1>
         <PageSkeleton cards={2} lines={3} />
       </section>
     )
@@ -116,7 +116,7 @@ export function ResultsPage() {
   return (
     <section>
       <h1>
-        {t('Your insights', 'Deine Einblicke')}{' '}
+        {t('Your insights', 'Deine Insights')}{' '}
         <span className="title-note">
           {t('(calculated over the last 28 days)', '(berechnet über die letzten 28 Tage)')}
         </span>
@@ -884,9 +884,6 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
             <tbody>
               {rows.map(({ key, label, unit, purchasedPerDay, target, coveragePct, drivers, info }) => {
                 const isOpen = expanded.has(key)
-                const maxDriverValue = drivers.length
-                  ? Math.max(...drivers.map((d) => d.value_per_100g))
-                  : 0
                 const generalInfo = info.filter(
                   (s) => s.title !== 'Signs of not enough' && s.title !== 'Signs of too much',
                 )
@@ -958,31 +955,15 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
                               Drivers from your purchases
                             </p>
                             {drivers.length > 0 ? (
-                              <ul className="driver-bar-list">
-                                {drivers.map((driver) => {
-                                  const rel = maxDriverValue
-                                    ? Math.max(
-                                        4,
-                                        Math.round(
-                                          (driver.value_per_100g / maxDriverValue) * 100,
-                                        ),
-                                      )
-                                    : 0
-                                  return (
-                                    <li key={driver.name} className="driver-bar">
-                                      <span className="driver-bar__name">{driver.name}</span>
-                                      <span className="driver-bar__track" aria-hidden="true">
-                                        <span
-                                          className="driver-bar__fill"
-                                          style={{ width: `${rel}%` }}
-                                        />
-                                      </span>
-                                      <span className="driver-bar__value">
-                                        {driver.value_per_100g} {unit}/100g
-                                      </span>
-                                    </li>
-                                  )
-                                })}
+                              <ul className="driver-list">
+                                {drivers.map((driver) => (
+                                  <li key={driver.name}>
+                                    <span className="driver-name">{driver.name}</span>
+                                    <span className="driver-value">
+                                      {driver.value_per_100g} {unit}/100g
+                                    </span>
+                                  </li>
+                                ))}
                               </ul>
                             ) : (
                               <p className="muted">

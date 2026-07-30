@@ -753,36 +753,27 @@
   color: var(--text-h);
 }
 
-/* "Drivers from your purchases" spans the full width below the info grid: each
-   source is a row of name · relative-contribution bar · value. The bar is a
-   neutral sage (contribution isn't good/bad, just how much), normalised to the
-   biggest driver in the list, so the top sources read at a glance. */
+/* "Drivers from your purchases" — the richest sources among the purchases for
+   this nutrient (per-100g density), as a plain name — value list below the info
+   grid, set off by a hairline. Reuses the shared .driver-list styling. */
 .micronutrient-drivers {
   padding-top: var(--space-3);
   border-top: 1px solid var(--border);
 }
 
-.driver-bar-list {
-  list-style: none;
-  margin: var(--space-2) 0 0;
-  padding: 0;
+.micronutrient-drivers .driver-list {
+  margin-top: var(--space-2);
 }
 
-.driver-bar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 88px auto;
-  align-items: center;
+/* Name left, value right — a clean two-column read down the list. */
+.micronutrient-drivers .driver-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: var(--space-3);
-  padding: 7px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: var(--fs-sm);
 }
 
-.driver-bar:last-child {
-  border-bottom: none;
-}
-
-.driver-bar__name {
+.driver-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -790,35 +781,11 @@
   color: var(--text-h);
 }
 
-.driver-bar__track {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--code-bg);
-  overflow: hidden;
-}
-
-.driver-bar__fill {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--sage);
-}
-
-.driver-bar__value {
+.driver-value {
+  flex: 0 0 auto;
   color: var(--text);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  text-align: right;
-}
-
-@media (max-width: 480px) {
-  /* Drop the contribution bar on very tight screens so name + value keep room. */
-  .driver-bar {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-  .driver-bar__track {
-    display: none;
-  }
 }
 
 .micronutrient-table tbody tr:last-child td {

@@ -1,9 +1,11 @@
 """
 Exercises the ported OCR/extraction + parsing pipeline (Epic 3) against
-real sample receipts committed under repo-root `receipts_stu/` and
+real sample receipts dropped locally under repo-root `receipts_stu/` and
 `receipts_jen/` — actual till printouts and phone photos, not synthetic
-fixtures. (Historically `receipts/`, renamed to `receipts_stu` once a
-second contributor's `receipts_jen` folder was added.)
+fixtures. Both dirs are gitignored (personal purchase data, never
+committed) — everything here degrades gracefully via `.is_dir()`/
+`.exists()` checks when neither is present, which is the expected state on
+a fresh clone.
 """
 
 from pathlib import Path
@@ -56,8 +58,8 @@ def test_extract_real_jpeg_photos_via_ocr(jpeg_path):
     assert raw_text.strip()
 
 
+@pytest.mark.skipif(not _PNG_FIXTURES, reason="no png fixtures present")
 def test_extract_real_png_photo_via_ocr():
-    assert _PNG_FIXTURES, "expected at least one real png fixture"
     raw_text = local_extractor.extract_text(_PNG_FIXTURES[0].read_bytes(), _PNG_FIXTURES[0].name)
     assert raw_text.strip()
 

@@ -28,10 +28,6 @@ export function dietaryStyleOptions(
   ]
 }
 
-export function dietaryStyleLabel(t: TranslateFn, value: DietaryStyle): string {
-  return dietaryStyleOptions(t).find((o) => o.value === value)?.label ?? value
-}
-
 /** The EU-14 common allergens/intolerances -- a reasonable common-ground
  * list; anything else is captured via free-text "other". */
 export function allergenOptions(t: TranslateFn): Option[] {

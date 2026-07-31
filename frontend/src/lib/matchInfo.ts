@@ -35,31 +35,3 @@ export function matchInfo(
   }
   return { label: t('No match found', 'Kein Treffer gefunden'), lowConfidence: true }
 }
-
-/** The Purchases page's data-transparency filter categories. Any
- * `matched_name` counts as "verified" regardless of which resolver tier
- * produced it (verified_matches / OpenFoodFacts / BLS) -- the app has
- * never distinguished those in the UI (matchInfo above treats them
- * identically), so the filter doesn't invent a distinction the rest of
- * the app doesn't make either. */
-export type MatchCategory = 'verified' | 'fallback' | 'none' | 'non_food'
-
-export function matchCategoryLabel(t: TranslateFn, category: MatchCategory): string {
-  switch (category) {
-    case 'verified':
-      return t('Verified database matches', 'Bestätigte Datenbank-Treffer')
-    case 'fallback':
-      return t('Fallback category matches', 'Kategorie-Schätzungen')
-    case 'none':
-      return t('No matches', 'Keine Treffer')
-    case 'non_food':
-      return t('Non-food', 'Kein Lebensmittel')
-  }
-}
-
-export function matchCategory(item: Matchable): MatchCategory {
-  if (item.is_non_food) return 'non_food'
-  if (item.matched_name) return 'verified'
-  if (item.fallback_category) return 'fallback'
-  return 'none'
-}

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -92,13 +92,3 @@ class MatchQuality(BaseModel):
     failed_items: int
     match_rate: float
     coverage_rate: float
-
-
-class ReceiptMapping(BaseModel):
-    """Full result of mapping one receipt's items to nutrition data."""
-
-    matched_products: List[MatchedProduct]
-    match_quality: MatchQuality
-    # E4-S6: absolute per-receipt nutrient totals (macros in g / kcal, micros
-    # in their native mg/µg), weighted by each item's purchased grams.
-    nutrition_totals: Dict[str, float] = Field(default_factory=dict)

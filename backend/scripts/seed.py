@@ -1,29 +1,55 @@
 """
 Local dev seed (Epic 0.2): one fake profile + one sample receipt, parsed
-from a real fixture in the repo-root `receipts_stu/` folder and run
+from a small synthetic Netto-style eBon text (not a real purchase) and run
 through the full upload -> match -> confirm pipeline, so /analysis/* has
 something to show on a fresh clone without a real receipt on hand.
 
 Run from the repo root: `python -m backend.scripts.seed`
 """
 
-from pathlib import Path
-
 from backend.app.db import repo
-from backend.app.services import local_extractor, non_food_terms, receipt_text_parser
+from backend.app.services import non_food_terms, receipt_text_parser
 from backend.app.services.nutrition_mapping import matched_product_to_row
 from backend.app.services.resolver import resolve_item
 
-_SAMPLE_RECEIPT = Path(__file__).resolve().parents[2] / "receipts_stu" / "Netto_Kassenbon_20260702-191137.pdf"
+_SAMPLE_RECEIPT_NAME = "synthetic-seed-receipt"
+# A made-up Netto eBon in the parser's BLOCK layout (name line, then price
+# on the next line -- see receipt_text_parser's module docstring). Mixes
+# groceries with two household paper products (toilet paper, a trash bag)
+# that the static non-food keyword list doesn't catch (it's tuned for
+# deposits/bags-at-checkout, not every household SKU a supermarket sells)
+# -- in the real app, Epic 3.4's review screen is where a user marks these
+# non-food before confirming.
+_SAMPLE_RECEIPT_TEXT = """
+Netto Marken-Discount
+Filiale 4711
 
-# This specific fixture mixes groceries with household paper products
-# (toilet paper, trash bags) that the static non-food keyword list doesn't
-# catch (it's tuned for deposits/bags-at-checkout, not every household SKU
-# a supermarket sells) — in the real app, Epic 3.4's review screen is where
-# a user marks these non-food before confirming. Hardcoded here (by exact
-# receipt line) rather than a generic keyword guess, since this seed
-# script already hardcodes which one fixture it uses.
-_KNOWN_NON_FOOD_LINES = {"Favora Topa 3lg. 10x220BL", "Pri.Zugb.muellbtl.25x60L"}
+Vollmilch 3,5% 1L
+1,19
+Roggenbrot 500g
+2,49
+Naturjoghurt 500g
+0,89
+Eier 10er Freiland
+2,99
+Bio Bananen
+1,266 kg x
+1,29 EUR/kg
+1,63
+Paprika rot
+0,286 kg x
+3,49 EUR/kg
+1,00
+Zewa Toilettenpapier 10x220Bl
+4,99
+Muellsack 25x60L
+1,79
+
+Zu zahlen EUR 16,97
+Geg. EC-Cash EUR 16,97
+"""
+
+_KNOWN_NON_FOOD_LINES = {"Zewa Toilettenpapier 10x220Bl", "Muellsack 25x60L"}
 
 _FAKE_PROFILE = {
     "sex": "female",
@@ -42,12 +68,11 @@ def seed_profile() -> None:
 
 
 def seed_receipt() -> None:
-    file_bytes = _SAMPLE_RECEIPT.read_bytes()
-    raw_text = local_extractor.extract_text(file_bytes, _SAMPLE_RECEIPT.name)
+    raw_text = _SAMPLE_RECEIPT_TEXT
     parsed = non_food_terms.filter_learned_non_food(receipt_text_parser.parse_receipt_text_offline(raw_text))
 
     receipt = repo.create_receipt(
-        source="pdf", raw_text=raw_text, store=parsed.get("store"), purchased_at=parsed.get("date"),
+        source="pasted_text", raw_text=raw_text, store=parsed.get("store"), purchased_at=parsed.get("date"),
     )
     items = [
         {
@@ -63,7 +88,7 @@ def seed_receipt() -> None:
         for item in parsed["items"]
     ]
     saved_items = repo.insert_receipt_items(receipt["id"], items)
-    print(f"Seeded receipt {receipt['id']} ({_SAMPLE_RECEIPT.name}) with {len(saved_items)} items.")
+    print(f"Seeded receipt {receipt['id']} ({_SAMPLE_RECEIPT_NAME}) with {len(saved_items)} items.")
 
     for item in saved_items:
         if item.get("is_non_food"):

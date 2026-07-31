@@ -330,20 +330,6 @@ export interface TargetComparisonResult {
   items_considered: number
 }
 
-export type Bucket = 'consume_more' | 'consume_less' | 'insufficient_data'
-
-export interface BucketedItem {
-  name: string
-  matched_name: string | null
-  bucket: Bucket
-  reason: string
-}
-
-/** GET /analysis/buckets */
-export interface BucketsResult {
-  buckets: BucketedItem[]
-}
-
 /** A purchased item's per-100g density for this macro -- NOT scaled by how
  * much was bought, so this ranks "which foods you buy are concentrated
  * sources of X", not "what's actually driving your total" (that's
@@ -666,10 +652,6 @@ export function uploadReceiptText(text: string): Promise<UploadResponse> {
   })
 }
 
-export function getReceipt(receiptId: string): Promise<UploadResponse> {
-  return request<UploadResponse>(`/receipts/${receiptId}`)
-}
-
 export interface ReceiptUpdate {
   store?: string
   purchased_at?: string
@@ -792,10 +774,6 @@ export function getTargetComparison(): Promise<TargetComparisonResult> {
   return request<TargetComparisonResult>('/analysis/target-comparison')
 }
 
-export function getBuckets(): Promise<BucketsResult> {
-  return request<BucketsResult>('/analysis/buckets')
-}
-
 export function getDiversity(): Promise<DiversityResult> {
   return request<DiversityResult>('/analysis/diversity')
 }
@@ -913,7 +891,7 @@ export interface PantryItem {
   original_quantity: number | null
   unit: string | null
   /** Always false -- the pantry view is food-only; present so the match
-   * helpers (matchInfo/matchCategory) accept a PantryItem. */
+   * helper (matchInfo) accepts a PantryItem. */
   is_non_food: boolean
   match_type: MatchType | null
   matched_name: string | null

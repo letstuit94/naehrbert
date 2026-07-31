@@ -12,8 +12,7 @@ it's what makes pydantic emit the `additionalProperties: false` Groq's
 strict json_schema mode requires on every object in the schema.
 """
 
-from datetime import datetime
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel, ConfigDict
 
@@ -38,15 +37,3 @@ class GapRecommendations(BaseModel):
 
     summary: str
     items: List[GapRecommendationItem]
-
-
-class GapRecommendationsResponse(GapRecommendations):
-    """Stored/returned recommendation, as persisted to the
-    `gap_recommendations` table -- one row per profile (replaced on each
-    regenerate, not an accumulating history like recipes), so `profile_id`
-    doubles as the primary key (see the migration). Regeneration itself is
-    gated by api/recommendations.py's _can_generate, not by anything here."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    created_at: Optional[datetime] = None

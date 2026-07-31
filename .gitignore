@@ -1,6 +1,19 @@
 # macOS
 .DS_Store
 
+# Local-only real-receipt test fixtures (personal purchase data — never
+# committed; backend/tests/test_receipt_extraction_and_parsing.py and
+# backend/scripts/seed.py both degrade gracefully when these are absent).
+/receipts_stu/
+/receipts_jen/
+/receipts_mock/
+
+# Accidentally-committable npm artifacts if `npm install` is ever run from
+# the repo root instead of frontend/ (frontend/ has its own .gitignore).
+/node_modules/
+/package.json
+/package-lock.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

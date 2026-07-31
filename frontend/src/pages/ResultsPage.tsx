@@ -158,8 +158,6 @@ export function ResultsPage() {
         </p>
       )}
 
-      {!noReceiptsYet && composition.data && <p className="muted"></p>}
-
       {noReceiptsYet && (
         <p className="callout">
           {t('No confirmed receipts yet.', 'Noch keine bestätigten Belege.')}{' '}

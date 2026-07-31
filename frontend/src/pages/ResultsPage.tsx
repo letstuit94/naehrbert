@@ -544,7 +544,8 @@ function TargetsSection({
           <ol className="driver-list">
             {expandedDrivers.map((driver) => (
               <li key={driver.name}>
-                {driver.name} — {driver.grams_per_100g} g/100g
+                <span className="driver-name">{driver.name}</span>
+                <span className="driver-value">{driver.grams_per_100g} g/100g</span>
               </li>
             ))}
           </ol>
@@ -1081,6 +1082,13 @@ function funAnalyzingPhrases(t: TranslateFn) {
 }
 const PHRASE_ROTATE_MS = 5000
 
+// Groq generates `item.focus` as free-form text (e.g. "protein", "vitamin
+// d") and isn't reliably consistent about capitalization -- capitalized
+// here at display time rather than depending on the model to get it right.
+function capitalizeFirst(text: string): string {
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : text
+}
+
 function GapRecommendationsSection({
   recommendation,
   canGenerate,
@@ -1144,7 +1152,7 @@ function GapRecommendationsSection({
           <ul className="gap-recommendation-list">
             {recommendation.items.map((item, i) => (
               <li key={i}>
-                <strong>{item.focus}: </strong>
+                <strong>{capitalizeFirst(item.focus)}: </strong>
                 {item.suggestion}
               </li>
             ))}

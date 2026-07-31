@@ -1,9 +1,18 @@
 """
 OpenFoodFacts lookup (Task 2.1 / Story 2.1).
 
-Uses the stable OpenFoodFacts REST search endpoint directly via `requests`
+Uses OpenFoodFacts's "Search-a-licious" search API directly via `requests`
 rather than the SDK, plus a small on-disk JSON cache so repeated lookups
-(and test runs) don't hammer the API or hit rate limits.
+(and test runs) don't hammer the API or hit rate limits. Originally used
+the legacy `world.openfoodfacts.org/cgi/search.pl` CGI endpoint, but that
+one turned out to intermittently 503 (~50% of calls, live-verified) --
+this newer endpoint is a separate, actively-maintained search service and
+was consistently reliable in the same test, so this module talks to it
+instead. Its response shape is close but not identical: notably `brands`
+comes back as a list here rather than the legacy endpoint's comma-joined
+string, so `_fetch_off` normalizes it back to a comma-joined string right
+after fetching -- every other consumer (matcher.py, the on-disk cache)
+still only ever sees the one shape they were built against.
 
 Everything here fails soft: network errors, timeouts, or empty results
 return an empty list / None instead of raising, so one bad lookup never
@@ -11,6 +20,7 @@ breaks the pipeline (Story 2.1: "missing items handled gracefully").
 """
 
 import json
+import logging
 import threading
 import time
 from pathlib import Path
@@ -20,10 +30,12 @@ import requests
 
 from backend.app.models.nutrition import NutritionValues
 
+logger = logging.getLogger(__name__)
+
 # OpenFoodFacts requires a descriptive User-Agent.
 USER_AGENT = "NutriWise/0.1 (capstone project; contact: team@nutriwise.example)"
 
-SEARCH_URL = "https://world.openfoodfacts.org/cgi/search.pl"
+SEARCH_URL = "https://search.openfoodfacts.org/search"
 REQUEST_TIMEOUT = 8  # seconds
 DEFAULT_PAGE_SIZE = 5
 
@@ -82,18 +94,32 @@ def _save_cache(cache: dict) -> None:
 # Search
 # ─────────────────────────────────────────────────────────────
 
+def _normalize_product(product: dict) -> dict:
+    """Reshape one Search-a-licious hit back to the shape the rest of this
+    codebase (and the on-disk cache) was built against: `brands` as a
+    single comma-joined string, matching the legacy endpoint, rather than
+    this endpoint's list-of-strings."""
+
+    brands = product.get("brands")
+    if isinstance(brands, list):
+        product = {**product, "brands": ", ".join(brands)}
+    return product
+
+
 def _fetch_off(
     query: str, page_size: int, store: Optional[str] = None, max_retries: int = 3
 ) -> tuple[List[dict], bool]:
     """
     Query the OFF search endpoint with retry/backoff on rate limiting.
 
-    `store`, when given, scopes the search to OFF's `stores_tags` facet
-    (verified live: `stores_tags=rewe` correctly filters to products
-    tagged as sold at REWE, and degrades to an empty result set -- not an
-    error -- for a store OFF has no tagged products for). Callers treat
-    this as a soft boost, retrying without it on an empty result, since
-    German regional-chain coverage in OFF's `stores` field is patchy.
+    `store`, when given, scopes the search to OFF's `stores_tags` facet by
+    embedding it in the query string (`"<query> stores_tags:<store>"` --
+    live-verified: this endpoint ignores a bare `stores_tags=` query param
+    entirely, but respects it embedded this way) and degrades to an empty
+    result set -- not an error -- for a store OFF has no tagged products
+    for. Callers treat this as a soft boost, retrying without it on an
+    empty result, since German regional-chain coverage in OFF's `stores`
+    field is patchy.
 
     Returns (products, rate_limited). Never raises. `rate_limited` is True
     only when every attempt was met with 429/503 -- OFF's own rate-limit or
@@ -101,16 +127,12 @@ def _fetch_off(
     the same as asking and confirming zero results.
     """
 
+    q = f"{query} stores_tags:{store.strip().lower()}" if store else query
     params = {
-        "search_terms": query,
-        "search_simple": 1,
-        "action": "process",
-        "json": 1,
+        "q": q,
         "page_size": page_size,
         "fields": _FIELDS,
     }
-    if store:
-        params["stores_tags"] = store.strip().lower()
 
     rate_limited = False
     for attempt in range(max_retries):
@@ -124,15 +146,25 @@ def _fetch_off(
             if resp.status_code in (429, 503):
                 # Rate limited / temporarily unavailable -> back off and retry.
                 rate_limited = True
+                logger.warning(
+                    "OFF search got HTTP %s for %r (attempt %d/%d)",
+                    resp.status_code, query, attempt + 1, max_retries,
+                )
                 time.sleep(1.5 * (attempt + 1))
                 continue
             resp.raise_for_status()
-            return resp.json().get("products", []) or [], False
-        except (requests.RequestException, ValueError):
+            hits = resp.json().get("hits", []) or []
+            return [_normalize_product(p) for p in hits], False
+        except (requests.RequestException, ValueError) as exc:
             rate_limited = False
+            logger.warning(
+                "OFF search failed for %r (attempt %d/%d): %s", query, attempt + 1, max_retries, exc,
+            )
             time.sleep(1.0 * (attempt + 1))
             continue
 
+    if rate_limited:
+        logger.warning("OFF search gave up on %r after %d attempts -- all rate-limited/unavailable", query, max_retries)
     return [], rate_limited
 
 

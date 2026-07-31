@@ -50,7 +50,7 @@ def test_fetch_off_returns_products_and_not_rate_limited_on_success(monkeypatch)
     monkeypatch.setattr(
         off_api.requests,
         "get",
-        lambda *a, **k: _FakeResponse(200, {"products": [{"code": "1"}]}),
+        lambda *a, **k: _FakeResponse(200, {"hits": [{"code": "1"}]}),
     )
 
     products, rate_limited = off_api._fetch_off("test query", 5)
@@ -76,10 +76,11 @@ def test_search_products_falls_back_to_unfiltered_when_store_scoped_is_empty(mon
     calls = []
 
     def fake_get(url, params=None, headers=None, timeout=None):
-        calls.append(params.get("stores_tags"))
-        if params.get("stores_tags"):
-            return _FakeResponse(200, {"products": []})
-        return _FakeResponse(200, {"products": [{"code": "42"}]})
+        scoped = "stores_tags:" in params.get("q", "")
+        calls.append(scoped)
+        if scoped:
+            return _FakeResponse(200, {"hits": []})
+        return _FakeResponse(200, {"hits": [{"code": "42"}]})
 
     monkeypatch.setattr(off_api.requests, "get", fake_get)
 
@@ -88,7 +89,7 @@ def test_search_products_falls_back_to_unfiltered_when_store_scoped_is_empty(mon
     )
     assert products == [{"code": "42"}]
     assert rate_limited is False
-    assert calls == ["rewe", None]
+    assert calls == [True, False]
 
 
 def test_search_products_skips_the_unfiltered_fallback_when_rate_limited(monkeypatch):
@@ -97,7 +98,7 @@ def test_search_products_skips_the_unfiltered_fallback_when_rate_limited(monkeyp
     calls = []
 
     def fake_get(url, params=None, headers=None, timeout=None):
-        calls.append(params.get("stores_tags"))
+        calls.append("stores_tags:" in params.get("q", ""))
         return _FakeResponse(429)
 
     monkeypatch.setattr(off_api.requests, "get", fake_get)
@@ -109,7 +110,7 @@ def test_search_products_skips_the_unfiltered_fallback_when_rate_limited(monkeyp
     assert rate_limited is True
     # Every attempt was still store-scoped -- the unfiltered fallback was
     # never tried, since it would just spend more retries on the same limit.
-    assert all(c == "rewe" for c in calls)
+    assert all(calls)
 
 
 def test_search_products_discards_the_rate_limited_flag(monkeypatch):

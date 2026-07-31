@@ -35,6 +35,23 @@ export function LoginPage() {
     else if (status === 'no-profile') navigate('/onboarding', { replace: true })
   }, [status, navigate])
 
+  useEffect(() => {
+    // Google/Supabase redirect back here even when the OAuth exchange
+    // itself failed (e.g. this email already has a password-based account
+    // under a different identity, or the provider rejected the request) --
+    // that failure shows up as an `error_description` on the return URL,
+    // not as a thrown exception anywhere in this component. Without this,
+    // that case is completely silent: the session never appears, so the
+    // person just lands back on this same screen with no explanation.
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    const queryParams = new URLSearchParams(window.location.search)
+    const description = hashParams.get('error_description') || queryParams.get('error_description')
+    if (description) {
+      setError(description)
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+  }, [])
+
   function switchMode() {
     setMode((m) => (m === 'sign_in' ? 'sign_up' : 'sign_in'))
     setError(null)

@@ -534,17 +534,26 @@ export function UploadPage() {
         {(needsDate || needsStore) && (
           <div className="callout callout--muted receipt-meta-form">
             <p>
-              We couldn't detect{' '}
-              {needsDate && needsStore
-                ? 'a purchase date or store'
-                : needsDate
-                  ? 'a purchase date'
-                  : 'a store'}{' '}
-              for this receipt — please fill it in before confirming.
+              {t(
+                `We couldn't detect ${
+                  needsDate && needsStore
+                    ? 'a purchase date or store'
+                    : needsDate
+                      ? 'a purchase date'
+                      : 'a store'
+                } for this receipt — please fill it in before confirming.`,
+                `Wir konnten ${
+                  needsDate && needsStore
+                    ? 'kein Kaufdatum und keinen Händler'
+                    : needsDate
+                      ? 'kein Kaufdatum'
+                      : 'keinen Händler'
+                } für diesen Beleg erkennen — bitte trage es vor dem Bestätigen ein.`,
+              )}
             </p>
             {needsDate && (
               <div className="form-field">
-                <label htmlFor="meta-date">Purchase date</label>
+                <label htmlFor="meta-date">{t('Purchase date', 'Kaufdatum')}</label>
                 <input
                   id="meta-date"
                   type="date"
@@ -556,7 +565,7 @@ export function UploadPage() {
             )}
             {needsStore && (
               <div className="form-field">
-                <label htmlFor="meta-store">Store</label>
+                <label htmlFor="meta-store">{t('Store', 'Händler')}</label>
                 <select
                   id="meta-store"
                   value={metaIsNewStore ? '__new__' : metaStore}
@@ -571,22 +580,22 @@ export function UploadPage() {
                   }}
                 >
                   <option value="" disabled>
-                    Select a store
+                    {t('Select a store', 'Händler auswählen')}
                   </option>
                   {existingStores.map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>
                   ))}
-                  <option value="__new__">+ Add a new store</option>
+                  <option value="__new__">{t('+ Add a new store', '+ Neuen Händler hinzufügen')}</option>
                 </select>
                 {metaIsNewStore && (
                   <input
                     type="text"
-                    placeholder="Store name"
+                    placeholder={t('Store name', 'Händlername')}
                     value={metaNewStoreName}
                     onChange={(e) => setMetaNewStoreName(e.target.value)}
-                    aria-label="New store name"
+                    aria-label={t('New store name', 'Name des neuen Händlers')}
                     autoFocus
                   />
                 )}
@@ -602,29 +611,29 @@ export function UploadPage() {
 
         {isOlderThanResultsWindow(receipt.purchased_at) && (
           <p className="callout callout--warning">
-            This receipt is more than {RESULTS_WINDOW_DAYS} days old. Once confirmed,
-            it'll still stock your pantry, but it won't count toward your health score
-            or gap analysis on the Insights page — those only look at the last{' '}
-            {RESULTS_WINDOW_DAYS} days.
+            {t(
+              `This receipt is more than ${RESULTS_WINDOW_DAYS} days old. Once confirmed, it'll still stock your pantry, but it won't count toward your health score or gap analysis on the Insights page — those only look at the last ${RESULTS_WINDOW_DAYS} days.`,
+              `Dieser Beleg ist älter als ${RESULTS_WINDOW_DAYS} Tage. Nach dem Bestätigen füllt er trotzdem deinen Vorrat, zählt aber nicht zu deinem Gesundheitswert oder zur Lückenanalyse auf der Insights-Seite — die betrachten nur die letzten ${RESULTS_WINDOW_DAYS} Tage.`,
+            )}
           </p>
         )}
 
         {scanLooksIncomplete ? (
           <p className="callout callout--warning">
             {items.length === 0
-              ? "We couldn't find any items on this scan."
-              : `We only found ${items.length} item on this scan.`}{' '}
-            If that doesn't look right, you can{' '}
+              ? t("We couldn't find any items on this scan.", 'Wir konnten auf diesem Scan keine Artikel finden.')
+              : t(`We only found ${items.length} item on this scan.`, `Wir haben auf diesem Scan nur ${items.length} Artikel gefunden.`)}{' '}
+            {t("If that doesn't look right, you can", 'Wenn das nicht richtig aussieht, kannst du')}{' '}
             <button type="button" className="btn-link" onClick={switchToManualEntry}>
-              switch to typing it in manually
+              {t('switch to typing it in manually', 'stattdessen manuell eintippen')}
             </button>
             .
           </p>
         ) : (
           <p className="muted">
-            Scan doesn't look right?{' '}
+            {t("Scan doesn't look right?", 'Sieht der Scan nicht richtig aus?')}{' '}
             <button type="button" className="btn-link" onClick={switchToManualEntry}>
-              Switch to manual entry
+              {t('Switch to manual entry', 'Zur manuellen Eingabe wechseln')}
             </button>
           </p>
         )}
@@ -649,8 +658,10 @@ export function UploadPage() {
         </ul>
         {items.length === 0 && (
           <p className="callout callout--muted">
-            No items left on this receipt — add one back to confirm, or upload a different
-            one.
+            {t(
+              'No items left on this receipt — add one back to confirm, or upload a different one.',
+              'Keine Artikel mehr auf diesem Beleg — füge einen zurück hinzu, um zu bestätigen, oder lade einen anderen Beleg hoch.',
+            )}
           </p>
         )}
 
@@ -659,7 +670,11 @@ export function UploadPage() {
           onClick={handleConfirm}
           disabled={busy || items.length === 0}
         >
-          {busy ? 'Confirming…' : isLastReceipt ? 'Confirm & save' : 'Confirm & continue'}
+          {busy
+            ? t('Confirming…', 'Bestätige…')
+            : isLastReceipt
+              ? t('Confirm & save', 'Bestätigen & speichern')
+              : t('Confirm & continue', 'Bestätigen & weiter')}
         </button>
       </section>
     )
@@ -667,9 +682,12 @@ export function UploadPage() {
 
   return (
     <section>
-      <h1>Upload a receipt</h1>
+      <h1>{t('Upload a receipt', 'Beleg hochladen')}</h1>
       <p className="page-lead">
-        Add a receipt and I'll turn it into pantry items and nutrition insights.
+        {t(
+          "Add a receipt and I'll turn it into pantry items and nutrition insights.",
+          'Füge einen Beleg hinzu und ich verwandle ihn in Vorratsartikel und Ernährungs-Insights.',
+        )}
       </p>
       <ul className="upload-tips">
         <li>
@@ -677,8 +695,10 @@ export function UploadPage() {
             -
           </span>
           <span>
-            Keep the store name, date, and priced item lines readable — the rest can be
-            blurry or cut off.
+            {t(
+              'Keep the store name, date, and priced item lines readable — the rest can be blurry or cut off.',
+              'Achte darauf, dass Händlername, Datum und die Artikelzeilen mit Preisen lesbar sind — der Rest darf unscharf oder abgeschnitten sein.',
+            )}
           </span>
         </li>
         <li>
@@ -686,25 +706,27 @@ export function UploadPage() {
             -
           </span>
           <span>
-            Got a store loyalty app? A digital receipt from there scans even more reliably
-            than a photo.
+            {t(
+              'Got a store loyalty app? A digital receipt from there scans even more reliably than a photo.',
+              'Hast du eine Kundenkarten-App deines Händlers? Ein digitaler Beleg von dort wird noch zuverlässiger erkannt als ein Foto.',
+            )}
           </span>
         </li>
       </ul>
       <div className="upload-card">
-        <p className="upload-card__label">Add a new receipt</p>
+        <p className="upload-card__label">{t('Add a new receipt', 'Neuen Beleg hinzufügen')}</p>
         <div className="tab-row">
           <button
             className={uploadMode === 'file' ? 'tab tab--active' : 'tab'}
             onClick={() => setUploadMode('file')}
           >
-            Upload photo
+            {t('Upload photo', 'Foto hochladen')}
           </button>
           <button
             className={uploadMode === 'text' ? 'tab tab--active' : 'tab'}
             onClick={() => setUploadMode('text')}
           >
-            Paste text
+            {t('Paste text', 'Text einfügen')}
           </button>
         </div>
 
@@ -730,21 +752,21 @@ export function UploadPage() {
               onChange={handleFileChange}
               disabled={busy}
               className="upload-dropzone__input"
-              aria-label="Receipt photo or PDF"
+              aria-label={t('Receipt photo or PDF', 'Beleg-Foto oder PDF')}
             />
             <span className="upload-dropzone__icon">
               <UploadArrowIcon />
             </span>
             <p className="upload-dropzone__title">
-              Drop a receipt photo here or click to upload
+              {t('Drop a receipt photo here or click to upload', 'Beleg-Foto hier ablegen oder zum Hochladen klicken')}
             </p>
             <p className="upload-dropzone__subtitle">
-              JPG, PNG, WEBP or PDF · several at once
+              {t('JPG, PNG, WEBP or PDF · several at once', 'JPG, PNG, WEBP oder PDF · mehrere auf einmal')}
             </p>
           </div>
         ) : (
           <div className="form-field">
-            <label htmlFor="receipt-text">Pasted receipt text</label>
+            <label htmlFor="receipt-text">{t('Pasted receipt text', 'Eingefügter Belegtext')}</label>
             <textarea
               id="receipt-text"
               rows={8}
@@ -757,7 +779,7 @@ export function UploadPage() {
               onClick={handlePasteSubmit}
               disabled={busy || !pastedText.trim()}
             >
-              {busy ? 'Parsing…' : 'Parse text'}
+              {busy ? t('Parsing…', 'Verarbeite…') : t('Parse text', 'Text verarbeiten')}
             </button>
           </div>
         )}
@@ -795,7 +817,7 @@ export function UploadPage() {
 
       <div className="card profile-action-card">
         <Link to="/purchases" className="btn btn-secondary">
-          Receipt history
+          {t('Receipt history', 'Belegverlauf')}
         </Link>
       </div>
     </section>
@@ -828,24 +850,24 @@ function ReviewRow({
         type="button"
         className="review-row__delete"
         onClick={onDelete}
-        aria-label={`Delete ${item.name}`}
+        aria-label={t(`Delete ${item.name}`, `${item.name} löschen`)}
       >
         ×
       </button>
 
       <div className="review-row__fields">
         <div className="review-row__field review-row__field--name">
-          <span className="review-row__field-label">Extracted item text</span>
+          <span className="review-row__field-label">{t('Extracted item text', 'Erkannter Artikeltext')}</span>
           <input
             className="review-row__name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={() => name !== item.name && onSave({ name })}
-            aria-label="Item name"
+            aria-label={t('Item name', 'Artikelname')}
           />
         </div>
         <div className="review-row__field review-row__field--qty">
-          <span className="review-row__field-label">Quantity</span>
+          <span className="review-row__field-label">{t('Quantity', 'Menge')}</span>
           <input
             className="review-row__qty"
             type="number"
@@ -856,11 +878,11 @@ function ReviewRow({
             onBlur={() =>
               Number(quantity) !== item.quantity && onSave({ quantity: Number(quantity) })
             }
-            aria-label="Quantity"
+            aria-label={t('Quantity', 'Menge')}
           />
         </div>
         <div className="review-row__field review-row__field--unit">
-          <span className="review-row__field-label">Unit</span>
+          <span className="review-row__field-label">{t('Unit', 'Einheit')}</span>
           <select
             className="review-row__unit"
             value={unit}
@@ -868,7 +890,7 @@ function ReviewRow({
               setUnit(e.target.value)
               onSave({ unit: e.target.value })
             }}
-            aria-label="Unit"
+            aria-label={t('Unit', 'Einheit')}
           >
             {UNIT_OPTIONS.map((u) => (
               <option key={u} value={u}>
@@ -898,7 +920,7 @@ function ReviewRow({
             checked={item.is_non_food}
             onChange={(e) => onSave({ is_non_food: e.target.checked })}
           />
-          Not food
+          {t('Not food', 'Kein Lebensmittel')}
         </label>
         {!item.is_non_food && (
           <button
@@ -906,7 +928,7 @@ function ReviewRow({
             className="btn-link review-row__fix-match"
             onClick={() => setSearching((s) => !s)}
           >
-            {searching ? 'Cancel search' : 'Fix match'}
+            {searching ? t('Cancel search', 'Suche abbrechen') : t('Fix match', 'Treffer korrigieren')}
           </button>
         )}
       </div>

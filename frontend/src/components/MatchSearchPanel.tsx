@@ -6,7 +6,7 @@ import {
   type ItemCorrection,
   type MatchCandidate,
 } from '../lib/api'
-import { useI18n } from '../lib/i18n'
+import { useI18n, type TranslateFn } from '../lib/i18n'
 
 // Search OFF/BLS for a manual pick and record it as a correction (Epic 4.2).
 // Shared between the Upload review screen (ReviewRow, pre-confirm) and the
@@ -17,18 +17,27 @@ function formatMacro(value: number | null): string {
   return value === null ? '?' : String(Math.round(value))
 }
 
-const SOURCE_LABEL: Record<MatchCandidate['source'], string> = {
-  off: 'Packaged products (Open Food Facts)',
-  bls: 'Generic foods (BLS)',
+function sourceLabel(t: TranslateFn, source: MatchCandidate['source']): string {
+  return source === 'off'
+    ? t('Packaged products (Open Food Facts)', 'Verpackte Produkte (Open Food Facts)')
+    : t('Generic foods (BLS)', 'Allgemeine Lebensmittel (BLS)')
 }
 
-const SOURCE_EMPTY: Record<MatchCandidate['source'], string> = {
-  off: 'No good Open Food Facts match found for this text.',
-  bls: 'No good BLS match found for this text.',
+function sourceEmpty(t: TranslateFn, source: MatchCandidate['source']): string {
+  return source === 'off'
+    ? t(
+        'No good Open Food Facts match found for this text.',
+        'Kein guter Open-Food-Facts-Treffer für diesen Text gefunden.',
+      )
+    : t('No good BLS match found for this text.', 'Kein guter BLS-Treffer für diesen Text gefunden.')
 }
 
-const OFF_RATE_LIMITED_NOTE =
-  "Open Food Facts search has hit its rate limit right now, so this may not be the full picture — try again in a moment."
+function offRateLimitedNote(t: TranslateFn): string {
+  return t(
+    "Open Food Facts search has hit its rate limit right now, so this may not be the full picture — try again in a moment.",
+    'Die Open-Food-Facts-Suche hat gerade ihr Rate-Limit erreicht, das Bild könnte also unvollständig sein — versuch es gleich noch einmal.',
+  )
+}
 
 /** One source's top-3 list, each row offering "Use this" or "X" (not a
  * match -- dismiss and let the next-ranked candidate backfill it). Shared
@@ -42,6 +51,7 @@ export function CandidateSection({
   onReject,
   rejecting,
   offRateLimited = false,
+  t,
 }: {
   source: MatchCandidate['source']
   candidates: MatchCandidate[]
@@ -49,15 +59,16 @@ export function CandidateSection({
   onReject: (candidate: MatchCandidate) => void
   rejecting: string | null
   offRateLimited?: boolean
+  t: TranslateFn
 }) {
   const showRateLimitNote = source === 'off' && offRateLimited && candidates.length === 0
 
   return (
     <div className="candidate-section">
-      <h4 className="candidate-section__title">{SOURCE_LABEL[source]}</h4>
-      {showRateLimitNote && <p className="callout callout--warning">{OFF_RATE_LIMITED_NOTE}</p>}
+      <h4 className="candidate-section__title">{sourceLabel(t, source)}</h4>
+      {showRateLimitNote && <p className="callout callout--warning">{offRateLimitedNote(t)}</p>}
       {candidates.length === 0 && !showRateLimitNote ? (
-        <p className="muted">{SOURCE_EMPTY[source]}</p>
+        <p className="muted">{sourceEmpty(t, source)}</p>
       ) : candidates.length > 0 ? (
         <ul className="candidate-list">
           {candidates.map((c, i) => {
@@ -76,15 +87,15 @@ export function CandidateSection({
                   g · C {formatMacro(c.nutrition.carbs_g)}g
                 </span>
                 <button type="button" className="btn-link" onClick={() => onPick(c)}>
-                  Use this
+                  {t('Use this', 'Diesen verwenden')}
                 </button>
                 <button
                   type="button"
                   className="candidate-row__reject"
                   onClick={() => onReject(c)}
                   disabled={rejecting === key}
-                  aria-label={`Not a match: ${c.matched_name}`}
-                  title="Not a match"
+                  aria-label={t(`Not a match: ${c.matched_name}`, `Kein Treffer: ${c.matched_name}`)}
+                  title={t('Not a match', 'Kein Treffer')}
                 >
                   ×
                 </button>
@@ -155,7 +166,7 @@ export function MatchSearchPanel({
       await rejectCandidate(receiptId, item.id, query.trim(), candidate)
       await runSearch()
     } catch {
-      setError('Could not dismiss that candidate. Please try again.')
+      setError(t('Could not dismiss that candidate. Please try again.', 'Dieser Vorschlag konnte nicht verworfen werden. Bitte versuche es erneut.'))
     } finally {
       setRejecting(null)
     }
@@ -197,6 +208,7 @@ export function MatchSearchPanel({
             onReject={reject}
             rejecting={rejecting}
             offRateLimited={candidates.off_rate_limited}
+            t={t}
           />
           <CandidateSection
             source="bls"
@@ -204,6 +216,7 @@ export function MatchSearchPanel({
             onPick={pick}
             onReject={reject}
             rejecting={rejecting}
+            t={t}
           />
         </>
       )}

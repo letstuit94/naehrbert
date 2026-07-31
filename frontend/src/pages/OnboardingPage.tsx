@@ -419,7 +419,7 @@ export function OnboardingPage() {
                           className="btn-link"
                           onClick={() => setEditingKey(step.key)}
                         >
-                          Edit
+                          {t('Edit', 'Bearbeiten')}
                         </button>
                       </div>
                     )}
@@ -526,7 +526,7 @@ export function OnboardingPage() {
                     className="btn btn-primary"
                     onClick={handleTextSubmit}
                   >
-                    Send
+                    {t('Send', 'Senden')}
                   </button>
                 </div>
                 {inputError && (
@@ -560,6 +560,7 @@ function InlineAnswerEditor({
   onSave: (value: string) => void
   onCancel: () => void
 }) {
+  const { t } = useI18n()
   const [textDraft, setTextDraft] = useState(String(value ?? ''))
 
   if (step.kind === 'choice') {
@@ -578,7 +579,7 @@ function InlineAnswerEditor({
           </button>
         ))}
         <button type="button" className="btn-link" onClick={onCancel}>
-          Cancel
+          {t('Cancel', 'Abbrechen')}
         </button>
       </div>
     )
@@ -598,10 +599,10 @@ function InlineAnswerEditor({
         className="btn btn-primary"
         onClick={() => onSave(textDraft.trim())}
       >
-        Save
+        {t('Save', 'Speichern')}
       </button>
       <button type="button" className="btn-link" onClick={onCancel}>
-        Cancel
+        {t('Cancel', 'Abbrechen')}
       </button>
     </div>
   )

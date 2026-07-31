@@ -3,7 +3,6 @@ import { PageSkeleton } from '../components/Skeleton'
 import { Link } from 'react-router-dom'
 import {
   ApiError,
-  DAILY_RECOMMENDATION_LIMIT,
   generateGapRecommendations,
   getComposition,
   getDiversity,
@@ -19,6 +18,7 @@ import {
   type DiversityDriver,
   type DiversityResult,
   type GapRecommendationsResult,
+  type GapRecommendationsState,
   type Goal,
   type MealCoverageResult,
   type MicronutrientsResult,
@@ -72,7 +72,7 @@ export function ResultsPage() {
     data: null,
     unavailable: false,
   })
-  const [recommendations, setRecommendations] = useState<Slice<GapRecommendationsResult[]>>({
+  const [recommendation, setRecommendation] = useState<Slice<GapRecommendationsState>>({
     data: null,
     unavailable: false,
   })
@@ -102,7 +102,7 @@ export function ResultsPage() {
       setDiversity(settledSlice(d))
       setMealCoverage(settledSlice(mc))
       setMicronutrients(settledSlice(mn))
-      setRecommendations(settledSlice(rec))
+      setRecommendation(settledSlice(rec))
       setLoading(false)
     })
   }, [])
@@ -153,7 +153,7 @@ export function ResultsPage() {
       )}
 
       {comparison.data && !noReceiptsYet && (
-        <ClosenessScore comparison={comparison.data} />
+        <ClosenessScore comparison={comparison.data} t={t} />
       )}
 
       {summary.data && summary.data.receipts_count > 0 && (
@@ -255,7 +255,7 @@ export function ResultsPage() {
         )}
 
       {plantDiversity.data && !noReceiptsYet && (
-        <PlantDiversitySection diversity={plantDiversity.data} />
+        <PlantDiversitySection diversity={plantDiversity.data} t={t} />
       )}
 
       {micronutrients.data && !noReceiptsYet && (
@@ -264,9 +264,10 @@ export function ResultsPage() {
 
       {!noReceiptsYet && (
         <GapRecommendationsSection
-          recommendations={recommendations.data ?? []}
+          recommendation={recommendation.data?.recommendation ?? null}
+          canGenerate={recommendation.data?.can_generate ?? true}
           onGenerated={(r) =>
-            setRecommendations((prev) => ({ data: [...(prev.data ?? []), r], unavailable: false }))
+            setRecommendation({ data: { recommendation: r, can_generate: false }, unavailable: false })
           }
         />
       )}
@@ -473,6 +474,7 @@ function TargetsSection({
       <div className="macro-grid">
         <MacroRingTile
           label={t('Protein', 'Protein')}
+          t={t}
           macroKey="protein"
           grams={targets.protein_g}
           targetValue={targetsPct.protein_pct}
@@ -483,7 +485,8 @@ function TargetsSection({
           onToggleDrivers={setExpandedMacro}
         />
         <MacroRingTile
-          label="Fat"
+          label={t('Fat', 'Fett')}
+          t={t}
           macroKey="fat"
           grams={targets.fat_g}
           targetValue={targetsPct.fat_pct}
@@ -494,7 +497,8 @@ function TargetsSection({
           onToggleDrivers={setExpandedMacro}
         />
         <MacroRingTile
-          label="Carbs"
+          label={t('Carbs', 'Kohlenhydrate')}
+          t={t}
           macroKey="carb"
           grams={targets.carbs_g}
           targetValue={targetsPct.carb_pct}
@@ -505,7 +509,8 @@ function TargetsSection({
           onToggleDrivers={setExpandedMacro}
         />
         <MacroRingTile
-          label="Fiber"
+          label={t('Fiber', 'Ballaststoffe')}
+          t={t}
           macroKey="fiber"
           grams={targets.fiber_g}
           targetValue={comparison?.fiber_target_per_1000kcal ?? null}
@@ -529,7 +534,7 @@ function TargetsSection({
               className="btn-link"
               onClick={() => setExpandedMacro(null)}
             >
-              Close
+              {t('Close', 'Schließen')}
             </button>
           </div>
           <ol className="driver-list">
@@ -581,6 +586,7 @@ function ringGradient(ratioPct: number): string {
 
 function MacroRingTile({
   label,
+  t,
   macroKey,
   grams,
   targetValue,
@@ -591,6 +597,7 @@ function MacroRingTile({
   onToggleDrivers,
 }: {
   label: string
+  t: TranslateFn
   macroKey: MacroKey
   grams: number
   targetValue: number | null
@@ -614,10 +621,10 @@ function MacroRingTile({
     ratioPct === null
       ? null
       : ratioPct > 110
-        ? 'REDUCE'
+        ? t('REDUCE', 'REDUZIEREN')
         : ratioPct < 90
-          ? 'INCREASE'
-          : 'KEEP'
+          ? t('INCREASE', 'ERHÖHEN')
+          : t('KEEP', 'HALTEN')
 
   return (
     <div className="macro-ring-tile">
@@ -636,9 +643,9 @@ function MacroRingTile({
       <span className="macro-ring-tile__caption">
         {hasTracking
           ? unit === 'pct'
-            ? `${actualValue}% of cal.`
-            : `${actualValue} g/1000kcal`
-          : 'No tracking data yet'}
+            ? t(`${actualValue}% of cal.`, `${actualValue}% der Kal.`)
+            : t(`${actualValue} g/1000kcal`, `${actualValue} g/1000kcal`)
+          : t('No tracking data yet', 'Noch keine Trackingdaten')}
       </span>
       {action !== null && <span className="macro-ring-tile__action">{action}</span>}
       {topDrivers && topDrivers.length > 0 && (
@@ -648,29 +655,38 @@ function MacroRingTile({
           aria-expanded={isExpanded}
           onClick={() => onToggleDrivers(isExpanded ? null : macroKey)}
         >
-          Show drivers
+          {t('Show drivers', 'Quellen anzeigen')}
         </button>
       )}
     </div>
   )
 }
 
-const CLOSENESS_MACRO_ROWS: { label: string; macro: 'protein' | 'fat' | 'carb' }[] = [
-  { label: 'Protein', macro: 'protein' },
-  { label: 'Fat', macro: 'fat' },
-  { label: 'Carbs', macro: 'carb' },
-]
+function closenessMacroRows(t: TranslateFn): { label: string; macro: 'protein' | 'fat' | 'carb' }[] {
+  return [
+    { label: t('Protein', 'Protein'), macro: 'protein' },
+    { label: t('Fat', 'Fett'), macro: 'fat' },
+    { label: t('Carbs', 'Kohlenhydrate'), macro: 'carb' },
+  ]
+}
 
-function ClosenessScore({ comparison }: { comparison: TargetComparisonResult }) {
+function ClosenessScore({
+  comparison,
+  t,
+}: {
+  comparison: TargetComparisonResult
+  t: TranslateFn
+}) {
   const score = comparison.closeness_score
   if (score === null) return null
   const status = score >= 80 ? 'good' : score >= 50 ? 'warning' : 'critical'
+  const macroRows = closenessMacroRows(t)
 
   // Same 3 per-macro |actual% - target%| differences the backend sums (see
   // analysis.py's get_target_comparison) -- shown individually so the final
   // score isn't just asserted, only the sum-then-subtract-from-100 step is
   // redone here, from these same already-rounded numbers.
-  const diffs = CLOSENESS_MACRO_ROWS.map((row) => comparison.delta_pct[row.macro]).filter(
+  const diffs = macroRows.map((row) => comparison.delta_pct[row.macro]).filter(
     (d): d is number => d !== null,
   )
   const totalDiff = diffs.length ? diffs.reduce((sum, d) => sum + Math.abs(d), 0) : null
@@ -678,34 +694,42 @@ function ClosenessScore({ comparison }: { comparison: TargetComparisonResult }) 
   return (
     <div>
       <div className={`stat-tile stat-tile--hero stat-tile--${status}`}>
-        <span className="stat-tile__label">Purchases vs. target</span>
+        <span className="stat-tile__label">{t('Purchases vs. target', 'Einkäufe vs. Ziel')}</span>
         <span className="stat-tile__value">{score}/100</span>
       </div>
 
       <details className="details-panel">
-        <summary>How this was calculated</summary>
+        <summary>{t('How this was calculated', 'So wurde das berechnet')}</summary>
         <dl className="kv-list">
-          {CLOSENESS_MACRO_ROWS.map(({ label, macro }) => {
+          {macroRows.map(({ label, macro }) => {
             const actual = comparison.actual_pct[macro]
             const target = comparison.target_pct[`${macro}_pct`]
             const delta = comparison.delta_pct[macro]
             return (
               <div key={macro}>
                 <dt>
-                  {label}: {actual ?? '—'}% actual vs {target ?? '—'}% target
+                  {t(
+                    `${label}: ${actual ?? '—'}% actual vs ${target ?? '—'}% target`,
+                    `${label}: ${actual ?? '—'}% tatsächlich vs. ${target ?? '—'}% Ziel`,
+                  )}
                 </dt>
                 <dd>
-                  {delta === null ? '—' : `${delta > 0 ? '+' : ''}${delta} pts off`}
+                  {delta === null
+                    ? '—'
+                    : t(
+                        `${delta > 0 ? '+' : ''}${delta} pts off`,
+                        `${delta > 0 ? '+' : ''}${delta} Pkt. Abweichung`,
+                      )}
                 </dd>
               </div>
             )
           })}
           <div>
-            <dt>Total absolute difference</dt>
-            <dd>{totalDiff === null ? '—' : `${totalDiff.toFixed(1)} pts`}</dd>
+            <dt>{t('Total absolute difference', 'Gesamte absolute Abweichung')}</dt>
+            <dd>{totalDiff === null ? '—' : t(`${totalDiff.toFixed(1)} pts`, `${totalDiff.toFixed(1)} Pkt.`)}</dd>
           </div>
           <div>
-            <dt>= 100 − total difference</dt>
+            <dt>{t('= 100 − total difference', '= 100 − Gesamtabweichung')}</dt>
             <dd>{score}/100</dd>
           </div>
         </dl>
@@ -726,7 +750,13 @@ function plantDiversityColor(count: number): string {
   return 'var(--ok)'
 }
 
-function PlantDiversitySection({ diversity }: { diversity: PlantDiversityResult }) {
+function PlantDiversitySection({
+  diversity,
+  t,
+}: {
+  diversity: PlantDiversityResult
+  t: TranslateFn
+}) {
   const { count, target, items } = diversity
   const color = plantDiversityColor(count)
   const pct = Math.min(100, Math.round((count / target) * 100))
@@ -746,10 +776,12 @@ function PlantDiversitySection({ diversity }: { diversity: PlantDiversityResult 
 
   return (
     <div className="section-divider">
-      <h2>Plant diversity</h2>
+      <h2>{t('Plant diversity', 'Pflanzenvielfalt')}</h2>
       <p className="muted">
-        Eat 30 different plants regularly to maximize gut microbiome diversity, improve
-        immune function, and lower the risk of chronic diseases.
+        {t(
+          'Eat 30 different plants regularly to maximize gut microbiome diversity, improve immune function, and lower the risk of chronic diseases.',
+          'Iss regelmäßig 30 verschiedene Pflanzen, um die Vielfalt deines Darmmikrobioms zu maximieren, die Immunfunktion zu verbessern und das Risiko chronischer Krankheiten zu senken.',
+        )}
       </p>
       <div
         className="progress-bar"
@@ -764,13 +796,14 @@ function PlantDiversitySection({ diversity }: { diversity: PlantDiversityResult 
         />
       </div>
       <p className="muted">
-        <strong style={{ color }}>{count}</strong> / {target} different plants
+        <strong style={{ color }}>{count}</strong>{' '}
+        {t(`/ ${target} different plants`, `/ ${target} verschiedene Pflanzen`)}
       </p>
 
       <details className="details-panel">
-        <summary>See what counted ({count})</summary>
+        <summary>{t(`See what counted (${count})`, `Was mitgezählt wurde (${count})`)}</summary>
         {groups.length === 0 ? (
-          <p className="muted">Nothing purchased in this window yet.</p>
+          <p className="muted">{t('Nothing purchased in this window yet.', 'In diesem Zeitraum noch nichts gekauft.')}</p>
         ) : (
           groups.map((group) => (
             <div key={group.label} className="plant-diversity-group">
@@ -794,33 +827,37 @@ function PlantDiversitySection({ diversity }: { diversity: PlantDiversityResult 
 
 // Display label + unit per key -- matches bls_matcher._MICRO_COLS' units
 // (µg for vitamin D/folate/B12/iodine, mg for everything else).
-const MICRONUTRIENT_LABELS: { key: keyof MicronutrientsResult['totals']; label: string; unit: string }[] = [
-  { key: 'vitamin_a_ug', label: 'Vitamin A', unit: 'µg' },
-  { key: 'vitamin_c_mg', label: 'Vitamin C', unit: 'mg' },
-  { key: 'vitamin_d_ug', label: 'Vitamin D', unit: 'µg' },
-  { key: 'vitamin_e_mg', label: 'Vitamin E', unit: 'mg' },
-  { key: 'vitamin_k_ug', label: 'Vitamin K', unit: 'µg' },
-  { key: 'vitamin_b1_mg', label: 'Vitamin B1', unit: 'mg' },
-  { key: 'vitamin_b2_mg', label: 'Vitamin B2', unit: 'mg' },
-  { key: 'niacin_mg', label: 'Niacin (B3)', unit: 'mg' },
-  { key: 'pantothenic_acid_mg', label: 'Pantothenic Acid (B5)', unit: 'mg' },
-  { key: 'vitamin_b6_mg', label: 'Vitamin B6', unit: 'mg' },
-  { key: 'biotin_ug', label: 'Biotin (B7)', unit: 'µg' },
-  { key: 'vitamin_b12_ug', label: 'Vitamin B12', unit: 'µg' },
-  { key: 'folate_ug', label: 'Folate', unit: 'µg' },
-  { key: 'calcium_mg', label: 'Calcium', unit: 'mg' },
-  { key: 'phosphorus_mg', label: 'Phosphorus', unit: 'mg' },
-  { key: 'magnesium_mg', label: 'Magnesium', unit: 'mg' },
-  { key: 'sodium_mg', label: 'Sodium', unit: 'mg' },
-  { key: 'chloride_mg', label: 'Chloride', unit: 'mg' },
-  { key: 'potassium_mg', label: 'Potassium', unit: 'mg' },
-  { key: 'iron_mg', label: 'Iron', unit: 'mg' },
-  { key: 'zinc_mg', label: 'Zinc', unit: 'mg' },
-  { key: 'copper_mg', label: 'Copper', unit: 'mg' },
-  { key: 'manganese_mg', label: 'Manganese', unit: 'mg' },
-  { key: 'iodine_ug', label: 'Iodine', unit: 'µg' },
-  { key: 'fluoride_mg', label: 'Fluoride', unit: 'mg' },
-]
+function micronutrientLabels(
+  t: TranslateFn,
+): { key: keyof MicronutrientsResult['totals']; label: string; unit: string }[] {
+  return [
+    { key: 'vitamin_a_ug', label: t('Vitamin A', 'Vitamin A'), unit: 'µg' },
+    { key: 'vitamin_c_mg', label: t('Vitamin C', 'Vitamin C'), unit: 'mg' },
+    { key: 'vitamin_d_ug', label: t('Vitamin D', 'Vitamin D'), unit: 'µg' },
+    { key: 'vitamin_e_mg', label: t('Vitamin E', 'Vitamin E'), unit: 'mg' },
+    { key: 'vitamin_k_ug', label: t('Vitamin K', 'Vitamin K'), unit: 'µg' },
+    { key: 'vitamin_b1_mg', label: t('Vitamin B1', 'Vitamin B1'), unit: 'mg' },
+    { key: 'vitamin_b2_mg', label: t('Vitamin B2', 'Vitamin B2'), unit: 'mg' },
+    { key: 'niacin_mg', label: t('Niacin (B3)', 'Niacin (B3)'), unit: 'mg' },
+    { key: 'pantothenic_acid_mg', label: t('Pantothenic Acid (B5)', 'Pantothensäure (B5)'), unit: 'mg' },
+    { key: 'vitamin_b6_mg', label: t('Vitamin B6', 'Vitamin B6'), unit: 'mg' },
+    { key: 'biotin_ug', label: t('Biotin (B7)', 'Biotin (B7)'), unit: 'µg' },
+    { key: 'vitamin_b12_ug', label: t('Vitamin B12', 'Vitamin B12'), unit: 'µg' },
+    { key: 'folate_ug', label: t('Folate', 'Folat'), unit: 'µg' },
+    { key: 'calcium_mg', label: t('Calcium', 'Calcium'), unit: 'mg' },
+    { key: 'phosphorus_mg', label: t('Phosphorus', 'Phosphor'), unit: 'mg' },
+    { key: 'magnesium_mg', label: t('Magnesium', 'Magnesium'), unit: 'mg' },
+    { key: 'sodium_mg', label: t('Sodium', 'Natrium'), unit: 'mg' },
+    { key: 'chloride_mg', label: t('Chloride', 'Chlorid'), unit: 'mg' },
+    { key: 'potassium_mg', label: t('Potassium', 'Kalium'), unit: 'mg' },
+    { key: 'iron_mg', label: t('Iron', 'Eisen'), unit: 'mg' },
+    { key: 'zinc_mg', label: t('Zinc', 'Zink'), unit: 'mg' },
+    { key: 'copper_mg', label: t('Copper', 'Kupfer'), unit: 'mg' },
+    { key: 'manganese_mg', label: t('Manganese', 'Mangan'), unit: 'mg' },
+    { key: 'iodine_ug', label: t('Iodine', 'Jod'), unit: 'µg' },
+    { key: 'fluoride_mg', label: t('Fluoride', 'Fluorid'), unit: 'mg' },
+  ]
+}
 
 function MicronutrientsSection({ micronutrients }: { micronutrients: MicronutrientsResult }) {
   const {
@@ -851,7 +888,7 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
   // the top rather than in a fixed, alphabetical-ish order. Nutrients with
   // no resolvable target (coveragePct null) sort last since they can't be
   // ranked at all.
-  const rows = MICRONUTRIENT_LABELS.map(({ key, label, unit }) => {
+  const rows = micronutrientLabels(t).map(({ key, label, unit }) => {
     const purchasedPerDay = totals[key] / days_of_data
     const target = targets?.[key] ?? null
     const coveragePct = target !== null && target > 0
@@ -875,19 +912,28 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
 
   return (
     <div className="section-divider">
-      <h2>Your micronutrients</h2>
+      <h2>{t('Your micronutrients', 'Deine Mikronährstoffe')}</h2>
       <p className="muted">
-        Averaged daily intake from the last {days_of_data} day{days_of_data === 1 ? '' : 's'}{' '}
-        of purchases, sourced from the German BLS food database, against your personal
-        daily target.
+        {t(
+          `Averaged daily intake from the last ${days_of_data} day${
+            days_of_data === 1 ? '' : 's'
+          } of purchases, sourced from the German BLS food database, against your personal daily target.`,
+          `Durchschnittliche Tagesaufnahme der letzten ${days_of_data} Tag${
+            days_of_data === 1 ? '' : 'e'
+          } deiner Einkäufe, laut der deutschen BLS-Lebensmitteldatenbank, im Vergleich zu deinem persönlichen Tagesziel.`,
+        )}
       </p>
       <p className="callout callout--muted">{purchasesOnlyNote(t)}</p>
       {partialWindow && (
         <p className="callout callout--muted">
-          Your purchase history only goes back {days_of_data} day{days_of_data === 1 ? '' : 's'}{' '}
-          so far (less than the {window_days}-day window) — the daily averages below are
-          calculated over that shorter span, and will settle in as you upload more
-          receipts over time.
+          {t(
+            `Your purchase history only goes back ${days_of_data} day${
+              days_of_data === 1 ? '' : 's'
+            } so far (less than the ${window_days}-day window) — the daily averages below are calculated over that shorter span, and will settle in as you upload more receipts over time.`,
+            `Deine Einkaufshistorie reicht bisher nur ${days_of_data} Tag${
+              days_of_data === 1 ? '' : 'e'
+            } zurück (weniger als das ${window_days}-Tage-Fenster) – die Durchschnittswerte unten werden über diesen kürzeren Zeitraum berechnet und pendeln sich ein, je mehr Belege du mit der Zeit hochlädst.`,
+          )}
         </p>
       )}
       <div className="card micronutrient-card">
@@ -895,10 +941,10 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
           <table className="micronutrient-table">
             <thead>
               <tr>
-                <th>Nutrient</th>
-                <th>Purchased</th>
-                <th>Target</th>
-                <th>Coverage</th>
+                <th>{t('Nutrient', 'Nährstoff')}</th>
+                <th>{t('Purchased', 'Gekauft')}</th>
+                <th>{t('Target', 'Ziel')}</th>
+                <th>{t('Coverage', 'Abdeckung')}</th>
               </tr>
             </thead>
             <tbody>
@@ -972,7 +1018,7 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
                           )}
                           <div className="micronutrient-drivers">
                             <p className="micronutrient-info-section__title">
-                              Drivers from your purchases
+                              {t('Drivers from your purchases', 'Quellen aus deinen Einkäufen')}
                             </p>
                             {drivers.length > 0 ? (
                               <ul className="driver-list">
@@ -987,7 +1033,10 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
                               </ul>
                             ) : (
                               <p className="muted">
-                                None of your purchases contain {label.toLowerCase()} yet.
+                                {t(
+                                  `None of your purchases contain ${label.toLowerCase()} yet.`,
+                                  `Keiner deiner Einkäufe enthält bisher ${label.toLowerCase()}.`,
+                                )}
                               </p>
                             )}
                           </div>
@@ -1002,19 +1051,21 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
         </div>
       </div>
       <p className="muted">
-        Target values are personalized to your age, sex, and life stage, sourced from
-        the{' '}
+        {t('Target values are personalized to your age, sex, and life stage, sourced from the', 'Die Zielwerte sind auf dein Alter, Geschlecht und deine Lebensphase abgestimmt und stammen von der')}{' '}
         <a href="https://www.dge.de/" target="_blank" rel="noreferrer">
           DGE
         </a>{' '}
-        (Deutsche Gesellschaft für Ernährung — the German Nutrition Society).
+        {t(
+          '(Deutsche Gesellschaft für Ernährung — the German Nutrition Society).',
+          '(Deutsche Gesellschaft für Ernährung).',
+        )}
       </p>
       {micro_coverage_pct !== null && (
         <p className="callout callout--muted">
-          {items_with_micros_count}/{items_considered} purchased items have real
-          micronutrient data behind them, sourced from the German BLS food database —
-          the rest come from packaged-product or category-estimate data that doesn't
-          include micronutrients.
+          {t(
+            `${items_with_micros_count}/${items_considered} purchased items have real micronutrient data behind them, sourced from the German BLS food database — the rest come from packaged-product or category-estimate data that doesn't include micronutrients.`,
+            `${items_with_micros_count}/${items_considered} gekaufte Artikel haben echte Mikronährstoffdaten, laut der deutschen BLS-Lebensmitteldatenbank – der Rest stammt aus Daten für verpackte Produkte oder Kategorie-Schätzungen, die keine Mikronährstoffe enthalten.`,
+          )}
         </p>
       )}
     </div>
@@ -1025,27 +1076,35 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
 // as TipsPage.tsx's FUN_GENERATING_PHRASES: no discrete backend phase to
 // reflect, so these just rotate on a timer to keep the wait from feeling
 // like a frozen button.
-const FUN_ANALYZING_PHRASES = [
-  'Comparing your purchases against your targets…',
-  'Checking what fits your diet and what you’d rather avoid…',
-  'Turning the gaps into something you can actually shop for…',
-] as const
+function funAnalyzingPhrases(t: TranslateFn) {
+  return [
+    t('Comparing your purchases against your targets…', 'Vergleiche deine Einkäufe mit deinen Zielen…'),
+    t(
+      'Checking what fits your diet and what you’d rather avoid…',
+      'Prüfe, was zu deiner Ernährung passt und was du eher vermeiden solltest…',
+    ),
+    t(
+      'Turning the gaps into something you can actually shop for…',
+      'Verwandle die Lücken in etwas, das du tatsächlich einkaufen kannst…',
+    ),
+  ]
+}
 const PHRASE_ROTATE_MS = 5000
 
 function GapRecommendationsSection({
-  recommendations,
+  recommendation,
+  canGenerate,
   onGenerated,
 }: {
-  recommendations: GapRecommendationsResult[]
+  recommendation: GapRecommendationsResult | null
+  canGenerate: boolean
   onGenerated: (recommendation: GapRecommendationsResult) => void
 }) {
+  const { t } = useI18n()
+  const analyzingPhrases = funAnalyzingPhrases(t)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [phraseIndex, setPhraseIndex] = useState(0)
-  // Defaults to the most recently generated one -- recommendations is
-  // already the full fetched list by the time this mounts (ResultsPage
-  // only renders this section once its own `loading` gate has cleared).
-  const [activeIndex, setActiveIndex] = useState(Math.max(0, recommendations.length - 1))
   const phraseTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -1059,17 +1118,16 @@ function GapRecommendationsSection({
     setError(null)
     setPhraseIndex(0)
     phraseTimerRef.current = setInterval(() => {
-      setPhraseIndex((i) => (i + 1) % FUN_ANALYZING_PHRASES.length)
+      setPhraseIndex((i) => (i + 1) % analyzingPhrases.length)
     }, PHRASE_ROTATE_MS)
     try {
       const result = await generateGapRecommendations()
       onGenerated(result)
-      // recommendations.length is still the pre-generate count in this
-      // closure, which is exactly the new item's index once it lands.
-      setActiveIndex(recommendations.length)
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : 'Could not generate recommendations right now.',
+        err instanceof ApiError
+          ? err.message
+          : t('Could not generate recommendations right now.', 'Empfehlungen konnten gerade nicht erstellt werden.'),
       )
     } finally {
       setGenerating(false)
@@ -1080,48 +1138,21 @@ function GapRecommendationsSection({
     }
   }
 
-  const current = recommendations[activeIndex] ?? null
-  const atDailyLimit = recommendations.length >= DAILY_RECOMMENDATION_LIMIT
-
   return (
     <div className="section-divider">
-      <h2>Quick Wins</h2>
+      <h2>{t("Nährbert's Quick Wins", "Nährbert's Quick Wins")}</h2>
       <p className="muted">
-        Groq-generated, concrete actions for closing the macro and micronutrient gaps above,
-        respecting your saved dietary style, allergies, and dislikes. Up to{' '}
-        {DAILY_RECOMMENDATION_LIMIT} per day, each one generated only when you ask for it.
+        {t(
+          "Suggestions for closing the macro and micronutrient gaps above, respecting your saved dietary style, allergies, and dislikes. Generate a new one after you've uploaded a new receipt — once a day at most.",
+          'Vorschläge zum Schließen der Makro- und Mikronährstofflücken oben, unter Berücksichtigung deines Ernährungsstils, deiner Allergien und Abneigungen. Erstelle einen neuen, nachdem du einen neuen Beleg hochgeladen hast — höchstens einmal pro Tag.',
+        )}
       </p>
 
-      {current && (
+      {recommendation && (
         <div className="card">
-          {recommendations.length > 1 && (
-            <div className="gap-recommendation-pager">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
-                disabled={activeIndex === 0}
-                aria-label="Previous Quick Win"
-              >
-                ‹
-              </button>
-              <span className="muted">
-                {activeIndex + 1} of {recommendations.length}
-              </span>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setActiveIndex((i) => Math.min(recommendations.length - 1, i + 1))}
-                disabled={activeIndex === recommendations.length - 1}
-                aria-label="Next Quick Win"
-              >
-                ›
-              </button>
-            </div>
-          )}
-          <p>{current.summary}</p>
+          <p>{recommendation.summary}</p>
           <ul className="gap-recommendation-list">
-            {current.items.map((item, i) => (
+            {recommendation.items.map((item, i) => (
               <li key={i}>
                 <strong>{item.focus}: </strong>
                 {item.suggestion}
@@ -1137,9 +1168,7 @@ function GapRecommendationsSection({
         </p>
       )}
 
-      {atDailyLimit ? (
-        <p className="muted">You've used both Quick Wins for today — check back tomorrow for more.</p>
-      ) : (
+      {canGenerate ? (
         <button
           type="button"
           className="btn btn-primary"
@@ -1147,14 +1176,21 @@ function GapRecommendationsSection({
           disabled={generating}
         >
           {generating
-            ? 'Analyzing…'
-            : recommendations.length === 0
-              ? 'Get Quick Wins'
-              : 'Get another Quick Win'}
+            ? t('Analyzing…', 'Analysiere…')
+            : recommendation === null
+              ? t('Get Quick Wins', 'Quick Wins abrufen')
+              : t('Refresh Quick Wins', 'Quick Wins aktualisieren')}
         </button>
+      ) : (
+        <p className="muted">
+          {t(
+            'Upload a new receipt to unlock a fresh one — once a day at most.',
+            'Lade einen neuen Beleg hoch, um einen neuen Vorschlag freizuschalten — höchstens einmal pro Tag.',
+          )}
+        </p>
       )}
 
-      {generating && <p className="muted recipe-generating-note">{FUN_ANALYZING_PHRASES[phraseIndex]}</p>}
+      {generating && <p className="muted recipe-generating-note">{analyzingPhrases[phraseIndex]}</p>}
     </div>
   )
 }

@@ -301,7 +301,7 @@ export function PantryPage() {
       await deletePantryRemoval(removalId)
       await load()
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : 'Could not undo that.')
+      setActionError(err instanceof ApiError ? err.message : t('Could not undo that.', 'Das konnte nicht rückgängig gemacht werden.'))
     }
   }
 
@@ -356,15 +356,17 @@ export function PantryPage() {
   ) : (
     <div className="pantry-add">
       <p className="pantry-add__hint">
-        Got food at home that didn't come from an uploaded receipt? Add it here by hand so
-        your pantry stays complete.
+        {t(
+          "Got food at home that didn't come from an uploaded receipt? Add it here by hand so your pantry stays complete.",
+          'Hast du Lebensmittel zu Hause, die nicht von einem hochgeladenen Beleg stammen? Füge sie hier per Hand hinzu, damit dein Vorrat vollständig bleibt.',
+        )}
       </p>
       <button
         type="button"
         className="btn btn-secondary btn-accent pantry-add-btn"
         onClick={() => setAdding(true)}
       >
-        ＋ Add item manually
+        ＋ {t('Add item manually', 'Artikel manuell hinzufügen')}
       </button>
     </div>
   )
@@ -375,9 +377,12 @@ export function PantryPage() {
         <h1>{t('Pantry', 'Vorrat')}</h1>
         {undoBanner}
         <p>
-          Your pantry is empty. It fills up as you{' '}
-          <Link to="/upload">upload receipts</Link> or add items by hand, and empties as
-          you mark things eaten or removed.
+          {t('Your pantry is empty. It fills up as you', 'Dein Vorrat ist leer. Er füllt sich, wenn du')}{' '}
+          <Link to="/upload">{t('upload receipts', 'Belege hochlädst')}</Link>{' '}
+          {t(
+            'or add items by hand, and empties as you mark things eaten or removed.',
+            'oder Artikel per Hand hinzufügst, und leert sich, wenn du Dinge als verbraucht oder entfernt markierst.',
+          )}
         </p>
         {addControls}
       </section>
@@ -424,7 +429,10 @@ export function PantryPage() {
     <section>
       <h1>{t('Pantry', 'Vorrat')}</h1>
       <p className="page-lead">
-        All the products in your home pantry. Update what you have eaten or thrown away.
+        {t(
+          'All the products in your home pantry. Update what you have eaten or thrown away.',
+          'Alle Produkte in deinem Vorrat. Aktualisiere, was du gegessen oder weggeworfen hast.',
+        )}
       </p>
 
       {undoBanner}
@@ -449,13 +457,13 @@ export function PantryPage() {
           <span className="empty-state__emoji" aria-hidden="true">
             🔍
           </span>
-          <p>No items match the current filters.</p>
+          <p>{t('No items match the current filters.', 'Keine Artikel entsprechen den aktuellen Filtern.')}</p>
           <button
             type="button"
             className="btn btn-soft"
             onClick={() => setFilters(NO_FILTERS)}
           >
-            Clear filters
+            {t('Clear filters', 'Filter zurücksetzen')}
           </button>
         </div>
       ) : view === 'category' ? (
@@ -478,7 +486,7 @@ export function PantryPage() {
                   <span className="pantry-expand-toggle__caret" aria-hidden="true">
                     {allExpanded ? '▾' : '▸'}
                   </span>
-                  {allExpanded ? 'Collapse all' : 'Expand all'}
+                  {allExpanded ? t('Collapse all', 'Alle einklappen') : t('Expand all', 'Alle ausklappen')}
                 </button>
               </div>
               {cats.map((cat) => {
@@ -622,7 +630,9 @@ function PantryRow({
                 : 'purchase-row__name'
             }
             title={
-              match?.lowConfidence ? 'Category estimate, not a verified match' : undefined
+              match?.lowConfidence
+                ? t('Category estimate, not a verified match', 'Kategorie-Schätzung, kein bestätigter Treffer')
+                : undefined
             }
           >
             {match?.lowConfidence ? '~ ' : ''}
@@ -803,7 +813,7 @@ function PantryRow({
               {partial ? ` ${amountLabel}` : t(' all', ' alles')}
             </button>
             <button type="button" className="btn-link" onClick={() => setPanel(null)}>
-              Cancel
+              {t('Cancel', 'Abbrechen')}
             </button>
           </div>
         </div>

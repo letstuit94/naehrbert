@@ -333,28 +333,30 @@ def update_recipe(recipe_id: str, fields: dict) -> dict:
 
 # ── gap_recommendations (Insights page gap-closing recommendations) ──────
 
-def list_gap_recommendations_today(profile_id: int) -> List[dict]:
-    """This profile's recommendations from today (UTC), oldest first -- up
-    to DAILY_GENERATION_LIMIT (api/recommendations.py), each one only ever
-    created by an explicit user action, never auto-generated."""
-
-    start_of_day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+def get_gap_recommendation(profile_id: int) -> Optional[dict]:
+    # order+limit rather than a plain eq(): belt-and-suspenders for the
+    # window between deploying this revert and running 0019's migration,
+    # where a profile that used 0018's multi-row model may transiently
+    # still have more than one row before the PK dedup runs.
     res = (
         get_client()
         .table("gap_recommendations")
         .select("*")
         .eq("profile_id", profile_id)
-        .gte("created_at", start_of_day.isoformat())
-        .order("created_at")
+        .order("created_at", desc=True)
+        .limit(1)
         .execute()
     )
-    return res.data or []
+    rows = res.data or []
+    return rows[0] if rows else None
 
 
-def insert_gap_recommendation(profile_id: int, summary: str, items: list) -> dict:
-    """Appends a new recommendation rather than replacing the previous one
-    -- up to DAILY_GENERATION_LIMIT of these accumulate per profile per day
-    (see list_gap_recommendations_today)."""
+def upsert_gap_recommendation(profile_id: int, summary: str, items: list) -> dict:
+    """One row per profile (profile_id is the primary key) -- a regenerate
+    replaces the previous recommendation rather than adding to a history.
+    Regeneration itself is gated well before this is called (see
+    api/recommendations.py's _can_generate): once per day, and only once a
+    new receipt has been confirmed since the last recommendation."""
 
     row = {
         "profile_id": profile_id,
@@ -362,8 +364,27 @@ def insert_gap_recommendation(profile_id: int, summary: str, items: list) -> dic
         "items": items,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    res = get_client().table("gap_recommendations").insert(row).execute()
+    res = get_client().table("gap_recommendations").upsert(row, on_conflict="profile_id").execute()
     return res.data[0]
+
+
+def has_receipt_confirmed_after(profile_id: int, since: datetime) -> bool:
+    """Whether this profile has confirmed at least one receipt since
+    `since` -- the "new data" half of the gap-recommendation regeneration
+    gate (the other half, a day having passed, is a plain timestamp
+    comparison and needs no query)."""
+
+    res = (
+        get_client()
+        .table("receipts")
+        .select("id")
+        .eq("profile_id", profile_id)
+        .eq("status", "confirmed")
+        .gt("created_at", since.isoformat())
+        .limit(1)
+        .execute()
+    )
+    return bool(res.data)
 
 
 # ── pantry / basket (Vorrat.md) ──────────────────────────────────────────

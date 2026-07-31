@@ -452,7 +452,7 @@ function RecipeGenerationForm({
       )}
 
       <button className="btn btn-primary" type="submit" disabled={generating}>
-        {generating ? 'Generating…' : 'Generate recipe'}
+        {generating ? t('Generating…', 'Erstelle…') : t('Generate recipe', 'Rezept erstellen')}
       </button>
 
       {generating && (
@@ -499,13 +499,21 @@ function RecipeSummaryCard({
   const [feedbackBusy, setFeedbackBusy] = useState(false)
 
   async function handleDelete() {
-    if (!window.confirm(`Delete "${recipe.title}"? This can't be undone.`)) return
+    if (
+      !window.confirm(
+        t(
+          `Delete "${recipe.title}"? This can't be undone.`,
+          `„${recipe.title}" löschen? Das kann nicht rückgängig gemacht werden.`,
+        ),
+      )
+    )
+      return
     setArchiving(true)
     try {
       await archiveRecipe(recipe.id)
       onArchived()
     } catch {
-      window.alert('Could not delete that recipe. Please try again.')
+      window.alert(t('Could not delete that recipe. Please try again.', 'Das Rezept konnte nicht gelöscht werden. Bitte versuche es erneut.'))
       setArchiving(false)
     }
   }
@@ -544,7 +552,7 @@ function RecipeSummaryCard({
             void handleDelete()
           }}
           disabled={archiving}
-          aria-label={`Delete ${recipe.title}`}
+          aria-label={t(`Delete ${recipe.title}`, `${recipe.title} löschen`)}
         >
           ×
         </button>
@@ -553,11 +561,18 @@ function RecipeSummaryCard({
         </div>
         <div className="recipe-card__meta-row">
           <span className="recipe-card__meta">
-            {totalMinutes} min · Serves {recipe.servings ?? '—'} ·{' '}
-            {kcalPerServing !== null
-              ? `${kcalPerServing} kcal/serving`
-              : `${Math.round(recipe.calories_kcal)} kcal total`}
-            {share && ` · P ${share.protein}% F ${share.fat}% C ${share.carb}%`}
+            {t(
+              `${totalMinutes} min · Serves ${recipe.servings ?? '—'} · ${
+                kcalPerServing !== null
+                  ? `${kcalPerServing} kcal/serving`
+                  : `${Math.round(recipe.calories_kcal)} kcal total`
+              }${share ? ` · P ${share.protein}% F ${share.fat}% C ${share.carb}%` : ''}`,
+              `${totalMinutes} Min. · Für ${recipe.servings ?? '—'} Portionen · ${
+                kcalPerServing !== null
+                  ? `${kcalPerServing} kcal/Portion`
+                  : `${Math.round(recipe.calories_kcal)} kcal gesamt`
+              }${share ? ` · P ${share.protein}% F ${share.fat}% KH ${share.carb}%` : ''}`,
+            )}
           </span>
           {recipe.dietary_label && (
             <span className="chip recipe-card__label">
@@ -584,31 +599,33 @@ function RecipeSummaryCard({
           ))}
         </ol>
 
-        <h3>Nutrition</h3>
+        <h3>{t('Nutrition', 'Nährwerte')}</h3>
         <div className="recipe-card__nutrition">
           <span className="nutrient-chip">
             <strong>{Math.round(recipe.calories_kcal)}</strong> kcal
           </span>
           <span className="nutrient-chip">
-            <strong>{Math.round(recipe.protein_g)}g</strong> protein
+            <strong>{Math.round(recipe.protein_g)}g</strong> {t('protein', 'Protein')}
           </span>
           <span className="nutrient-chip">
-            <strong>{Math.round(recipe.fat_g)}g</strong> fat
+            <strong>{Math.round(recipe.fat_g)}g</strong> {t('fat', 'Fett')}
           </span>
           <span className="nutrient-chip">
-            <strong>{Math.round(recipe.carbs_g)}g</strong> carbs
+            <strong>{Math.round(recipe.carbs_g)}g</strong> {t('carbs', 'Kohlenhydrate')}
           </span>
           <span className="nutrient-chip">
-            <strong>{Math.round(recipe.fiber_g)}g</strong> fiber
+            <strong>{Math.round(recipe.fiber_g)}g</strong> {t('fiber', 'Ballaststoffe')}
           </span>
         </div>
         <p className="muted recipe-card__estimate-note">
-          Whole recipe, estimated by Nährbert — shop these ingredients and upload the
-          receipt to log the exact numbers.
+          {t(
+            'Whole recipe, estimated by Nährbert — shop these ingredients and upload the receipt to log the exact numbers.',
+            'Ganzes Rezept, geschätzt von Nährbert — kaufe diese Zutaten ein und lade den Beleg hoch, um die genauen Zahlen zu erfassen.',
+          )}
         </p>
 
         <div className="recipe-card__feedback">
-          <span className="muted">What did you think of this recipe?</span>
+          <span className="muted">{t('What did you think of this recipe?', 'Was hältst du von diesem Rezept?')}</span>
           <button
             type="button"
             className={
@@ -619,7 +636,7 @@ function RecipeSummaryCard({
             onClick={() => handleFeedback('up')}
             disabled={feedbackBusy}
             aria-pressed={recipe.feedback === 'up'}
-            aria-label="Thumbs up"
+            aria-label={t('Thumbs up', 'Daumen hoch')}
           >
             👍
           </button>
@@ -633,7 +650,7 @@ function RecipeSummaryCard({
             onClick={() => handleFeedback('down')}
             disabled={feedbackBusy}
             aria-pressed={recipe.feedback === 'down'}
-            aria-label="Thumbs down"
+            aria-label={t('Thumbs down', 'Daumen runter')}
           >
             👎
           </button>

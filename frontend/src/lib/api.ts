@@ -491,30 +491,32 @@ export interface GapRecommendationItem {
   suggestion: string
 }
 
-/** Up to DAILY_RECOMMENDATION_LIMIT accumulate per profile per (UTC) day
- * (backend/app/api/recommendations.py) -- each one only ever created by an
- * explicit "Get Quick Wins" click, never auto-generated. */
+/** One row per profile (backend/app/models/recommendation.py) -- replaced
+ * on each regenerate, not an accumulating history like Recipe. `null` from
+ * GET /analysis/recommendations means nothing's been generated yet. */
 export interface GapRecommendationsResult {
-  id: string
   summary: string
   items: GapRecommendationItem[]
   created_at: string
 }
 
-/** Mirrors backend/app/api/recommendations.py's DAILY_GENERATION_LIMIT. */
-export const DAILY_RECOMMENDATION_LIMIT = 2
+export interface GapRecommendationsState {
+  recommendation: GapRecommendationsResult | null
+  /** Whether POST .../generate is currently allowed -- false once a
+   * recommendation exists until BOTH a new (UTC) day has started and a new
+   * receipt has been confirmed since it was generated (backend/app/api/
+   * recommendations.py's _can_generate). Lets the UI show/hide the
+   * regenerate button without a failed POST round-trip. */
+  can_generate: boolean
+}
 
-/** Today's recommendations for this profile (0 to DAILY_RECOMMENDATION_LIMIT),
- * oldest first. */
-export function getGapRecommendations(): Promise<GapRecommendationsResult[]> {
-  return request<{ recommendations: GapRecommendationsResult[] }>('/analysis/recommendations').then(
-    (r) => r.recommendations,
-  )
+export function getGapRecommendations(): Promise<GapRecommendationsState> {
+  return request<GapRecommendationsState>('/analysis/recommendations')
 }
 
 /** The one action that actually calls Groq -- getGapRecommendations()
  * above is just a cheap DB read, safe to fetch on every page load. Throws
- * an ApiError (429) once DAILY_RECOMMENDATION_LIMIT is reached for today. */
+ * an ApiError (429) if called while can_generate is false. */
 export function generateGapRecommendations(): Promise<GapRecommendationsResult> {
   return request<{ recommendation: GapRecommendationsResult }>('/analysis/recommendations/generate', {
     method: 'POST',

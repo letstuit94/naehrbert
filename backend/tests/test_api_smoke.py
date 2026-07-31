@@ -10,6 +10,8 @@ settings at import time — no live calls are made either way because repo
 is patched below.
 """
 
+from datetime import datetime, timezone
+
 from fastapi.testclient import TestClient
 
 from backend.app.api import analysis as analysis_api
@@ -692,37 +694,44 @@ def test_generate_recipe_returns_503_when_groq_not_configured(monkeypatch):
 # ── Insights page gap-closing recommendations (api/recommendations.py) ───
 
 
-def test_read_recommendations_returns_empty_list_when_none_generated_yet(monkeypatch):
+def test_read_recommendation_returns_null_and_can_generate_when_none_generated_yet(monkeypatch):
     _fake_auth(monkeypatch)
-    monkeypatch.setattr(repo, "list_gap_recommendations_today", lambda profile_id: [])
+    monkeypatch.setattr(repo, "get_gap_recommendation", lambda profile_id: None)
     resp = client.get("/analysis/recommendations", headers=AUTH)
     assert resp.status_code == 200
-    assert resp.json() == {"recommendations": []}
+    assert resp.json() == {"recommendation": None, "can_generate": True}
 
 
-def test_read_recommendations_returns_todays_persisted_rows(monkeypatch):
+def test_read_recommendation_can_generate_true_when_new_day_and_new_receipt(monkeypatch):
     _fake_auth(monkeypatch)
-    stored_rows = [
-        {
-            "profile_id": 1,
-            "summary": "Eat more greens.",
-            "items": [{"focus": "fiber", "suggestion": "Add more vegetables."}],
-            "created_at": "2026-07-30T00:00:00+00:00",
-        },
-        {
-            "profile_id": 1,
-            "summary": "Cut back on salt.",
-            "items": [{"focus": "sodium", "suggestion": "Drop processed meats."}],
-            "created_at": "2026-07-30T08:00:00+00:00",
-        },
-    ]
-    monkeypatch.setattr(repo, "list_gap_recommendations_today", lambda profile_id: stored_rows)
+    stored_row = {
+        "profile_id": 1,
+        "summary": "Eat more greens.",
+        "items": [{"focus": "fiber", "suggestion": "Add more vegetables."}],
+        "created_at": "2026-07-29T00:00:00+00:00",
+    }
+    monkeypatch.setattr(repo, "get_gap_recommendation", lambda profile_id: stored_row)
+    monkeypatch.setattr(repo, "has_receipt_confirmed_after", lambda profile_id, since: True)
     resp = client.get("/analysis/recommendations", headers=AUTH)
     assert resp.status_code == 200
-    body = resp.json()["recommendations"]
-    assert len(body) == 2
-    assert body[0]["summary"] == "Eat more greens."
-    assert body[1]["summary"] == "Cut back on salt."
+    body = resp.json()
+    assert body["recommendation"]["summary"] == "Eat more greens."
+    assert body["can_generate"] is True
+
+
+def test_read_recommendation_can_generate_false_without_new_receipt(monkeypatch):
+    _fake_auth(monkeypatch)
+    stored_row = {
+        "profile_id": 1,
+        "summary": "Eat more greens.",
+        "items": [],
+        "created_at": "2026-07-29T00:00:00+00:00",
+    }
+    monkeypatch.setattr(repo, "get_gap_recommendation", lambda profile_id: stored_row)
+    monkeypatch.setattr(repo, "has_receipt_confirmed_after", lambda profile_id, since: False)
+    resp = client.get("/analysis/recommendations", headers=AUTH)
+    assert resp.status_code == 200
+    assert resp.json()["can_generate"] is False
 
 
 def test_read_recommendation_401_without_login():
@@ -732,7 +741,7 @@ def test_read_recommendation_401_without_login():
 
 def test_generate_recommendation_endpoint(monkeypatch):
     _fake_auth(monkeypatch)
-    monkeypatch.setattr(repo, "list_gap_recommendations_today", lambda profile_id: [])
+    monkeypatch.setattr(repo, "get_gap_recommendation", lambda profile_id: None)
     monkeypatch.setattr(repo, "get_profile", lambda profile_id: _RECIPE_PROFILE_ROW)
     monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: [])
 
@@ -744,17 +753,16 @@ def test_generate_recommendation_endpoint(monkeypatch):
 
     captured = {}
 
-    def fake_insert(profile_id, summary, items):
+    def fake_upsert(profile_id, summary, items):
         captured.update(profile_id=profile_id, summary=summary, items=items)
         return {
-            "id": "11111111-1111-1111-1111-111111111111",
             "profile_id": profile_id,
             "summary": summary,
             "items": items,
             "created_at": "2026-07-30T00:00:00+00:00",
         }
 
-    monkeypatch.setattr(repo, "insert_gap_recommendation", fake_insert)
+    monkeypatch.setattr(repo, "upsert_gap_recommendation", fake_upsert)
 
     resp = client.post("/analysis/recommendations/generate", headers=AUTH)
     assert resp.status_code == 200
@@ -766,33 +774,72 @@ def test_generate_recommendation_endpoint(monkeypatch):
 
 def test_generate_recommendation_404_without_profile(monkeypatch):
     _fake_auth(monkeypatch)
-    monkeypatch.setattr(repo, "list_gap_recommendations_today", lambda profile_id: [])
+    monkeypatch.setattr(repo, "get_gap_recommendation", lambda profile_id: None)
     monkeypatch.setattr(repo, "get_profile", lambda profile_id: None)
     resp = client.post("/analysis/recommendations/generate", headers=AUTH)
     assert resp.status_code == 404
 
 
-def test_generate_recommendation_429_at_daily_limit(monkeypatch):
+def test_generate_recommendation_429_when_same_day(monkeypatch):
     _fake_auth(monkeypatch)
-    already_generated = [
-        {
-            "id": "11111111-1111-1111-1111-111111111111",
-            "profile_id": 1,
-            "summary": "Eat more greens.",
-            "items": [],
-            "created_at": "2026-07-30T00:00:00+00:00",
-        },
-        {
-            "id": "22222222-2222-2222-2222-222222222222",
-            "profile_id": 1,
-            "summary": "Cut back on salt.",
-            "items": [],
-            "created_at": "2026-07-30T08:00:00+00:00",
-        },
-    ]
-    monkeypatch.setattr(repo, "list_gap_recommendations_today", lambda profile_id: already_generated)
+    stored_row = {
+        "profile_id": 1,
+        "summary": "Eat more greens.",
+        "items": [],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    monkeypatch.setattr(repo, "get_gap_recommendation", lambda profile_id: stored_row)
+    monkeypatch.setattr(repo, "has_receipt_confirmed_after", lambda profile_id, since: True)
     resp = client.post("/analysis/recommendations/generate", headers=AUTH)
     assert resp.status_code == 429
+
+
+def test_generate_recommendation_429_without_new_receipt(monkeypatch):
+    _fake_auth(monkeypatch)
+    stored_row = {
+        "profile_id": 1,
+        "summary": "Eat more greens.",
+        "items": [],
+        "created_at": "2026-07-29T00:00:00+00:00",
+    }
+    monkeypatch.setattr(repo, "get_gap_recommendation", lambda profile_id: stored_row)
+    monkeypatch.setattr(repo, "has_receipt_confirmed_after", lambda profile_id, since: False)
+    resp = client.post("/analysis/recommendations/generate", headers=AUTH)
+    assert resp.status_code == 429
+
+
+def test_generate_recommendation_succeeds_when_new_day_and_new_receipt(monkeypatch):
+    _fake_auth(monkeypatch)
+    stored_row = {
+        "profile_id": 1,
+        "summary": "Eat more greens.",
+        "items": [],
+        "created_at": "2026-07-29T00:00:00+00:00",
+    }
+    monkeypatch.setattr(repo, "get_gap_recommendation", lambda profile_id: stored_row)
+    monkeypatch.setattr(repo, "has_receipt_confirmed_after", lambda profile_id, since: True)
+    monkeypatch.setattr(repo, "get_profile", lambda profile_id: _RECIPE_PROFILE_ROW)
+    monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: [])
+
+    fake_result = GapRecommendations(
+        summary="Fresh summary.",
+        items=[GapRecommendationItem(focus="iron", suggestion="Eat more lentils.")],
+    )
+    monkeypatch.setattr(recommendations_api, "generate_recommendations", lambda *a, **k: fake_result)
+    monkeypatch.setattr(
+        repo,
+        "upsert_gap_recommendation",
+        lambda profile_id, summary, items: {
+            "profile_id": profile_id,
+            "summary": summary,
+            "items": items,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+
+    resp = client.post("/analysis/recommendations/generate", headers=AUTH)
+    assert resp.status_code == 200
+    assert resp.json()["recommendation"]["summary"] == "Fresh summary."
 
 
 def test_generate_recommendation_401_without_login():
@@ -802,7 +849,7 @@ def test_generate_recommendation_401_without_login():
 
 def test_generate_recommendation_returns_503_when_groq_not_configured(monkeypatch):
     _fake_auth(monkeypatch)
-    monkeypatch.setattr(repo, "list_gap_recommendations_today", lambda profile_id: [])
+    monkeypatch.setattr(repo, "get_gap_recommendation", lambda profile_id: None)
     monkeypatch.setattr(repo, "get_profile", lambda profile_id: _RECIPE_PROFILE_ROW)
     monkeypatch.setattr(analysis_api.repo, "get_all_confirmed_receipt_items", lambda profile_id: [])
 

@@ -67,7 +67,7 @@ export function AddItemPanel({
       await rejectMatchCandidate(name.trim(), candidate)
       await runSearch()
     } catch {
-      setError('Could not dismiss that candidate. Please try again.')
+      setError(t('Could not dismiss that candidate. Please try again.', 'Dieser Vorschlag konnte nicht verworfen werden. Bitte versuche es erneut.'))
     } finally {
       setRejecting(null)
     }
@@ -212,6 +212,7 @@ export function AddItemPanel({
                 onReject={reject}
                 rejecting={rejecting}
                 offRateLimited={candidates.off_rate_limited}
+                t={t}
               />
               <CandidateSection
                 source="bls"
@@ -219,6 +220,7 @@ export function AddItemPanel({
                 onPick={pick}
                 onReject={reject}
                 rejecting={rejecting}
+                t={t}
               />
             </>
           )}

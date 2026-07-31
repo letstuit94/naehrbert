@@ -1575,6 +1575,12 @@ a.btn {
   margin: 0;
 }
 
+.onboarding-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .progress-bar {
   position: relative;
   height: 12px;

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { getMe } from './api'
+import { ApiError, getMe } from './api'
 import { supabase } from './supabaseClient'
 
 /**
@@ -42,10 +42,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await getMe()
       setProfileId(me.profile_id)
       setStatus(me.profile_id !== null ? 'ready' : 'no-profile')
-    } catch {
-      // A transient backend hiccup shouldn't silently claim "ready"
-      // without confirmation -- fall back to the claim/create screen (the
-      // safer of the two non-ready states) rather than pretending success.
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        // The locally-stored session (getSession() above found *something*)
+        // is one the backend actually rejects -- e.g. a refresh token that
+        // expired while the tab sat open/backgrounded. Routing this to
+        // "no-profile" used to send people straight into onboarding with a
+        // session that can never actually save anything (every write hits
+        // this same 401) and no way out, since onboarding has no sign-out
+        // button. Clearing it and treating it as signed-out sends them back
+        // to a normal, recoverable login instead.
+        await supabase.auth.signOut()
+        setProfileId(null)
+        setStatus('signed-out')
+        return
+      }
+      // Any other failure (e.g. a transient backend hiccup) shouldn't
+      // silently claim "ready" without confirmation -- fall back to the
+      // claim/create screen (the safer of the two non-ready states) rather
+      // than pretending success.
       setProfileId(null)
       setStatus('no-profile')
     }

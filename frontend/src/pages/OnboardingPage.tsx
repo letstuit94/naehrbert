@@ -229,7 +229,7 @@ export function OnboardingPage() {
   const navigate = useNavigate()
   const { t } = useI18n()
   const steps = onboardingSteps(t)
-  const { refresh } = useAuth()
+  const { refresh, signOut } = useAuth()
   const [answers, setAnswers] = useState<Answers>(INITIAL_ANSWERS)
   const [draftText, setDraftText] = useState('')
   const [phase, setPhase] = useState<'chat' | 'saving' | 'reveal'>('chat')
@@ -351,6 +351,11 @@ export function OnboardingPage() {
     setStepIndex((i) => i + 1)
   }
 
+  async function logOut() {
+    await signOut()
+    navigate('/')
+  }
+
   function goNext(next: Answers) {
     if (stepIndex >= steps.length - 1) {
       submit(next)
@@ -386,9 +391,14 @@ export function OnboardingPage() {
       <div className="summary-line">
         <h1>{t('Onboarding', 'Onboarding')}</h1>
         {!busy && (
-          <button type="button" className="btn-link" onClick={skipOnboarding}>
-            {t('Skip onboarding', 'Onboarding überspringen')}
-          </button>
+          <span className="onboarding-header-actions">
+            <button type="button" className="btn-link" onClick={skipOnboarding}>
+              {t('Skip onboarding', 'Onboarding überspringen')}
+            </button>
+            <button type="button" className="btn-link" onClick={logOut}>
+              {t('Sign out', 'Abmelden')}
+            </button>
+          </span>
         )}
       </div>
       <div className="chat-card">

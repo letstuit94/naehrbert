@@ -10,7 +10,6 @@
   --accent-contrast: #fbfbfa;
   --accent-bg: rgba(0, 0, 0, 0.04);
   --accent-border: rgba(0, 0, 0, 0.1);
-  --social-bg: rgba(244, 244, 245, 0.6);
 
   /* ── Spacing scale (CI §6 · J1) ─────────────────────────────────────────
      One 4px-based rhythm for gaps, paddings and section spacing. Prefer these
@@ -154,7 +153,6 @@
   --accent-contrast: #1c1c1f;
   --accent-bg: rgba(255, 255, 255, 0.06);
   --accent-border: rgba(255, 255, 255, 0.14);
-  --social-bg: rgba(38, 38, 46, 0.6);
 
   /* CI v2 Signal-/Akzent-Tokens · Dark (vorläufig, §-Dark noch offen).
      Werte aus dem Mockup-Dark-Set, damit der bestehende Dark-Mode nicht
@@ -189,7 +187,6 @@
     --accent-contrast: #1c1c1f;
     --accent-bg: rgba(255, 255, 255, 0.06);
     --accent-border: rgba(255, 255, 255, 0.14);
-    --social-bg: rgba(38, 38, 46, 0.6);
 
     /* CI v2 Signal-/Akzent-Tokens · Dark (vorläufig, §-Dark noch offen).
        Werte aus dem Mockup-Dark-Set, damit der bestehende Dark-Mode nicht
@@ -294,9 +291,6 @@ code {
   display: inline-flex;
   border-radius: 4px;
   color: var(--text-h);
-}
-
-code {
   font-size: 18px;
   line-height: 135%;
   padding: 4px 8px;

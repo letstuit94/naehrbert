@@ -180,8 +180,8 @@ export function TipsPage() {
       <h1>{t('Recipes', 'Rezepte')}</h1>
       <p className="page-lead">
         {t(
-          'Recipes are to generated to help close the gap from your Result page, using your saved dietary preferences plus whatever cuisine, time and servings you set below.',
-          'Rezepte werden erstellt, um die Lücke aus deiner Ergebnisseite zu schließen – auf Basis deiner gespeicherten Ernährungsvorlieben sowie der Küche, Zeit und Portionen, die du unten festlegst.',
+          'Recipes are to generated to help close the gap from your Insights page, using your saved dietary preferences plus whatever cuisine, time and servings you set below.',
+          'Rezepte werden erstellt, um die Lücke aus deiner Insights-Seite zu schließen – auf Basis deiner gespeicherten Ernährungsvorlieben sowie der Küche, Zeit und Portionen, die du unten festlegst.',
         )}
       </p>
 

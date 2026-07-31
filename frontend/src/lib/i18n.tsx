@@ -24,6 +24,14 @@ import type { ReactNode } from 'react'
 
 export type Lang = 'en' | 'de'
 
+/** UI-language choices, shared by every language switcher (Login screen,
+ * Profile page). Labels are shown in their own language (endonyms), so
+ * they read the same regardless of the active one. */
+export const LANGUAGE_OPTIONS: { value: Lang; label: string }[] = [
+  { value: 'de', label: '🇩🇪 Deutsch' },
+  { value: 'en', label: '🇬🇧 English' },
+]
+
 const STORAGE_KEY = 'nutriwise-lang'
 
 function isLang(value: string | null): value is Lang {

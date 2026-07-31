@@ -1521,6 +1521,22 @@
   text-align: center;
 }
 
+/* Fixed to the corner rather than laid out in the centered column, so it
+   reads as a persistent, always-available choice rather than a form field
+   -- same intent as a typical pre-auth language picker. */
+.login-lang-switch {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  font: inherit;
+  font-size: var(--fs-sm);
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-h);
+}
+
 /* Login brand lockup (CI §1): larger leaf badge + "NutriWise" wordmark. */
 .login-logo {
   display: inline-flex;

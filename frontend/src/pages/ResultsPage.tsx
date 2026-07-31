@@ -123,6 +123,12 @@ export function ResultsPage() {
   }
 
   const noReceiptsYet = composition.data?.items_considered === 0
+  // Same days_of_data/window_days pair either source would give (both
+  // derive from the same backend window calculation) -- whichever loaded
+  // is enough to tell if the purchase history is still shorter than the
+  // window, without waiting on both.
+  const windowCoverage = mealCoverage.data ?? micronutrients.data
+  const partialWindow = windowCoverage !== null && windowCoverage.days_of_data < windowCoverage.window_days
 
   return (
     <section>
@@ -138,6 +144,19 @@ export function ResultsPage() {
           'Wie sich dein jüngster Einkauf im Vergleich zu deinen Zielen schlägt – denk in Trends, nicht in exakten Zahlen. Basiert auf deinen Einkäufen, stärker gewichtet nach dem, was aktuell ist – das spiegelt deine Ernährung wider, kein Ernährungstagebuch.',
         )}
       </p>
+
+      {!noReceiptsYet && partialWindow && windowCoverage && (
+        <p className="callout callout--muted">
+          {t(
+            `Your purchase history only goes back ${windowCoverage.days_of_data} day${
+              windowCoverage.days_of_data === 1 ? '' : 's'
+            } so far (less than the ${windowCoverage.window_days}-day window) — the numbers below are calculated over that shorter span, and will settle in as you upload more receipts over time.`,
+            `Deine Einkaufshistorie reicht bisher nur ${windowCoverage.days_of_data} Tag${
+              windowCoverage.days_of_data === 1 ? '' : 'e'
+            } zurück (weniger als das ${windowCoverage.window_days}-Tage-Fenster) – die Werte unten werden über diesen kürzeren Zeitraum berechnet und pendeln sich ein, je mehr Belege du mit der Zeit hochlädst.`,
+          )}
+        </p>
+      )}
 
       {!noReceiptsYet && composition.data && <p className="muted"></p>}
 
@@ -371,7 +390,6 @@ function TargetsSection({
       ? Math.round((avgDailyKcal / targets.calories_kcal) * 100)
       : null
   const shareWasDefaulted = mealCoverage?.consumption_share_pct === 100
-  const partialWindow = mealCoverage !== null && mealCoverage.days_of_data < mealCoverage.window_days
 
   return (
     <div className="targets-section">
@@ -413,18 +431,6 @@ function TargetsSection({
             {t('Assuming all these groceries are yours — set your', 'Wir nehmen an, dass all diese Lebensmittel deine sind – lege deinen')}{' '}
             <Link to="/profile">{t('grocery share', 'Einkaufsanteil')}</Link>{' '}
             {t('for a more accurate number.', 'fest, um eine genauere Zahl zu erhalten.')}
-          </span>
-        )}
-        {partialWindow && (
-          <span className="muted">
-            {t(
-              `Your purchase history only goes back ${mealCoverage.days_of_data} day${
-                mealCoverage.days_of_data === 1 ? '' : 's'
-              } so far (less than the ${mealCoverage.window_days}-day window) — this average is calculated over that shorter span, and will settle in as you upload more receipts over time.`,
-              `Deine Einkaufshistorie reicht bisher nur ${mealCoverage.days_of_data} Tag${
-                mealCoverage.days_of_data === 1 ? '' : 'e'
-              } zurück (weniger als das ${mealCoverage.window_days}-Tage-Fenster) – dieser Durchschnitt wird über diesen kürzeren Zeitraum berechnet und pendelt sich ein, je mehr Belege du mit der Zeit hochlädst.`,
-            )}
           </span>
         )}
       </div>
@@ -864,7 +870,6 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
     totals,
     targets,
     micro_coverage_pct,
-    window_days,
     days_of_data,
     items_with_micros_count,
     items_considered,
@@ -873,7 +878,6 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
   } = micronutrients
   const { t } = useI18n()
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const partialWindow = days_of_data < window_days
 
   function toggleExpanded(key: string) {
     setExpanded((prev) => {
@@ -924,18 +928,6 @@ function MicronutrientsSection({ micronutrients }: { micronutrients: Micronutrie
         )}
       </p>
       <p className="callout callout--muted">{purchasesOnlyNote(t)}</p>
-      {partialWindow && (
-        <p className="callout callout--muted">
-          {t(
-            `Your purchase history only goes back ${days_of_data} day${
-              days_of_data === 1 ? '' : 's'
-            } so far (less than the ${window_days}-day window) — the daily averages below are calculated over that shorter span, and will settle in as you upload more receipts over time.`,
-            `Deine Einkaufshistorie reicht bisher nur ${days_of_data} Tag${
-              days_of_data === 1 ? '' : 'e'
-            } zurück (weniger als das ${window_days}-Tage-Fenster) – die Durchschnittswerte unten werden über diesen kürzeren Zeitraum berechnet und pendeln sich ein, je mehr Belege du mit der Zeit hochlädst.`,
-          )}
-        </p>
-      )}
       <div className="card micronutrient-card">
         <div className="table-scroll">
           <table className="micronutrient-table">

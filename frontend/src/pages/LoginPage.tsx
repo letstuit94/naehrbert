@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/authContext'
 import { supabase } from '../lib/supabaseClient'
-import { useI18n } from '../lib/i18n'
+import { useI18n, LANGUAGE_OPTIONS, type Lang } from '../lib/i18n'
 import { Logo } from '../components/Logo'
 
 type Mode = 'sign_in' | 'sign_up'
@@ -22,7 +22,7 @@ type Mode = 'sign_in' | 'sign_up'
 export function LoginPage() {
   const { status } = useAuth()
   const navigate = useNavigate()
-  const { t } = useI18n()
+  const { t, lang, setLang } = useI18n()
   const [mode, setMode] = useState<Mode>('sign_in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -63,7 +63,19 @@ export function LoginPage() {
       if (mode === 'sign_up') {
         const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
         if (signUpError) throw signUpError
-        if (!data.session) {
+        if (data.user && data.user.identities?.length === 0) {
+          // Supabase's anti-enumeration signal for "an account with this
+          // email already exists" -- no error, no session, and no email
+          // sent either, so this can't be shown as ordinary "check your
+          // email" success or the person will wait forever for a mail
+          // that's never coming.
+          setError(
+            t(
+              'An account with this email already exists. Try signing in instead.',
+              'Für diese E-Mail existiert bereits ein Konto. Versuche es stattdessen mit Anmelden.',
+            ),
+          )
+        } else if (!data.session) {
           // "Confirm email" is on for this project -- no session until the
           // confirmation link is clicked.
           setCheckEmail(true)
@@ -90,6 +102,19 @@ export function LoginPage() {
 
   return (
     <section className="login-screen">
+      <select
+        className="login-lang-switch"
+        value={lang}
+        onChange={(e) => setLang(e.target.value as Lang)}
+        aria-label={t('Language', 'Sprache')}
+      >
+        {LANGUAGE_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+
       <span className="login-logo">
         <span className="login-logo__badge">
           <Logo size={30} />

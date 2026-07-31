@@ -25,7 +25,7 @@ import {
 import { allergenOptions, dietaryStyleOptions } from '../lib/recipePrefsSteps'
 import { ChipListInput, type ChipListInputHandle } from '../components/ChipListInput'
 import { getStoredTheme, setTheme, type ThemePreference } from '../lib/theme'
-import { useI18n, type Lang, type TranslateFn } from '../lib/i18n'
+import { useI18n, LANGUAGE_OPTIONS, type Lang, type TranslateFn } from '../lib/i18n'
 
 /** Profile-page-only (not part of onboarding or the recipe-prefs chat) --
  * the DGE reference table's pregnancy/nursing life stages. */
@@ -80,14 +80,6 @@ const themeOptions = (t: TranslateFn): { value: ThemePreference; label: string }
   { value: 'system', label: t('🖥️ System', '🖥️ System') },
   { value: 'light', label: t('☀️ Light', '☀️ Hell') },
   { value: 'dark', label: t('🌙 Dark', '🌙 Dunkel') },
-]
-
-/** UI-language choices for the Language row (Preferences card). Labels are shown
- * in their own language (endonyms), so they read the same regardless of the
- * active one. */
-const LANGUAGE_OPTIONS: { value: Lang; label: string }[] = [
-  { value: 'de', label: '🇩🇪 Deutsch' },
-  { value: 'en', label: '🇬🇧 English' },
 ]
 
 type LabeledOption = { value: string; label: string }
